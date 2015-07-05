@@ -83,7 +83,7 @@ LR_MsgHandler_PARM *parameter_handler;
   messages which we will be generating, so should be discarded
  */
 static const char *generated_names[] = { "EKF1", "EKF2", "EKF3", "EKF4", "EKF5", 
-                                         "AHR2", "POS", NULL };
+                                         "AHR2", "POS", "CHEK", NULL };
 
 /*
   see if a type is in a list of types
@@ -119,7 +119,8 @@ uint8_t LogReader::map_fmt_type(const char *name, uint8_t intype)
     return mapped_msgid[intype];    
 }
 
-bool LogReader::handle_log_format_msg(const struct log_Format &f) {
+bool LogReader::handle_log_format_msg(const struct log_Format &f) 
+{
 	char name[5];
 	memset(name, '\0', 5);
 	memcpy(name, f.name, 4);
@@ -135,6 +136,10 @@ bool LogReader::handle_log_format_msg(const struct log_Format &f) {
             struct log_Format f_mapped = f;
             f_mapped.type = map_fmt_type(name, f.type);
             dataflash.WriteBlock(&f_mapped, sizeof(f_mapped));
+        }
+
+        if (msgparser[f.type] != NULL) {
+            return true;
         }
 
 	// map from format name to a parser subclass:
@@ -287,4 +292,29 @@ bool LogReader::set_parameter(const char *name, float value)
         return false;
     }
     return parameter_handler->set_parameter(name, value);
+}
+
+/*
+  called when the last FMT message has been processed
+ */
+void LogReader::end_format_msgs(void)
+{
+    // write out any formats we will be producing
+    for (uint8_t i=0; generated_names[i]; i++) {
+        for (uint8_t n=0; n<num_types; n++) {
+            if (strcmp(generated_names[i], structure[n].name) == 0) {
+                const struct LogStructure *s = &structure[n];
+                struct log_Format pkt {};
+                pkt.head1 = HEAD_BYTE1;
+                pkt.head2 = HEAD_BYTE2;
+                pkt.msgid = LOG_FORMAT_MSG;
+                pkt.type = s->msg_type;
+                pkt.length = s->msg_len;
+                strncpy(pkt.name, s->name, sizeof(pkt.name));
+                strncpy(pkt.format, s->format, sizeof(pkt.format));
+                strncpy(pkt.labels, s->labels, sizeof(pkt.labels));
+                dataflash.WriteBlock(&pkt, sizeof(pkt));
+            }
+        }
+    }
 }
