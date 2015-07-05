@@ -27,6 +27,9 @@ public:
     virtual bool handle_log_format_msg(const struct log_Format &f);
     virtual bool handle_msg(const struct log_Format &f, uint8_t *msg);
 
+protected:
+    virtual void end_format_msgs(void) override;
+
 private:
     AP_AHRS &ahrs;
     AP_InertialSensor &ins;
@@ -36,16 +39,13 @@ private:
     AP_Airspeed &airspeed;
     DataFlash_Class &dataflash;
 
-    const struct LogStructure *structure;
-    uint8_t num_types;
-
     uint8_t accel_mask;
     uint8_t gyro_mask;
     bool use_imt = true;
 
     uint32_t ground_alt_cm;
 
-    class LR_MsgHandler *msgparser[LOGREADER_MAX_FORMATS];
+    class LR_MsgHandler *msgparser[LOGREADER_MAX_FORMATS] {};
 
     Vector3f attitude;
     Vector3f ahr2_attitude;
@@ -59,6 +59,9 @@ private:
 
     // next available msgid for mapping
     uint8_t next_msgid = 1;
+
+    const struct LogStructure *structure;
+    uint8_t num_types;
 
     LR_MsgHandler::CheckState check_state;
 
