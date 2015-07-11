@@ -225,7 +225,7 @@ private:
     SITL sitl;
 #endif
 
-    LogReader logreader{_vehicle.ahrs, _vehicle.ins, _vehicle.barometer, _vehicle.compass, _vehicle.gps, _vehicle.airspeed, _vehicle.dataflash, log_structure, sizeof(log_structure)/sizeof(log_structure[0])};
+    LogReader logreader{_vehicle.ahrs, _vehicle.ins, _vehicle.barometer, _vehicle.compass, _vehicle.gps, _vehicle.airspeed, _vehicle.dataflash, log_structure, ARRAY_SIZE(log_structure), nottypes};
 
     FILE *plotf;
     FILE *plotf2;
@@ -247,6 +247,9 @@ private:
     float tolerance_euler = 3;
     float tolerance_pos = 2;
     float tolerance_vel = 2;
+    const char **nottypes = NULL;
+    uint16_t downsample = 0;
+    uint32_t output_counter = 0;
 
     struct {
         float max_roll_error;
@@ -275,6 +278,7 @@ private:
     bool show_error(const char *text, float max_error, float tolerance);
     void report_checks();
     bool find_log_info(struct log_information &info);
+    const char **parse_list_from_string(const char *str);
 };
 
 Replay replay(replayvehicle);
@@ -292,6 +296,8 @@ void Replay::usage(void)
     ::printf("\t--tolerance-euler  tolerance for euler angles in degrees\n");
     ::printf("\t--tolerance-pos    tolerance for position in meters\n");
     ::printf("\t--tolerance-vel    tolerance for velocity in meters/second\n");
+    ::printf("\t--nottypes         list of msg types not to output, comma separated\n");
+    ::printf("\t--downsample       downsampling rate for output\n");
 }
 
 
@@ -300,11 +306,41 @@ enum {
     OPT_CHECK_GENERATE,
     OPT_TOLERANCE_EULER,
     OPT_TOLERANCE_POS,
-    OPT_TOLERANCE_VEL
+    OPT_TOLERANCE_VEL,
+    OPT_NOTTYPES,
+    OPT_DOWNSAMPLE
 };
 
 void Replay::flush_dataflash(void) {
     _vehicle.dataflash.flush();
+}
+
+/*
+  create a list from a comma separated string
+ */
+const char **Replay::parse_list_from_string(const char *str_in)
+{
+    uint16_t comma_count=0;
+    const char *p;
+    for (p=str_in; *p; p++) {
+        if (*p == ',') comma_count++;
+    }
+
+    char *str = strdup(str_in);
+    if (str == NULL) {
+        return NULL;
+    }
+    const char **ret = (const char **)calloc(comma_count+2, sizeof(char *));
+    if (ret == NULL) {
+        free(str);
+        return NULL;
+    }
+    char *saveptr = NULL;
+    uint16_t idx = 0;
+    for (p=strtok_r(str, ",", &saveptr); p; p=strtok_r(NULL, ",", &saveptr)) {
+        ret[idx++] = p;
+    }
+    return ret;
 }
 
 void Replay::_parse_command_line(uint8_t argc, char * const argv[])
@@ -322,6 +358,8 @@ void Replay::_parse_command_line(uint8_t argc, char * const argv[])
         {"tolerance-euler", true,   0, OPT_TOLERANCE_EULER},
         {"tolerance-pos",   true,   0, OPT_TOLERANCE_POS},
         {"tolerance-vel",   true,   0, OPT_TOLERANCE_VEL},
+        {"nottypes",        true,   0, OPT_NOTTYPES},
+        {"downsample",      true,   0, OPT_DOWNSAMPLE},
         {0, false, 0, 0}
     };
 
@@ -357,7 +395,7 @@ void Replay::_parse_command_line(uint8_t argc, char * const argv[])
             strncpy(user_parameters[num_user_parameters].name, gopt.optarg, eq-gopt.optarg);
             user_parameters[num_user_parameters].value = atof(eq+1);
             num_user_parameters++;
-            if (num_user_parameters >= sizeof(user_parameters)/sizeof(user_parameters[0])) {
+            if (num_user_parameters >= ARRAY_SIZE(user_parameters)) {
                 ::printf("Too many user parameters\n");
                 exit(1);
             }
@@ -382,6 +420,14 @@ void Replay::_parse_command_line(uint8_t argc, char * const argv[])
 
         case OPT_TOLERANCE_VEL:
             tolerance_vel = atof(gopt.optarg);
+            break;
+
+        case OPT_NOTTYPES:
+            nottypes = parse_list_from_string(gopt.optarg);
+            break;
+
+        case OPT_DOWNSAMPLE:
+            downsample = atoi(gopt.optarg);
             break;
 
         case 'h':
@@ -507,6 +553,10 @@ void Replay::setup()
     hal.util->commandline_arguments(argc, argv);
 
     _parse_command_line(argc, argv);
+
+    if (!check_generate) {
+        logreader.set_save_chek_messages(true);
+    }
 
     // _parse_command_line sets up an FPE handler.  We can do better:
     signal(SIGFPE, _replay_sig_fpe);
@@ -664,9 +714,17 @@ void Replay::read_sensors(const char *type)
         if (_vehicle.ahrs.get_home().lat != 0) {
             _vehicle.inertial_nav.update(_vehicle.ins.get_delta_time());
         }
-        _vehicle.dataflash.Log_Write_EKF(_vehicle.ahrs,false);
-        _vehicle.dataflash.Log_Write_AHRS2(_vehicle.ahrs);
-        _vehicle.dataflash.Log_Write_POS(_vehicle.ahrs);
+        if (downsample == 0 || ++output_counter % downsample == 0) {
+            if (!LogReader::in_list("EKF", nottypes)) {
+                _vehicle.dataflash.Log_Write_EKF(_vehicle.ahrs,false);
+            }
+            if (!LogReader::in_list("AHRS2", nottypes)) {
+                _vehicle.dataflash.Log_Write_AHRS2(_vehicle.ahrs);
+            }
+            if (!LogReader::in_list("POS", nottypes)) {
+                _vehicle.dataflash.Log_Write_POS(_vehicle.ahrs);
+            }
+        }
         if (_vehicle.ahrs.healthy() != ahrs_healthy) {
             ahrs_healthy = _vehicle.ahrs.healthy();
             printf("AHRS health: %u at %lu\n", 
