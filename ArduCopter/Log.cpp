@@ -631,6 +631,21 @@ void Copter::Log_Write_Parameter_Tuning(uint8_t param, float tuning_val, int16_t
     DataFlash.WriteBlock(&pkt_tune, sizeof(pkt_tune));
 }
 
+// log EKF origin and ahrs home to dataflash
+void Copter::Log_Write_Home_And_Origin()
+{
+    // log ekf origin if set
+    Location ekf_orig;
+    if (ahrs.get_NavEKF_const().getOriginLLH(ekf_orig)) {
+        DataFlash.Log_Write_Origin(LogOriginType::ekf_origin, ekf_orig);
+    }
+
+    // log ahrs home if set
+    if (ap.home_state != HOME_UNSET) {
+        DataFlash.Log_Write_Origin(LogOriginType::ahrs_home, ahrs.get_home());
+    }
+}
+
 struct PACKED log_Heli {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -736,7 +751,7 @@ void Copter::start_logging()
 
 void Copter::log_init(void)
 {
-    DataFlash.Init(log_structure, sizeof(log_structure)/sizeof(log_structure[0]));
+    DataFlash.Init(log_structure, ARRAY_SIZE(log_structure));
     if (!DataFlash.CardInserted()) {
         gcs_send_text_P(SEVERITY_HIGH, PSTR("No dataflash inserted"));
         g.log_bitmask.set(0);
