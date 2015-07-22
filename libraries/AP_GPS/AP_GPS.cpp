@@ -56,7 +56,7 @@ const AP_Param::GroupInfo AP_GPS::var_info[] PROGMEM = {
 #endif
 
 #if GPS_RTK_AVAILABLE
-    // @Param: DGPS_MIN_LOCK
+    // @Param: MIN_DGPS
     // @DisplayName: Minimum Lock Type Accepted for DGPS
     // @Description: Sets the minimum type of differential GPS corrections required before allowing to switch into DGPS mode.
     // @Values: 0:Any,50:FloatRTK,100:IntegerRTK
@@ -99,10 +99,10 @@ const AP_Param::GroupInfo AP_GPS::var_info[] PROGMEM = {
 #endif
 
 #if GPS_RTK_AVAILABLE
-    // @Param: RXM_RAW
+    // @Param: RAW_DATA
     // @DisplayName: Raw data logging
     // @Description: Enable logging of RXM raw data from uBlox which includes carrier phase and pseudo range information. This allows for post processing of dataflash logs for more precise positioning. Note that this requires a raw capable uBlox such as the 6P or 6T.
-    // @Values: 0:Disabled,1:log at 1MHz,5:log at 5MHz.
+    // @Values: 0:Disabled,1:log at 1MHz,5:log at 5MHz
     AP_GROUPINFO("RAW_DATA", 9, AP_GPS, _raw_data, 0),
 #endif
 
@@ -206,7 +206,7 @@ AP_GPS::detect_instance(uint8_t instance)
     if (now - dstate->last_baud_change_ms > 1200) {
         // try the next baud rate
 		dstate->last_baud++;
-		if (dstate->last_baud == sizeof(_baudrates) / sizeof(_baudrates[0])) {
+		if (dstate->last_baud == ARRAY_SIZE(_baudrates)) {
 			dstate->last_baud = 0;
 		}
 		uint32_t baudrate = pgm_read_dword(&_baudrates[dstate->last_baud]);

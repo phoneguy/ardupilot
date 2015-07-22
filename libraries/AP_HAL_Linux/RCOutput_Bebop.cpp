@@ -117,6 +117,7 @@ LinuxRCOutput_Bebop::LinuxRCOutput_Bebop():
     _state(BEBOP_BLDC_STOPPED)
 {
     memset(_period_us, 0, sizeof(_period_us));
+    memset(_request_period_us, 0, sizeof(_request_period_us));
     memset(_rpm, 0, sizeof(_rpm));
 }
 
@@ -269,6 +270,7 @@ void LinuxRCOutput_Bebop::init(void* dummy)
     int ret=0;
     struct sched_param param = { .sched_priority = RCOUT_BEBOP_RTPRIO };
     pthread_attr_t attr;
+    pthread_condattr_t cond_attr;
 
     _i2c_sem = hal.i2c1->get_semaphore();
     if (_i2c_sem == NULL) {
@@ -285,8 +287,10 @@ void LinuxRCOutput_Bebop::init(void* dummy)
 
     pthread_mutex_lock(&_mutex);
 
-    ret = pthread_cond_init(&_cond, NULL);
-
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    ret = pthread_cond_init(&_cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     if (ret != 0) {
         perror("RCout_Bebop: failed to init cond\n");
         goto exit;
@@ -337,11 +341,19 @@ void LinuxRCOutput_Bebop::disable_ch(uint8_t ch)
 
 void LinuxRCOutput_Bebop::write(uint8_t ch, uint16_t period_us)
 {
+    if (ch >= BEBOP_BLDC_MOTORS_NUM)
+        return;
 
-    pthread_mutex_lock(&_mutex);
-    _period_us[ch] = period_us;
-    pthread_cond_signal(&_cond);
-    pthread_mutex_unlock(&_mutex);
+    _request_period_us[ch] = period_us;
+
+    /* write command to motors only when all channels are set */
+    if (ch == (BEBOP_BLDC_MOTORS_NUM - 1)) {
+        pthread_mutex_lock(&_mutex);
+        memcpy(_period_us, _request_period_us, sizeof(_period_us));
+        pthread_cond_signal(&_cond);
+        pthread_mutex_unlock(&_mutex);
+        memset(_request_period_us, 0 ,sizeof(_request_period_us));
+    }
 }
 
 void LinuxRCOutput_Bebop::write(uint8_t ch, uint16_t* period_us, uint8_t len)
@@ -390,7 +402,7 @@ void LinuxRCOutput_Bebop::_run_rcout()
 
     while (true) {
         pthread_mutex_lock(&_mutex);
-        ret = clock_gettime(CLOCK_REALTIME, &ts);
+        ret = clock_gettime(CLOCK_MONOTONIC, &ts);
         if (ret != 0)
             hal.console->println_P("RCOutput_Bebop: bad checksum in obs data");
 

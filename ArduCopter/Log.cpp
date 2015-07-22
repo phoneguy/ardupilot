@@ -357,6 +357,7 @@ void Copter::Log_Write_Performance()
 void Copter::Log_Write_Attitude()
 {
     Vector3f targets = attitude_control.angle_ef_targets();
+    targets.z = wrap_360_cd_float(targets.z);
     DataFlash.Log_Write_Attitude(ahrs, targets);
 
  #if OPTFLOW == ENABLED
@@ -424,6 +425,7 @@ struct PACKED log_MotBatt {
 // Write an rate packet
 void Copter::Log_Write_MotBatt()
 {
+#if FRAME_CONFIG != HELI_FRAME
     struct log_MotBatt pkt_mot = {
         LOG_PACKET_HEADER_INIT(LOG_MOTBATT_MSG),
         time_us         : hal.scheduler->micros64(),
@@ -433,6 +435,7 @@ void Copter::Log_Write_MotBatt()
         th_limit        : (float)(motors.get_throttle_limit())
     };
     DataFlash.WriteBlock(&pkt_mot, sizeof(pkt_mot));
+#endif
 }
 
 struct PACKED log_Startup {
@@ -448,11 +451,6 @@ void Copter::Log_Write_Startup()
         time_us         : hal.scheduler->micros64()
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
-
-    // write all commands to the dataflash as well
-    if (should_log(MASK_LOG_CMD)) {
-        DataFlash.Log_Write_EntireMission(mission);
-    }
 }
 
 struct PACKED log_Event {
@@ -646,6 +644,22 @@ void Copter::Log_Write_Home_And_Origin()
     }
 }
 
+// logs when baro or compass becomes unhealthy
+void Copter::Log_Sensor_Health()
+{
+    // check baro
+    if (sensor_health.baro != barometer.healthy()) {
+        sensor_health.baro = barometer.healthy();
+        Log_Write_Error(ERROR_SUBSYSTEM_BARO, (sensor_health.baro ? ERROR_CODE_ERROR_RESOLVED : ERROR_CODE_UNHEALTHY));
+    }
+
+    // check compass
+    if (sensor_health.compass != compass.healthy()) {
+        sensor_health.compass = compass.healthy();
+        Log_Write_Error(ERROR_SUBSYSTEM_COMPASS, (sensor_health.compass ? ERROR_CODE_ERROR_RESOLVED : ERROR_CODE_UNHEALTHY));
+    }
+}
+
 struct PACKED log_Heli {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -738,6 +752,11 @@ void Copter::start_logging()
             in_mavlink_delay = false;
 
             DataFlash.Log_Write_Message_P(PSTR("Frame: " FRAME_CONFIG_STRING));
+
+            // write mission commands
+            if (MASK_LOG_CMD & g.log_bitmask) {
+                DataFlash.Log_Write_EntireMission(mission);
+            }
 
             Log_Write_Startup();
 
