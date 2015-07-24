@@ -106,6 +106,13 @@ const AP_Param::GroupInfo AP_GPS::var_info[] PROGMEM = {
     AP_GROUPINFO("RAW_DATA", 9, AP_GPS, _raw_data, 0),
 #endif
 
+    // @Param: GNSS_MODE
+    // @DisplayName: GNSS system configuration
+    // @Description: Bitmask for what GNSS system to use
+    // @Values: 0: Leave as currently configured 1: GPS 2: SBAS 4: Galileo 8: Beidou 16: IMES 32: QZSS 64: GLONASS
+    // @User: Advanced
+    AP_GROUPINFO("GNSS_MODE", 10, AP_GPS, _gnss_mode, 0),
+
     AP_GROUPEND
 };
 
@@ -130,6 +137,7 @@ const uint32_t AP_GPS::_baudrates[] PROGMEM = {4800U, 38400U, 115200U, 57600U, 9
 // initialisation blobs to send to the GPS to try to get it into the
 // right mode
 const prog_char AP_GPS::_initialisation_blob[] PROGMEM = UBLOX_SET_BINARY MTK_SET_BINARY SIRF_SET_BINARY;
+const prog_char AP_GPS::_initialisation_raw_blob[] PROGMEM = UBLOX_SET_BINARY_RAW_BAUD MTK_SET_BINARY SIRF_SET_BINARY;
 
 /*
   send some more initialisation string bytes if there is room in the
@@ -203,7 +211,7 @@ AP_GPS::detect_instance(uint8_t instance)
         dstate->detect_started_ms = now;
     }
 
-    if (now - dstate->last_baud_change_ms > 1200) {
+    if (now - dstate->last_baud_change_ms > GPS_BAUD_TIME_MS) {
         // try the next baud rate
 		dstate->last_baud++;
 		if (dstate->last_baud == ARRAY_SIZE(_baudrates)) {
@@ -213,12 +221,18 @@ AP_GPS::detect_instance(uint8_t instance)
 		_port[instance]->begin(baudrate);
 		_port[instance]->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
 		dstate->last_baud_change_ms = now;
+#if UBLOX_RXM_RAW_LOGGING
+    if(_raw_data != 0)
+        send_blob_start(instance, _initialisation_raw_blob, sizeof(_initialisation_raw_blob));
+    else
+#endif
         send_blob_start(instance, _initialisation_blob, sizeof(_initialisation_blob));
     }
 
     send_blob_update(instance);
 
-    while (_port[instance]->available() > 0 && new_gps == NULL) {
+    while (initblob_state[instance].remaining == 0 && _port[instance]->available() > 0
+            && new_gps == NULL) {
         uint8_t data = _port[instance]->read();
         /*
           running a uBlox at less than 38400 will lead to packet
@@ -257,7 +271,7 @@ AP_GPS::detect_instance(uint8_t instance)
 			hal.console->print_P(PSTR(" SIRF "));
 			new_gps = new AP_GPS_SIRF(*this, state[instance], _port[instance]);
 		}
-		else if (now - dstate->detect_started_ms > 5000) {
+		else if (now - dstate->detect_started_ms > (ARRAY_SIZE(_baudrates) * GPS_BAUD_TIME_MS)) {
 			// prevent false detection of NMEA mode in
 			// a MTK or UBLOX which has booted in NMEA mode
 			if ((_type[instance] == GPS_TYPE_AUTO || _type[instance] == GPS_TYPE_NMEA) &&

@@ -39,6 +39,7 @@
  * would mean we would never detect it.
  */
 #define UBLOX_SET_BINARY "\265\142\006\001\003\000\001\006\001\022\117$PUBX,41,1,0003,0001,38400,0*26\r\n"
+#define UBLOX_SET_BINARY_RAW_BAUD "\265\142\006\001\003\000\001\006\001\022\117$PUBX,41,1,0003,0001,115200,0*1E\r\n"
 
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
 #define UBLOX_RXM_RAW_LOGGING 1
@@ -48,6 +49,8 @@
 #define UBLOX_RXM_RAW_LOGGING 0
 #endif
 
+#define UBLOX_MAX_GNSS_CONFIG_BLOCKS 7
+
 class AP_GPS_UBLOX : public AP_GPS_Backend
 {
 public:
@@ -55,6 +58,8 @@ public:
 
     // Methods
     bool read();
+
+    AP_GPS::GPS_Status highest_supported_status(void) { return AP_GPS::GPS_OK_FIX_3D_DGPS; }
 
     static bool _detect(struct UBLOX_detect_state &state, uint8_t data);
 
@@ -66,6 +71,19 @@ private:
         uint8_t msg_class;
         uint8_t msg_id;
         uint16_t length;
+    };
+    struct PACKED ubx_cfg_gnss {
+        uint8_t msgVer;
+        uint8_t numTrkChHw;
+        uint8_t numTrkChUse;
+        uint8_t numConfigBlocks;
+        PACKED struct configBlock {
+            uint8_t gnssId;
+            uint8_t resTrkCh;
+            uint8_t maxTrkCh;
+            uint8_t reserved1;
+            uint32_t flags;
+        } configBlock[UBLOX_MAX_GNSS_CONFIG_BLOCKS];
     };
     struct PACKED ubx_cfg_nav_rate {
         uint16_t measure_rate_ms;
@@ -242,12 +260,13 @@ private:
         uint8_t numMeas;
         uint8_t recStat;
         uint8_t reserved1[3];
-        struct ubx_rxm_rawx_sv {
+        PACKED struct ubx_rxm_rawx_sv {
             double prMes;
             double cpMes;
             float doMes;
             uint8_t gnssId;
             uint8_t svId;
+            uint8_t reserved2;
             uint8_t freqId;
             uint16_t locktime;
             uint8_t cno;
@@ -255,6 +274,7 @@ private:
             uint8_t cpStdev;
             uint8_t doStdev;
             uint8_t trkStat;
+            uint8_t reserved3;
         } svinfo[UBLOX_MAX_RXM_RAWX_SATS];
     };
 #endif
@@ -269,6 +289,7 @@ private:
         ubx_mon_hw_60 mon_hw_60;
         ubx_mon_hw_68 mon_hw_68;
         ubx_mon_hw2 mon_hw2;
+        ubx_cfg_gnss gnss;
         ubx_cfg_sbas sbas;
         ubx_nav_svinfo_header svinfo_header;
 #if UBLOX_RXM_RAW_LOGGING
@@ -298,11 +319,21 @@ private:
         MSG_CFG_SET_RATE = 0x01,
         MSG_CFG_NAV_SETTINGS = 0x24,
         MSG_CFG_SBAS = 0x16,
+        MSG_CFG_GNSS = 0x3E,
         MSG_MON_HW = 0x09,
         MSG_MON_HW2 = 0x0B,
         MSG_NAV_SVINFO = 0x30,
         MSG_RXM_RAW = 0x10,
         MSG_RXM_RAWX = 0x15
+    };
+    enum ubx_gnss_identifier {
+        GNSS_GPS     = 0x00,
+        GNSS_SBAS    = 0x01,
+        GNSS_GALILEO = 0x02,
+        GNSS_BEIDOU  = 0x03,
+        GNSS_IMES    = 0x04,
+        GNSS_QZSS    = 0x05,
+        GNSS_GLONASS = 0x06
     };
     enum ubs_nav_fix_type {
         FIX_NONE = 0,
