@@ -18,6 +18,7 @@
  */
 
 #include <AP_HAL.h>
+#if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 #include "AP_InertialSensor_ITG3200BMA180.h"
 
 const extern AP_HAL::HAL& hal;
@@ -62,8 +63,8 @@ AP_InertialSensor_ITG3200BMA180::AP_InertialSensor_ITG3200BMA180(AP_InertialSens
     AP_InertialSensor_Backend(imu),
     _have_gyro_sample(false),
     _have_accel_sample(false),
-    _accel_filter(raw_sample_rate_hz, 10),
-    _gyro_filter(raw_sample_rate_hz, 10),
+    _accel_filter(raw_sample_rate_hz, 20),
+    _gyro_filter(raw_sample_rate_hz, 20),
     _last_gyro_timestamp(0),
     _last_accel_timestamp(0)
 {}
@@ -93,7 +94,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     if (!i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
         return false;
 
-// Init the bma180 accelerometer
+    // Init the bma180 accelerometer
     uint8_t control;
     uint8_t data;
     hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_CHIP_ID, &data);
@@ -242,4 +243,4 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
     i2c_sem->give();
 }
 
-//#endif // CONFIG_HAL_BOARD
+#endif // CONFIG_HAL_BOARD
