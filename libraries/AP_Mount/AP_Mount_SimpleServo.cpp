@@ -91,8 +91,8 @@ void AP_Mount_SimpleServo::update()
     }
 
     // write the results to the servos
-    move_servo(_roll_idx, _angle_bf_output_deg.x*10, _state._roll_angle_min*0.1f, _state._roll_angle_max*0.1f);
-    move_servo(_tilt_idx, _angle_bf_output_deg.y*10, _state._tilt_angle_min*0.1f, _state._tilt_angle_max*0.1f);
+    move_servo(_roll_idx, (_angle_bf_output_deg.x + _angle_bf_output_deg.y)*10, _state._roll_angle_min*0.1f, _state._roll_angle_max*0.1f);
+    move_servo(_tilt_idx, (_angle_bf_output_deg.y - _angle_bf_output_deg.x)*10, _state._tilt_angle_min*0.1f, _state._tilt_angle_max*0.1f);
     move_servo(_pan_idx,  _angle_bf_output_deg.z*10, _state._pan_angle_min*0.1f, _state._pan_angle_max*0.1f);
 }
 
