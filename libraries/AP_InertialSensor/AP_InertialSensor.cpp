@@ -420,6 +420,8 @@ AP_InertialSensor::_detect_backends(void)
     _add_backend(AP_InertialSensor_Flymaple::detect);
 #elif HAL_INS_DEFAULT == HAL_INS_LSM9DS0
     _add_backend(AP_InertialSensor_LSM9DS0::detect);
+#elif HAL_INS_DEFAULT == HAL_INS_ITG3200BMA180
+    _add_backend(AP_InertialSensor_ITG3200BMA180::detect);
 #else
     #error Unrecognised HAL_INS_TYPE setting
 #endif

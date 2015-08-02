@@ -14,12 +14,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
-  ITG3200BMA180 IMU driver by Mike McCauley
+  ITG3200BMA180 IMU driver
  */
-
-// Interface to the ITG3200BMA180 sensors:
-// ITG3205 Gyroscope  http://www.sparkfun.com/datasheets/Sensors/Gyro/PS-ITG-3200-00-01.4.pdf
-// ADXL345 Accelerometer http://www.analog.com/static/imported-files/data_sheets/ADXL345.pdf
 
 #include <AP_HAL.h>
 #include "AP_InertialSensor_ITG3200BMA180.h"
@@ -30,22 +26,6 @@ const extern AP_HAL::HAL& hal;
 const uint32_t  raw_sample_rate_hz = 800;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
-/*
-///////
-/// Accelerometer ADXL345 register definitions
-#define BMA180_ACCELEROMETER_ADDRESS      0x40
-#define BMA180_ACCELEROMETER_DEVID        0x03
-#define BMA180_ACCELEROMETER_BW_RATE      0x20
-#define BMA180_ACCELEROMETER_POWER_CTL    0x0d
-#define BMA180_ACCELEROMETER_DATA_FORMAT  0x31
-#define BMA180_ACCELEROMETER_DATAX0       0x02
-#define BMA180_ACCELEROMETER_GRAVITY       255//248
-
-// ADXL345 accelerometer scaling
-// Result will be scaled to 1m/s/s
-// ADXL345 in Full resolution mode (any g scaling) is 256 counts/g, so scale by 9.81/256 = 0.038320312
-#define BMA180_ACCELEROMETER_SCALE_M_S    (GRAVITY_MSS / 4096.0f);//256.0f)
-*/
 
 ///////
 /// Accelerometer BMA180 register definitions
@@ -112,29 +92,6 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     // take i2c bus sempahore
     if (!i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
         return false;
-/*
-    // Init the accelerometer
-    uint8_t data;
-    hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_DEVID, &data);
-    if (data != BMA180_ACCELEROMETER_DEVID)
-        hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200BMA180: could not find BMA180 accelerometer sensor"));
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_POWER_CTL, 0x00);
-    hal.scheduler->delay(5);
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_POWER_CTL, 0xff);
-    hal.scheduler->delay(5);
-    // Measure mode:
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_POWER_CTL, 0x08);
-    hal.scheduler->delay(5);
-    // Full resolution, 8g:
-    // Caution, this must agree with BMA180_ACCELEROMETER_SCALE_1G
-    // In full resoution mode, the scale factor need not change
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_DATA_FORMAT, 0x08);
-    hal.scheduler->delay(5);
-    // Normal power, 800Hz Output Data Rate, 400Hz bandwidth:
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_BW_RATE, 0x0d);
-    hal.scheduler->delay(5);
-    // Power up default is FIFO bypass mode. FIFO is not used by the chip
-*/
 
 // Init the bma180 accelerometer
     uint8_t control;
@@ -252,18 +209,12 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
         return;
 
     // Read accelerometer
-    // ADXL345 is in the default FIFO bypass mode, so the FIFO is not used
     uint8_t buffer[6];
     uint32_t now = hal.scheduler->micros();
     // This takes about 250us at 400kHz I2C speed
     if ((now - _last_accel_timestamp) >= raw_sample_interval_us
         && hal.i2c->readRegisters(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_DATA, 6, buffer) == 0)
     {
-/*
-        int16_t y = -((((int16_t)buffer[1]) << 8) | buffer[0]);    // chip X axis
-        int16_t x = -((((int16_t)buffer[3]) << 8) | buffer[2]);    // chip Y axis
-        int16_t z = -((((int16_t)buffer[5]) << 8) | buffer[4]);    // chip Z axis
-*/
         int16_t y = -(((((int16_t)buffer[1]) << 8) | (buffer[0])>> 2));    // chip X axis
         int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2])>> 2));    // chip Y axis
         int16_t z = -(((((int16_t)buffer[5]) << 8) | (buffer[4])>> 2));    // chip Z axis

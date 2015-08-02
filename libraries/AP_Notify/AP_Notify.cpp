@@ -53,9 +53,9 @@ struct AP_Notify::notify_events_type AP_Notify::events;
         NotifyDevice *AP_Notify::_devices[] = {&boardled, &navioled, &toshibaled};
     #else
         AP_BoardLED boardled;
-        ToshibaLED_I2C toshibaled;
+        BlinkM_I2C blinkm;//ToshibaLED_I2C toshibaled;
         ToneAlarm_Linux tonealarm;
-        NotifyDevice *AP_Notify::_devices[] = {&boardled, &toshibaled, &tonealarm};
+        NotifyDevice *AP_Notify::_devices[] = {&boardled, &blinkm/*&toshibaled*/, &tonealarm};
     #endif
 #else
     AP_BoardLED boardled;
