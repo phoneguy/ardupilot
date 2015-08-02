@@ -10,6 +10,7 @@
 #include <AP_Mount_Alexmos.h>
 #include <AP_Mount_SToRM32.h>
 #include <AP_Mount_SToRM32_serial.h>
+#include <AP_Mount_SimpleServo.h>
 
 const AP_Param::GroupInfo AP_Mount::var_info[] PROGMEM = {
     // @Param: _DEFLT_MODE
@@ -196,7 +197,7 @@ const AP_Param::GroupInfo AP_Mount::var_info[] PROGMEM = {
     // @Param: _TYPE
     // @DisplayName: Mount Type
     // @Description: Mount Type (None, Servo or MAVLink)
-    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial
+    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial 6:SuperSimpleGimbal
     // @User: Standard
     AP_GROUPINFO("_TYPE", 19, AP_Mount, state[0]._type, 0),
 
@@ -452,7 +453,7 @@ const AP_Param::GroupInfo AP_Mount::var_info[] PROGMEM = {
     // @Param: 2_TYPE
     // @DisplayName: Mount2 Type
     // @Description: Mount Type (None, Servo or MAVLink)
-    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial
+    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial 6:SuperSimpleGimbal
     // @User: Standard
     AP_GROUPINFO("2_TYPE",           42, AP_Mount, state[1]._type, 0),
 #endif // AP_MOUNT_MAX_INSTANCES > 1
@@ -664,7 +665,7 @@ void AP_Mount::handle_gimbal_report(mavlink_channel_t chan, mavlink_message_t *m
         if (_backends[instance] != NULL) {
             _backends[instance]->handle_gimbal_report(chan, msg);
         }
-    }    
+    }
 }
 
 // send a GIMBAL_REPORT message to the GCS
@@ -674,5 +675,5 @@ void AP_Mount::send_gimbal_report(mavlink_channel_t chan)
         if (_backends[instance] != NULL) {
             _backends[instance]->send_gimbal_report(chan);
         }
-    }    
+    }
 }
