@@ -64,7 +64,7 @@ const AP_Param::Info Rover::var_info[] PROGMEM = {
     // @Description: This enables/disables the checking for three carriage returns on telemetry links on startup to enter the diagnostics command line interface
     // @Values: 0:Disabled,1:Enabled
     // @User: Advanced
-    GSCALAR(cli_enabled,            "CLI_ENABLED",    0),
+    GSCALAR(cli_enabled,            "CLI_ENABLED",    1),
 #endif
 
     // @Param: TELEM_DELAY
