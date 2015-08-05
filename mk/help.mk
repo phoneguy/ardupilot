@@ -32,3 +32,4 @@ help:
 	@echo "  sitl - the SITL Software In The Loop simulation"
 	@echo "  bbbmini - the Beagle Bone Black mini"
 	@echo "  bebop - the Parrot Bebop"
+	@echo "  bbb - beaglebone black dual imu"
