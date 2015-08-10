@@ -20,7 +20,7 @@
 const extern AP_HAL::HAL& hal;
 
 // This is how often we wish to make raw samples of the sensors in Hz
-const uint32_t  raw_sample_rate_hz = 800;
+const uint32_t  raw_sample_rate_hz = 1000;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
@@ -29,7 +29,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_ACCELEROMETER_ADDRESS      0x40
 #define BMA180_ACCELEROMETER_CHIPID       0x03
 #define BMA180_ACCELEROMETER_CHIP_ID      0x00
-#define BMA180_ACCELEROMETER_PWR          0x0D
+#define BMA180_ACCELEROMETER_PWR          0x0d
 #define BMA180_ACCELEROMETER_RESET        0x10
 #define BMA180_ACCELEROMETER_BW           0x20
 #define BMA180_ACCELEROMETER_RANGE        0x35
@@ -59,8 +59,8 @@ AP_InertialSensor_ITG3200BMA180::AP_InertialSensor_ITG3200BMA180(AP_InertialSens
     AP_InertialSensor_Backend(imu),
     _have_gyro_sample(false),
     _have_accel_sample(false),
-    _accel_filter(raw_sample_rate_hz, 10),
-    _gyro_filter(raw_sample_rate_hz, 10),
+    _accel_filter(raw_sample_rate_hz, 20),
+    _gyro_filter(raw_sample_rate_hz, 20),
     _last_gyro_timestamp(0),
     _last_accel_timestamp(0)
 {}
@@ -90,7 +90,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     if (!i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
         return false;
 
-// Init the bma180 accelerometer
+    // Init the bma180 accelerometer
     uint8_t control;
     uint8_t data;
     hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_CHIP_ID, &data);
@@ -132,16 +132,20 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->readRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_WHO_AM_I, &data);
     if (data != ITG3200_GYRO_ADDRESS)
         hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor"));
+
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_PWR_MGM, 0x00);
     hal.scheduler->delay(1);
+
     // Sample rate divider: with 8kHz internal clock (see ITG3200_GYRO_DLPF_FS),
     // get 500Hz sample rate, 2 samples
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_SMPLRT_DIV, 0x0f);
     hal.scheduler->delay(1);
+
     // 2000 degrees/sec, 256Hz LPF, 8kHz internal sample rate
     // This is the least amount of filtering we can configure for this device
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_DLPF_FS, 0x18);
     hal.scheduler->delay(1);
+
     // No interrupts
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_INT_CFG, 0x00);
     hal.scheduler->delay(1);
@@ -206,7 +210,6 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
         return;
 
     // Read accelerometer
-    // ADXL345 is in the default FIFO bypass mode, so the FIFO is not used
     uint8_t buffer[6];
     uint32_t now = hal.scheduler->micros();
     // This takes about 250us at 400kHz I2C speed
