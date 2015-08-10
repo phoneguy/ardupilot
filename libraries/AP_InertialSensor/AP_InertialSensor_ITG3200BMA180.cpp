@@ -24,7 +24,7 @@
 const extern AP_HAL::HAL& hal;
 
 // This is how often we wish to make raw samples of the sensors in Hz
-const uint32_t  raw_sample_rate_hz = 800;
+const uint32_t  raw_sample_rate_hz = 1000;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
@@ -138,14 +138,17 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
         hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor"));
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_PWR_MGM, 0x00);
     hal.scheduler->delay(1);
+
     // Sample rate divider: with 8kHz internal clock (see ITG3200_GYRO_DLPF_FS),
     // get 500Hz sample rate, 2 samples
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_SMPLRT_DIV, 0x0f);
     hal.scheduler->delay(1);
+
     // 2000 degrees/sec, 256Hz LPF, 8kHz internal sample rate
     // This is the least amount of filtering we can configure for this device
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_DLPF_FS, 0x18);
     hal.scheduler->delay(1);
+
     // No interrupts
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_INT_CFG, 0x00);
     hal.scheduler->delay(1);
