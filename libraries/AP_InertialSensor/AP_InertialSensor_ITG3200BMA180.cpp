@@ -33,7 +33,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_ACCELEROMETER_ADDRESS      0x40
 #define BMA180_ACCELEROMETER_CHIPID       0x03
 #define BMA180_ACCELEROMETER_CHIP_ID      0x00
-#define BMA180_ACCELEROMETER_PWR          0x0D
+#define BMA180_ACCELEROMETER_PWR          0x0d
 #define BMA180_ACCELEROMETER_RESET        0x10
 #define BMA180_ACCELEROMETER_BW           0x20
 #define BMA180_ACCELEROMETER_RANGE        0x35
@@ -173,7 +173,6 @@ void AP_InertialSensor_ITG3200BMA180::_set_filter_frequency(uint8_t filter_hz)
     _accel_filter.set_cutoff_frequency(raw_sample_rate_hz, filter_hz);
     _gyro_filter.set_cutoff_frequency(raw_sample_rate_hz, filter_hz);
 }
-
 
 // This takes about 20us to run
 bool AP_InertialSensor_ITG3200BMA180::update(void)
