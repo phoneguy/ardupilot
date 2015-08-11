@@ -80,7 +80,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] PROGMEM = {
 /*
   setup is called when the sketch starts
  */
-void Rover::setup() 
+void Rover::setup()
 {
     cliSerial = hal.console;
 

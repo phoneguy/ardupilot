@@ -24,35 +24,38 @@
 const extern AP_HAL::HAL& hal;
 
 // This is how often we wish to make raw samples of the sensors in Hz
-const uint32_t  raw_sample_rate_hz = 1000;
+const uint32_t  raw_sample_rate_hz = 800;//800;//1000;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
 ///////
-/// Accelerometer BMA180 register definitions
-#define BMA180_ACCELEROMETER_ADDRESS      0x40
-#define BMA180_ACCELEROMETER_CHIPID       0x03
-#define BMA180_ACCELEROMETER_CHIP_ID      0x00
-#define BMA180_ACCELEROMETER_PWR          0x0d
-#define BMA180_ACCELEROMETER_RESET        0x10
-#define BMA180_ACCELEROMETER_BW           0x20
-#define BMA180_ACCELEROMETER_RANGE        0x35
-#define BMA180_ACCELEROMETER_TCO_Z        0x30
-#define BMA180_ACCELEROMETER_DATA         0X02
-#define BMA180_ACCELEROMETER_GRAVITY      255
+/// ACC BMA180 register definitions
+#define BMA180_ACC_ADDRESS    0x40
+#define BMA180_ACC_CHIPID     0x03
+#define BMA180_ACC_CHIP_ID    0x00
+#define BMA180_ACC_PWR        0x0d
+#define BMA180_ACC_RESET      0x10
+#define BMA180_ACC_BW         0x20
+#define BMA180_ACC_RANGE      0x35
+#define BMA180_ACC_TCO_Z      0x30
+#define BMA180_ACC_DATA       0X02
+#define BMA180_ACC_GRAVITY    255
+#define BMA180_ACC_OFFSETX    0x00
+#define BMA180_ACC_OFFSETY    0x00
+#define BMA180_ACC_OFFSETZ    0x00
 
-// BMA180 accelerometer scaling
+// BMA180 ACC scaling
 // Result will be scaled to 1m/s/s
-#define BMA180_ACCELEROMETER_SCALE_M_S    (GRAVITY_MSS / 4096.0f)
+#define BMA180_ACC_SCALE_M_S    (GRAVITY_MSS / 4096.0f)
 
 /// Gyro ITG3205 register definitions
-#define ITG3200_GYRO_ADDRESS              0x69
-#define ITG3200_GYRO_WHO_AM_I             0x00
-#define ITG3200_GYRO_PWR_MGM              0x3e
-#define ITG3200_GYRO_DLPF_FS              0x16
-#define ITG3200_GYRO_INT_CFG              0x17
-#define ITG3200_GYRO_SMPLRT_DIV           0x15
-#define ITG3200_GYRO_GYROX_H              0x1d
+#define ITG3200_GYRO_ADDRESS       0x69
+#define ITG3200_GYRO_WHO_AM_I      0x00
+#define ITG3200_GYRO_PWR_MGM       0x3e
+#define ITG3200_GYRO_DLPF_FS       0x16
+#define ITG3200_GYRO_INT_CFG       0x17
+#define ITG3200_GYRO_SMPLRT_DIV    0x15
+#define ITG3200_GYRO_GYROX_H       0x1d
 
 // ITG3200 Gyroscope scaling
 // ITG3200 is 14.375 LSB degrees/sec with FS_SEL=3
@@ -94,40 +97,43 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     if (!i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
         return false;
 
-    // Init the bma180 accelerometer
+    // Init the bma180 ACC
     uint8_t control;
     uint8_t data;
-    hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_CHIP_ID, &data);
-    if (data != BMA180_ACCELEROMETER_CHIPID)
-        hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 accelerometer sensor"));
+    hal.i2c->readRegister(BMA180_ACC_ADDRESS, BMA180_ACC_CHIP_ID, &data);
+    if (data != BMA180_ACC_CHIPID)
+        hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 ACC sensor"));
 
+    // RESET chip
+    hal.i2c->writeRegister(BMA180_ACC_ADDRESS, BMA180_ACC_RESET, 0xb6);
     // default range 2G: 1G = 4096 unit.
+
     // register: ctrl_reg0  -- value: set bit ee_w to 1 to enable writing
+    hal.scheduler->delay(10);
+
+    hal.i2c->writeRegister(BMA180_ACC_ADDRESS, BMA180_ACC_PWR, 1<<4);
+
     hal.scheduler->delay(5);
 
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_PWR, 1<<4);
-
-    hal.scheduler->delay(5);
-
-    hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_BW, &control);
+    hal.i2c->readRegister(BMA180_ACC_ADDRESS, BMA180_ACC_BW, &control);
     control = control & 0x0F;        // save tcs register
-    control = control | (0x01 << 4); // set low pass filter to 10Hz (bits value = 0000xxxx)
+    control = control | (0x07 << 4); //test // set low pass filter to 10Hz (bits value = 0000xxxx)
 
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_BW, control);
+    hal.i2c->writeRegister(BMA180_ACC_ADDRESS, BMA180_ACC_BW, control);
 
     hal.scheduler->delay(5);
 
-    hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_TCO_Z, &control);
+    hal.i2c->readRegister(BMA180_ACC_ADDRESS, BMA180_ACC_TCO_Z, &control);
     control = control & 0xFC;        // save tco_z register
     control = control | 0x00;        // set mode_config to 0
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_TCO_Z, control);
+    hal.i2c->writeRegister(BMA180_ACC_ADDRESS, BMA180_ACC_TCO_Z, control);
 
     hal.scheduler->delay(5);
 
-    hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_RANGE, &control);
+    hal.i2c->readRegister(BMA180_ACC_ADDRESS, BMA180_ACC_RANGE, &control);
     control = control & 0xF1;        // save offset_x and smp_skip register
     control = control | (0x05 << 1); // set range to 8G
-    hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_RANGE, control);
+    hal.i2c->writeRegister(BMA180_ACC_ADDRESS, BMA180_ACC_RANGE, control);
 
     hal.scheduler->delay(5);
 
@@ -187,7 +193,7 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
     hal.scheduler->resume_timer_procs();
 
     // Adjust for chip scaling to get m/s/s
-    accel *= BMA180_ACCELEROMETER_SCALE_M_S;
+    accel *= BMA180_ACC_SCALE_M_S;
     _publish_accel(_accel_instance, accel);
 
     // Adjust for chip scaling to get radians/sec
@@ -211,12 +217,12 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
     if (!i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
         return;
 
-    // Read accelerometer
+    // Read ACC
     uint8_t buffer[6];
     uint32_t now = hal.scheduler->micros();
     // This takes about 250us at 400kHz I2C speed
     if ((now - _last_accel_timestamp) >= raw_sample_interval_us
-        && hal.i2c->readRegisters(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_DATA, 6, buffer) == 0)
+        && hal.i2c->readRegisters(BMA180_ACC_ADDRESS, BMA180_ACC_DATA, 6, buffer) == 0)
     {
         int16_t y = -(((((int16_t)buffer[1]) << 8) | (buffer[0])>> 2));    // chip X axis
         int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2])>> 2));    // chip Y axis
