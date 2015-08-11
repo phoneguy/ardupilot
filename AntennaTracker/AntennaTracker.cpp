@@ -55,7 +55,7 @@ void Tracker::setup()
     AP_Param::setup_sketch_defaults();
 
     // initialise notify
-    notify.init(false);
+    notify.init(true);
 
     // antenna tracker does not use pre-arm checks or battery failsafe
     AP_Notify::flags.pre_arm_check = true;
