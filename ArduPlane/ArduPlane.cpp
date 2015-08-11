@@ -83,9 +83,11 @@ void Plane::setup()
     // load the default values of variables listed in var_info[]
     AP_Param::setup_sketch_defaults();
 
+    notify.init(true);
+
     AP_Notify::flags.failsafe_battery = false;
 
-    notify.init(false);
+//    notify.init(true);
 
     rssi_analog_source = hal.analogin->channel(ANALOG_INPUT_NONE);
 

@@ -87,7 +87,7 @@ void Rover::setup()
     // load the default values of variables listed in var_info[]
     AP_Param::setup_sketch_defaults();
 
-    notify.init(false);
+    notify.init(true);
 
     // rover does not use arming nor pre-arm checks
     AP_Notify::flags.armed = true;
