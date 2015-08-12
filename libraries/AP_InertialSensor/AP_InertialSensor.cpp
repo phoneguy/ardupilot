@@ -1,13 +1,13 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#include <AP_Progmem.h>
+#include <AP_Progmem/AP_Progmem.h>
 #include "AP_InertialSensor.h"
 
-#include <AP_Common.h>
-#include <AP_HAL.h>
-#include <AP_Notify.h>
-#include <AP_Vehicle.h>
-#include <AP_Math.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Notify/AP_Notify.h>
+#include <AP_Vehicle/AP_Vehicle.h>
+#include <AP_Math/AP_Math.h>
 
 /*
   enable TIMING_DEBUG to track down scheduling issues with the main
@@ -454,7 +454,6 @@ bool AP_InertialSensor::_calculate_trim(const Vector3f &accel_sample, float& tri
     return true;
 }
 
-#if !defined( __AVR_ATmega1280__ )
 // calibrate_accel - perform accelerometer calibration including providing user
 // instructions and feedback Gauss-Newton accel calibration routines borrowed
 // from Rolfe Schmidt blog post describing the method:
@@ -639,7 +638,6 @@ failed:
     _calibrating = false;
     return false;
 }
-#endif
 
 void
 AP_InertialSensor::init_gyro()
@@ -925,8 +923,6 @@ AP_InertialSensor::_init_gyro()
     AP_Notify::flags.initialising = false;
 }
 
-#if !defined( __AVR_ATmega1280__ )
-
 /*
   check that the samples used for accel calibration have a sufficient
   range on each axis. The sphere fit in _calibrate_accel() can produce
@@ -1125,8 +1121,6 @@ void AP_InertialSensor::_calibrate_find_delta(float dS[6], float JS[6][6], float
         delta[i] = dS[i];
     }
 }
-
-#endif // __AVR_ATmega1280__
 
 // save parameters to eeprom
 void AP_InertialSensor::_save_parameters()

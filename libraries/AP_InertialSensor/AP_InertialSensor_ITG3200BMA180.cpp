@@ -17,7 +17,7 @@
   ITG3200BMA180 IMU driver
  */
 
-#include <AP_HAL.h>
+#include <AP_HAL/AP_HAL.h>
 #if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 #include "AP_InertialSensor_ITG3200BMA180.h"
 
