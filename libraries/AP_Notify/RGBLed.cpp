@@ -151,7 +151,7 @@ void RGBLed::update_colours(void)
         return;
     }
 
-    // radio and battery failsafe patter: flash yellow
+    // radio and battery failsafe pattern: flash yellow
     // gps failsafe pattern : flashing yellow and blue
     // ekf_bad pattern : flashing yellow and red
     if (AP_Notify::flags.failsafe_radio || AP_Notify::flags.failsafe_battery ||
