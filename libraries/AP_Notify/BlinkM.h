@@ -1,8 +1,6 @@
 /*
- *  AP_Notify Library.
- * based upon a prototype library by David "Buzz" Bussenschutt.
- */
-
+   BlinkM driver
+*/
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
