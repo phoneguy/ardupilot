@@ -46,7 +46,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
 // BMA180 ACC scaling
 // Result will be scaled to 1m/s/s
-#define BMA180_SCALE_M_S    (GRAVITY_MSS / 4096.0f)
+#define BMA180_SCALE_M_S    (GRAVITY_MSS / 2048);//4096.0f)
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
@@ -132,7 +132,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_RANGE, &control);
     control = control & 0xF1;        // save offset_x and smp_skip register
-    control = control | (0x05 << 1); // set range to 8G
+    control = control | (0x06/*5*/ << 1); // set range to 8G
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RANGE, control);
 
     hal.scheduler->delay(5);
