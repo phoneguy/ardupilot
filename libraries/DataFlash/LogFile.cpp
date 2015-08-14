@@ -1,14 +1,14 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#include <AP_HAL.h>
+#include <AP_HAL/AP_HAL.h>
 #include "DataFlash.h"
 #include <stdlib.h>
-#include <AP_Param.h>
-#include <AP_Math.h>
-#include <AP_Baro.h>
-#include <AP_AHRS.h>
+#include <AP_Param/AP_Param.h>
+#include <AP_Math/AP_Math.h>
+#include <AP_Baro/AP_Baro.h>
+#include <AP_AHRS/AP_AHRS.h>
 #include "../AP_BattMonitor/AP_BattMonitor.h"
-#include <AP_Compass.h>
+#include <AP_Compass/AP_Compass.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -1490,6 +1490,17 @@ void DataFlash_Class::Log_Write_Origin(uint8_t origin_type, const Location &loc)
         latitude    : loc.lat,
         longitude   : loc.lng,
         altitude    : loc.alt
+    };
+    WriteBlock(&pkt, sizeof(pkt));
+}
+
+void DataFlash_Class::Log_Write_RPM(const AP_RPM &rpm_sensor)
+{
+    struct log_RPM pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_RPM_MSG),
+        time_us     : hal.scheduler->micros64(),
+        rpm1        : rpm_sensor.get_rpm(0),
+        rpm2        : rpm_sensor.get_rpm(1)
     };
     WriteBlock(&pkt, sizeof(pkt));
 }
