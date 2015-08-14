@@ -231,7 +231,7 @@ void RGBLed::update_colours(void)
         }else{
             // fast flashing green if disarmed with GPS 3D lock and DGPS
             // slow flashing green if disarmed with GPS 3d lock (and no DGPS)
-            // flashing blue if disarmed with no gps lock or gps pre_arm checks have failed
+            // flashing blue if disarmed with no gps lock or 2D fix only or gps pre_arm checks have failed
             bool fast_green = AP_Notify::flags.gps_status >= AP_GPS::GPS_OK_FIX_3D_DGPS && AP_Notify::flags.pre_arm_gps_check;
             switch(step) {
                 case 0:
