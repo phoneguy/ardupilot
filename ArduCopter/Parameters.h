@@ -3,7 +3,7 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
-#include <AP_Common.h>
+#include <AP_Common/AP_Common.h>
 
 // Global parameter class.
 //
@@ -337,6 +337,7 @@ public:
         k_param_pi_vel_xy,
         k_param_fs_ekf_action,
         k_param_rtl_climb_min,  // 249
+        k_param_rpm_sensor,
 
         // 254,255: reserved
     };

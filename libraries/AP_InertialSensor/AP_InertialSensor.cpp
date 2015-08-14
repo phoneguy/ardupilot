@@ -1,13 +1,13 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#include <AP_Progmem.h>
+#include <AP_Progmem/AP_Progmem.h>
 #include "AP_InertialSensor.h"
 
-#include <AP_Common.h>
-#include <AP_HAL.h>
-#include <AP_Notify.h>
-#include <AP_Vehicle.h>
-#include <AP_Math.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Notify/AP_Notify.h>
+#include <AP_Vehicle/AP_Vehicle.h>
+#include <AP_Math/AP_Math.h>
 
 /*
   enable TIMING_DEBUG to track down scheduling issues with the main
@@ -145,21 +145,21 @@ const AP_Param::GroupInfo AP_InertialSensor::var_info[] PROGMEM = {
     // @DisplayName: Accelerometer offsets of X axis
     // @Description: Accelerometer offsets of X axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
 
     // @Param: ACCOFFS_Y
     // @DisplayName: Accelerometer offsets of Y axis
     // @Description: Accelerometer offsets of Y axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
 
     // @Param: ACCOFFS_Z
     // @DisplayName: Accelerometer offsets of Z axis
     // @Description: Accelerometer offsets of Z axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
     AP_GROUPINFO("ACCOFFS",     13, AP_InertialSensor, _accel_offset[0], 0),
 
@@ -187,21 +187,21 @@ const AP_Param::GroupInfo AP_InertialSensor::var_info[] PROGMEM = {
     // @DisplayName: Accelerometer2 offsets of X axis
     // @Description: Accelerometer2 offsets of X axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
 
     // @Param: ACC2OFFS_Y
     // @DisplayName: Accelerometer2 offsets of Y axis
     // @Description: Accelerometer2 offsets of Y axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
 
     // @Param: ACC2OFFS_Z
     // @DisplayName: Accelerometer2 offsets of Z axis
     // @Description: Accelerometer2 offsets of Z axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
     AP_GROUPINFO("ACC2OFFS",    15, AP_InertialSensor, _accel_offset[1],  0),
 #endif
@@ -230,21 +230,21 @@ const AP_Param::GroupInfo AP_InertialSensor::var_info[] PROGMEM = {
     // @DisplayName: Accelerometer3 offsets of X axis
     // @Description: Accelerometer3 offsets of X axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
 
     // @Param: ACC3OFFS_Y
     // @DisplayName: Accelerometer3 offsets of Y axis
     // @Description: Accelerometer3 offsets of Y axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
 
     // @Param: ACC3OFFS_Z
     // @DisplayName: Accelerometer3 offsets of Z axis
     // @Description: Accelerometer3 offsets of Z axis. This is setup using the acceleration calibration or level operations
     // @Units: m/s/s
-    // @Range: -300 300
+    // @Range: -3.5 3.5
     // @User: Advanced
     AP_GROUPINFO("ACC3OFFS",    17, AP_InertialSensor, _accel_offset[2],  0),
 #endif
@@ -450,7 +450,6 @@ bool AP_InertialSensor::_calculate_trim(const Vector3f &accel_sample, float& tri
     return true;
 }
 
-#if !defined( __AVR_ATmega1280__ )
 // calibrate_accel - perform accelerometer calibration including providing user
 // instructions and feedback Gauss-Newton accel calibration routines borrowed
 // from Rolfe Schmidt blog post describing the method:
@@ -635,7 +634,6 @@ failed:
     _calibrating = false;
     return false;
 }
-#endif
 
 void
 AP_InertialSensor::init_gyro()
@@ -921,8 +919,6 @@ AP_InertialSensor::_init_gyro()
     AP_Notify::flags.initialising = false;
 }
 
-#if !defined( __AVR_ATmega1280__ )
-
 /*
   check that the samples used for accel calibration have a sufficient
   range on each axis. The sphere fit in _calibrate_accel() can produce
@@ -1121,8 +1117,6 @@ void AP_InertialSensor::_calibrate_find_delta(float dS[6], float JS[6][6], float
         delta[i] = dS[i];
     }
 }
-
-#endif // __AVR_ATmega1280__
 
 // save parameters to eeprom
 void AP_InertialSensor::_save_parameters()

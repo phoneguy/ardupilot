@@ -1,8 +1,8 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#include <AP_HAL.h>
-#include <AP_Progmem.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Progmem/AP_Progmem.h>
 #include "Compass.h"
-#include <AP_Vehicle.h>
+#include <AP_Vehicle/AP_Vehicle.h>
 
 extern AP_HAL::HAL& hal;
 
@@ -57,14 +57,12 @@ const AP_Param::GroupInfo Compass::var_info[] PROGMEM = {
     // @User: Advanced
     AP_GROUPINFO("USE",    4, Compass, _state[0].use_for_yaw, 1), // true if used for DCM yaw
 
-#if !defined( __AVR_ATmega1280__ )
     // @Param: AUTODEC
     // @DisplayName: Auto Declination
     // @Description: Enable or disable the automatic calculation of the declination based on gps location
     // @Values: 0:Disabled,1:Enabled
     // @User: Advanced
     AP_GROUPINFO("AUTODEC",5, Compass, _auto_declination, 1),
-#endif
 
     // @Param: MOTCT
     // @DisplayName: Motor interference compensation type

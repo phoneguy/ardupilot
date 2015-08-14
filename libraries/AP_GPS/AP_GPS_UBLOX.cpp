@@ -19,9 +19,9 @@
 //	Origin code by Michael Smith, Jordi Munoz and Jose Julio, DIYDrones.com
 //  Substantially rewitten for new GPS driver structure by Andrew Tridgell
 //
-#include <AP_GPS.h>
+#include "AP_GPS.h"
 #include "AP_GPS_UBLOX.h"
-#include <DataFlash.h>
+#include <DataFlash/DataFlash.h>
 
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO
     #define UBLOX_VERSION_AUTODETECTION 1
@@ -459,7 +459,7 @@ AP_GPS_UBLOX::_parse_gps(void)
         }
 #endif
 
-        for(int i = 1; i <= UBLOX_MAX_GNSS_CONFIG_BLOCKS; i++) {
+        for(int i = 0; i < UBLOX_MAX_GNSS_CONFIG_BLOCKS; i++) {
             if((gps._gnss_mode & (1 << i)) && i != GNSS_SBAS) {
                 gnssCount++;
             }
