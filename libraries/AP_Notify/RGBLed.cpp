@@ -39,7 +39,7 @@ RGBLed::RGBLed(uint8_t led_off, uint8_t led_bright, uint8_t led_medium, uint8_t 
     _led_dim(led_dim)
 {
 
-}    
+}
 
 bool RGBLed::init()
 {
@@ -109,7 +109,7 @@ void RGBLed::update_colours(void)
         // exit so no other status modify this pattern
         return;
     }
-    
+
     // save trim and esc calibration pattern
     if (AP_Notify::flags.save_trim || AP_Notify::flags.esc_calibration) {
         switch(step) {
