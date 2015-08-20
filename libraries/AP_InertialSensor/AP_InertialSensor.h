@@ -18,6 +18,7 @@
 #define INS_MAX_INSTANCES 3
 #define INS_MAX_BACKENDS  6
 #define INS_VIBRATION_CHECK 1
+#define INS_VIBRATION_CHECK_INSTANCES 2
 #else
 #define INS_MAX_INSTANCES 1
 #define INS_MAX_BACKENDS  1
@@ -143,12 +144,14 @@ public:
     uint8_t get_gyro_count(void) const { return _gyro_count; }
     bool gyro_calibrated_ok(uint8_t instance) const { return _gyro_cal_ok[instance]; }
     bool gyro_calibrated_ok_all() const;
+    bool use_gyro(uint8_t instance) const;
 
     bool get_accel_health(uint8_t instance) const { return (instance<_accel_count) ? _accel_healthy[instance] : false; }
     bool get_accel_health(void) const { return get_accel_health(_primary_accel); }
     bool get_accel_health_all(void) const;
     uint8_t get_accel_count(void) const { return _accel_count; };
     bool accel_calibrated_ok_all() const;
+    bool use_accel(uint8_t instance) const;
 
     // get accel offsets in m/s/s
     const Vector3f &get_accel_offsets(uint8_t i) const { return _accel_offset[i]; }
@@ -214,7 +217,8 @@ public:
     void calc_vibration_and_clipping(uint8_t instance, const Vector3f &accel, float dt);
 
     // retrieve latest calculated vibration levels
-    Vector3f get_vibration_levels() const;
+    Vector3f get_vibration_levels() const { return get_vibration_levels(_primary_accel); }
+    Vector3f get_vibration_levels(uint8_t instance) const;
 
     // retrieve and clear accelerometer clipping count
     uint32_t get_accel_clip_count(uint8_t instance) const;
@@ -302,6 +306,9 @@ private:
     AP_Int8     _accel_filter_cutoff;
     AP_Int8     _gyro_filter_cutoff;
 
+    // use for attitude, velocity, position estimates
+    AP_Int8     _use[INS_MAX_INSTANCES];
+
     // board orientation from AHRS
     enum Rotation _board_orientation;
 
@@ -346,8 +353,8 @@ private:
 #if INS_VIBRATION_CHECK
     // vibration and clipping
     uint32_t _accel_clip_count[INS_MAX_INSTANCES];
-    LowPassFilterVector3f _accel_vibe_floor_filter;
-    LowPassFilterVector3f _accel_vibe_filter;
+    LowPassFilterVector3f _accel_vibe_floor_filter[INS_VIBRATION_CHECK_INSTANCES];
+    LowPassFilterVector3f _accel_vibe_filter[INS_VIBRATION_CHECK_INSTANCES];
 #endif
 
     /*
