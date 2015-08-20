@@ -1,6 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "ArduPlane V3.3.1beta1"
+#define THISFIRMWARE "ArduPlane V3.4.0beta1"
 /*
    Lead developer: Andrew Tridgell
  
@@ -466,6 +466,9 @@ private:
         
         // last time is_flying() returned true in milliseconds
         uint32_t last_flying_ms;
+
+        // once landed, post some landing statistics to the GCS
+        bool post_landing_stats;
     } auto_state;
 
     // true if we are in an auto-throttle mode, which means
@@ -667,6 +670,7 @@ private:
     void send_statustext(mavlink_channel_t chan);
     bool telemetry_delayed(mavlink_channel_t chan);
     void gcs_send_message(enum ap_message id);
+    void gcs_send_mission_item_reached_message(uint16_t mission_index);
     void gcs_data_stream_send(void);
     void gcs_update(void);
     void gcs_send_text_P(gcs_severity severity, const prog_char_t *str);
