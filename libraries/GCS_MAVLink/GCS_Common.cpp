@@ -89,6 +89,9 @@ GCS_MAVLINK::setup_uart(const AP_SerialManager& serial_manager, AP_SerialManager
         uart->write(0x30);
         uart->write(0x20);
     }
+    // since tcdrain() and TCSADRAIN may not be implemented...
+    hal.scheduler->delay(1);
+    
     uart->set_flow_control(old_flow_control);
 
     // now change back to desired baudrate
@@ -1350,10 +1353,3 @@ void GCS_MAVLINK::send_vibration(const AP_InertialSensor &ins) const
 #endif
 }
 
-/*
- * send notification that a mission command has been completed
- */
-void GCS_MAVLINK::send_mission_item_reached(uint16_t seq) const
-{
-    mavlink_msg_mission_item_reached_send(chan, seq);
-}

@@ -28,6 +28,9 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
         // start non-idle
         auto_state.idle_mode = false;
         
+        // once landed, post some landing statistics to the GCS
+        auto_state.post_landing_stats = false;
+
         gcs_send_text_fmt(PSTR("Executing nav command ID #%i"),cmd.id);
     } else {
         gcs_send_text_fmt(PSTR("Executing command ID #%i"),cmd.id);
@@ -245,15 +248,12 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
 
     case MAV_CMD_CONDITION_DELAY:
         return verify_wait_delay();
-        break;
 
     case MAV_CMD_CONDITION_DISTANCE:
         return verify_within_distance();
-        break;
 
     case MAV_CMD_CONDITION_CHANGE_ALT:
         return verify_change_alt();
-        break;
 
     // do commands (always return true)
     case MAV_CMD_DO_CHANGE_SPEED:
@@ -376,6 +376,7 @@ void Plane::do_loiter_time(const AP_Mission::Mission_Command& cmd)
 void Plane::do_continue_and_change_alt(const AP_Mission::Mission_Command& cmd)
 {
     next_WP_loc.alt = cmd.content.location.alt + home.alt;
+    condition_value = cmd.p1;
     reset_offset_altitude();
 }
 
@@ -643,7 +644,17 @@ bool Plane::verify_RTL()
 
 bool Plane::verify_continue_and_change_alt()
 {
-    if (abs(adjusted_altitude_cm() - next_WP_loc.alt) <= 500) {
+    //climbing?
+    if (condition_value == 1 && adjusted_altitude_cm() >= next_WP_loc.alt) {
+        return true;
+    }
+    //descending?
+    else if (condition_value == 2 &&
+             adjusted_altitude_cm() <= next_WP_loc.alt) {
+        return true;
+    }    
+    //don't care if we're climbing or descending
+    else if (abs(adjusted_altitude_cm() - next_WP_loc.alt) <= 500) {
         return true;
     }
    
@@ -854,7 +865,14 @@ bool Plane::start_command_callback(const AP_Mission::Mission_Command &cmd)
 bool Plane::verify_command_callback(const AP_Mission::Mission_Command& cmd)
 {
     if (control_mode == AUTO) {
-        return verify_command(cmd);
+        bool cmd_complete = verify_command(cmd);
+
+        // send message to GCS
+        if (cmd_complete) {
+            gcs_send_mission_item_reached_message(cmd.index);
+        }
+
+        return cmd_complete;
     }
     return false;
 }
