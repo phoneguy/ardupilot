@@ -8,11 +8,17 @@
 void Plane::send_heartbeat(mavlink_channel_t chan)
 {
     uint8_t base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-    uint8_t system_status = is_flying() ? MAV_STATE_ACTIVE : MAV_STATE_STANDBY;
+    uint8_t system_status;
     uint32_t custom_mode = control_mode;
     
     if (failsafe.state != FAILSAFE_NONE) {
         system_status = MAV_STATE_CRITICAL;
+    } else if (plane.crash_state.is_crashed) {
+        system_status = MAV_STATE_EMERGENCY;
+    } else if (is_flying()) {
+        system_status = MAV_STATE_ACTIVE;
+    } else {
+        system_status = MAV_STATE_STANDBY;
     }
 
     // work out the base_mode. This value is not very useful
@@ -1342,7 +1348,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 
         case MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES: {
             if (is_equal(packet.param1,1.0f)) {
-                plane.gcs[chan-MAVLINK_COMM_0].send_autopilot_version();
+                plane.gcs[chan-MAVLINK_COMM_0].send_autopilot_version(FIRMWARE_VERSION);
                 result = MAV_RESULT_ACCEPTED;
             }
             break;
@@ -1743,7 +1749,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         break;
 
     case MAVLINK_MSG_ID_AUTOPILOT_VERSION_REQUEST:
-        plane.gcs[chan-MAVLINK_COMM_0].send_autopilot_version();
+        plane.gcs[chan-MAVLINK_COMM_0].send_autopilot_version(FIRMWARE_VERSION);
         break;
         
     } // end switch
@@ -1895,4 +1901,3 @@ void Plane::gcs_retry_deferred(void)
 {
     gcs_send_message(MSG_RETRY_DEFERRED);
 }
-
