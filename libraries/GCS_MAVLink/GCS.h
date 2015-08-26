@@ -84,8 +84,8 @@ public:
     void        init(AP_HAL::UARTDriver *port, mavlink_channel_t mav_chan);
     void        setup_uart(const AP_SerialManager& serial_manager, AP_SerialManager::SerialProtocol protocol, uint8_t instance);
     void        send_message(enum ap_message id);
-    void        send_text(gcs_severity severity, const char *str);
-    void        send_text_P(gcs_severity severity, const prog_char_t *str);
+    void        send_text(uint8_t severity, const char *str);
+    void        send_text_P(uint8_t severity, const prog_char_t *str);
     void        data_stream_send(void);
     void        queued_param_send();
     void        queued_waypoint_send();
@@ -148,7 +148,7 @@ public:
 #if AP_AHRS_NAVEKF_AVAILABLE
     void send_opticalflow(AP_AHRS_NavEKF &ahrs, const OpticalFlow &optflow);
 #endif
-    void send_autopilot_version(uint8_t major_version = 0, uint8_t minor_version = 0, uint8_t patch_version = 0, enum FIRMWARE_VERSION_TYPE version_type = FIRMWARE_VERSION_TYPE_DEV) const;
+    void send_autopilot_version(uint8_t major_version, uint8_t minor_version, uint8_t patch_version, uint8_t version_type) const;
     void send_local_position(const AP_AHRS &ahrs) const;
     void send_vibration(const AP_InertialSensor &ins) const;
 

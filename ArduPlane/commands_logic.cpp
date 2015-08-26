@@ -39,6 +39,7 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
     switch(cmd.id) {
 
     case MAV_CMD_NAV_TAKEOFF:
+        crash_state.is_crashed = false;
         do_takeoff(cmd);
         break;
 
