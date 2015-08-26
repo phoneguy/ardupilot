@@ -1,6 +1,10 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
+#ifndef _PLANE_H_
+#define _PLANE_H_
 
 #define THISFIRMWARE "ArduPlane V3.4.0beta1"
+#define FIRMWARE_VERSION 3,4,0,FIRMWARE_VERSION_TYPE_BETA
+
 /*
    Lead developer: Andrew Tridgell
  
@@ -469,7 +473,22 @@ private:
 
         // once landed, post some landing statistics to the GCS
         bool post_landing_stats;
+
+        // time stamp of when we start flying while in auto mode in milliseconds
+        uint32_t started_flying_in_auto_ms;
     } auto_state;
+
+    struct {
+        // on hard landings, only check once after directly a landing so you
+        // don't trigger a crash when picking up the aircraft
+        bool checkHardLanding:1;
+
+        // crash detection. True when we are crashed
+        bool is_crashed:1;
+
+        // debounce timer
+        uint32_t debounce_timer_ms;
+    } crash_state;
 
     // true if we are in an auto-throttle mode, which means
     // we need to run the speed/height controller
@@ -483,6 +502,9 @@ private:
     // probability of aircraft is currently in flight. range from 0 to
     // 1 where 1 is 100% sure we're in flight
     float isFlyingProbability;
+
+    // previous value of is_flying()
+    bool previous_is_flying;
 
     // Navigation control variables
     // The instantaneous desired bank angle.  Hundredths of a degree
@@ -863,7 +885,8 @@ private:
     void set_servos_idle(void);
     void set_servos();
     void update_aux();
-    void determine_is_flying(void);
+    void update_is_flying_5Hz(void);
+    void crash_detection_update(void);
     void gcs_send_text_fmt(const prog_char_t *fmt, ...);
     void handle_auto_mode(void);
     void calc_throttle();
@@ -956,3 +979,5 @@ public:
 
 extern const AP_HAL::HAL& hal;
 extern Plane plane;
+
+#endif // _PLANE_H_
