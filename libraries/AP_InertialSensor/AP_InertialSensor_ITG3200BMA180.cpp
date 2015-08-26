@@ -97,7 +97,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     if (!i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
         return false;
 
-    // Init the bma180 ACC
+    // Init the bma180 accelerometer
     uint8_t control;
     uint8_t data;
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_CHIP_ID, &data);
