@@ -44,9 +44,9 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_CTRL_REG1  0x0E
 #define BMA180_CTRL_REG2  0x0F
 
-// BMA180 ACC scaling
+// BMA180 ACC scaling for 16g
 // Result will be scaled to 1m/s/s
-#define BMA180_SCALE_M_S    (GRAVITY_MSS / 2048);//4096.0f)
+#define BMA180_SCALE_M_S    (GRAVITY_MSS / 2048);
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
@@ -64,17 +64,16 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
 AP_InertialSensor_ITG3200BMA180::AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu) :
     AP_InertialSensor_Backend(imu),
+    _last_accel_filter_hz(-1),
+    _last_gyro_filter_hz(-1),
     _have_gyro_sample(false),
     _have_accel_sample(false),
-    _accel_filter(raw_sample_rate_hz, 20),
-    _gyro_filter(raw_sample_rate_hz, 20),
+    _accel_filter(raw_sample_rate_hz, 15),
+    _gyro_filter(raw_sample_rate_hz, 15),
     _last_gyro_timestamp(0),
     _last_accel_timestamp(0)
 {}
 
-/*
-  detect the sensor
- */
 AP_InertialSensor_Backend *AP_InertialSensor_ITG3200BMA180::detect(AP_InertialSensor &_imu)
 {
     AP_InertialSensor_ITG3200BMA180 *sensor = new AP_InertialSensor_ITG3200BMA180(_imu);
@@ -159,9 +158,6 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_INT_CFG, 0x00);
     hal.scheduler->delay(1);
 
-    // Set up the filter desired
-    _set_filter_frequency(_accel_filter_cutoff());
-
     // give back i2c semaphore
     i2c_sem->give();
 
@@ -172,11 +168,18 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 }
 
 /*
-  set the filter frequency
+  set the accel filter frequency
  */
-void AP_InertialSensor_ITG3200BMA180::_set_filter_frequency(uint8_t filter_hz)
+void AP_InertialSensor_ITG3200BMA180::_set_accel_filter(uint8_t filter_hz)
 {
     _accel_filter.set_cutoff_frequency(raw_sample_rate_hz, filter_hz);
+}
+
+/*
+  set the gyro filter frequency
+ */
+void AP_InertialSensor_ITG3200BMA180::_set_gyro_filter(uint8_t filter_hz)
+{
     _gyro_filter.set_cutoff_frequency(raw_sample_rate_hz, filter_hz);
 }
 
@@ -200,11 +203,15 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
     gyro *= ITG3200_GYRO_SCALE_R_S;
     _publish_gyro(_gyro_instance, gyro);
 
-    if (_last_filter_hz != _accel_filter_cutoff()) {
-        _set_filter_frequency(_accel_filter_cutoff());
-        _last_filter_hz = _accel_filter_cutoff();
+    if (_last_accel_filter_hz != _accel_filter_cutoff()) {
+        _set_accel_filter(_accel_filter_cutoff());
+        _last_accel_filter_hz = _accel_filter_cutoff();
     }
 
+    if (_last_gyro_filter_hz != _gyro_filter_cutoff()) {
+        _set_gyro_filter(_gyro_filter_cutoff());
+        _last_gyro_filter_hz = _gyro_filter_cutoff();
+    }
     return true;
 }
 
