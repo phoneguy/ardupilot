@@ -24,7 +24,7 @@
 const extern AP_HAL::HAL& hal;
 
 // This is how often we wish to make raw samples of the sensors in Hz
-const uint32_t  raw_sample_rate_hz = 1200;//800;//1000;
+const uint32_t  raw_sample_rate_hz = 1200;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
@@ -131,7 +131,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_RANGE, &control);
     control = control & 0xF1;        // save offset_x and smp_skip register
-    control = control | (0x06/*5*/ << 1); // set range to 8G
+    control = control | (0x06 << 1); // set range to 16G
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RANGE, control);
 
     hal.scheduler->delay(5);

@@ -13,7 +13,7 @@ class AP_InertialSensor_ITG3200BMA180 : public AP_InertialSensor_Backend
 public:
     AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu);
 
-    /* update accel and gyro state */
+    // update accel and gyro state
     bool update();
 
     bool gyro_sample_available(void) { _accumulate(); return _have_gyro_sample; }
@@ -38,7 +38,7 @@ private:
     void _set_accel_filter(uint8_t filter_hz);
     void _set_gyro_filter(uint8_t filter_hz);
 
-    // Low Pass filters for gyro and accel
+    // low Pass filters for gyro and accel
     LowPassFilter2pVector3f _accel_filter;
     LowPassFilter2pVector3f _gyro_filter;
 
