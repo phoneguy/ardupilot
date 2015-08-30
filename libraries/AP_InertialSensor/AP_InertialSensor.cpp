@@ -1,5 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
+#include <assert.h>
+
 #include <AP_Progmem/AP_Progmem.h>
 #include "AP_InertialSensor.h"
 
@@ -309,6 +311,8 @@ const AP_Param::GroupInfo AP_InertialSensor::var_info[] PROGMEM = {
     AP_GROUPEND
 };
 
+AP_InertialSensor *AP_InertialSensor::_s_instance = nullptr;
+
 AP_InertialSensor::AP_InertialSensor() :
     _gyro_count(0),
     _accel_count(0),
@@ -321,8 +325,13 @@ AP_InertialSensor::AP_InertialSensor() :
     _hil_mode(false),
     _calibrating(false),
     _log_raw_data(false),
+    _backends_detected(false),
     _dataflash(NULL)
 {
+    if (_s_instance) {
+        hal.scheduler->panic(PSTR("Too many inertial sensors"));
+    }
+    _s_instance = this;
     AP_Param::setup_object_defaults(this, var_info);        
     for (uint8_t i=0; i<INS_MAX_BACKENDS; i++) {
         _backends[i] = NULL;
@@ -346,6 +355,15 @@ AP_InertialSensor::AP_InertialSensor() :
     memset(_delta_angle_valid,0,sizeof(_delta_angle_valid));
 }
 
+/*
+ * Get the AP_InertialSensor singleton
+ */
+AP_InertialSensor *AP_InertialSensor::get_instance()
+{
+    if (!_s_instance)
+        _s_instance = new AP_InertialSensor();
+    return _s_instance;
+}
 
 /*
   register a new gyro instance
@@ -369,6 +387,41 @@ uint8_t AP_InertialSensor::register_accel(void)
     return _accel_count++;
 }
 
+/*
+ * Start all backends for gyro and accel measurements. It automatically calls
+ * _detect_backends() if it has not been called already.
+ */
+void AP_InertialSensor::_start_backends()
+
+{
+    _detect_backends();
+
+    for (uint8_t i = 0; i < _backend_count; i++) {
+        _backends[i]->start();
+    }
+
+    if (_gyro_count == 0 || _accel_count == 0) {
+        hal.scheduler->panic(PSTR("INS needs at least 1 gyro and 1 accel"));
+    }
+}
+
+/* Find a backend that has already been succesfully detected */
+AP_InertialSensor_Backend *AP_InertialSensor::_find_backend(int16_t backend_id)
+{
+    assert(_backends_detected);
+
+    for (uint8_t i = 0; i < _backend_count; i++) {
+        int16_t id = _backends[i]->get_id();
+
+        if (id < 0 || id != backend_id)
+            continue;
+
+        return _backends[i];
+    }
+
+    return nullptr;
+}
+
 void
 AP_InertialSensor::init( Start_style style,
                          Sample_rate sample_rate)
@@ -377,8 +430,7 @@ AP_InertialSensor::init( Start_style style,
     _sample_rate = sample_rate;
 
     if (_gyro_count == 0 && _accel_count == 0) {
-        // detect available backends. Only called once
-        _detect_backends();
+        _start_backends();
     }
 
     // initialise accel scale if need be. This is needed as we can't
@@ -432,6 +484,11 @@ void AP_InertialSensor::_add_backend(AP_InertialSensor_Backend *backend)
 void 
 AP_InertialSensor::_detect_backends(void)
 {
+    if (_backends_detected)
+        return;
+
+    _backends_detected = true;
+
     if (_hil_mode) {
         _add_backend(AP_InertialSensor_HIL::detect(*this));
         return;
@@ -461,9 +518,7 @@ AP_InertialSensor::_detect_backends(void)
     #error Unrecognised HAL_INS_TYPE setting
 #endif
 
-    if (_backend_count == 0 ||
-        _gyro_count == 0 ||
-        _accel_count == 0) {
+    if (_backend_count == 0) {
         hal.scheduler->panic(PSTR("No INS backends available"));
     }
 
@@ -1478,6 +1533,20 @@ void AP_InertialSensor::set_delta_angle(uint8_t instance, const Vector3f &deltaa
         _delta_angle_valid[instance] = true;
         _delta_angle[instance] = deltaa;
     }
+}
+
+/*
+ * Get an AuxiliaryBus on the backend identified by @backend_id
+ */
+AuxiliaryBus *AP_InertialSensor::get_auxiliar_bus(int16_t backend_id)
+{
+    _detect_backends();
+
+    AP_InertialSensor_Backend *backend = _find_backend(backend_id);
+    if (backend == NULL)
+        return NULL;
+
+    return backend->get_auxiliar_bus();
 }
 
 #if INS_VIBRATION_CHECK

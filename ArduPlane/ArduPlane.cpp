@@ -90,7 +90,7 @@ void Plane::setup()
 
 //    notify.init(true);
 
-    rssi_analog_source = hal.analogin->channel(ANALOG_INPUT_NONE);
+    rssi.init();
 
     init_ardupilot();
 
@@ -384,7 +384,7 @@ void Plane::airspeed_ratio_update(void)
         // never coming up again
         return;
     }
-    if (abs(ahrs.roll_sensor) > roll_limit_cd ||
+    if (labs(ahrs.roll_sensor) > roll_limit_cd ||
         ahrs.pitch_sensor > aparm.pitch_limit_max_cd ||
         ahrs.pitch_sensor < pitch_limit_min_cd) {
         // don't calibrate when going beyond normal flight envelope
