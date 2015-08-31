@@ -1102,7 +1102,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         uint8_t result = MAV_RESULT_UNSUPPORTED;
 
         // do command
-        send_text_P(SEVERITY_LOW,PSTR("command received: "));
+        send_text_P(MAV_SEVERITY_WARNING,PSTR("command received: "));
 
         switch(packet.command) {
 
@@ -1128,6 +1128,10 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 #if MOUNT == ENABLED
         // Sets the region of interest (ROI) for the camera
         case MAV_CMD_DO_SET_ROI:
+            // sanity check location
+            if (fabsf(packet.param5) > 90.0f || fabsf(packet.param6) > 180.0f) {
+                break;
+            }
             Location roi_loc;
             roi_loc.lat = (int32_t)(packet.param5 * 1.0e7f);
             roi_loc.lng = (int32_t)(packet.param6 * 1.0e7f);
@@ -1196,7 +1200,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                 }
             }
             else {
-                    send_text_P(SEVERITY_LOW, PSTR("Unsupported preflight calibration"));
+                    send_text_P(MAV_SEVERITY_WARNING, PSTR("Unsupported preflight calibration"));
             }
             plane.in_calibration = false;
             break;
@@ -1311,9 +1315,9 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                 plane.auto_state.commanded_go_around = true;
                
                 result = MAV_RESULT_ACCEPTED;
-                plane.gcs_send_text_P(SEVERITY_HIGH,PSTR("Go around command accepted."));           
+                plane.gcs_send_text_P(MAV_SEVERITY_CRITICAL,PSTR("Go around command accepted."));           
             } else {
-                plane.gcs_send_text_P(SEVERITY_HIGH,PSTR("Rejected go around command."));
+                plane.gcs_send_text_P(MAV_SEVERITY_CRITICAL,PSTR("Rejected go around command."));
             }
             break;
 
@@ -1337,7 +1341,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                     if (! plane.geofence_set_floor_enabled(false)) {
                         result = MAV_RESULT_FAILED;
                     } else {
-                        plane.gcs_send_text_P(SEVERITY_HIGH,PSTR("Fence floor disabled."));
+                        plane.gcs_send_text_P(MAV_SEVERITY_CRITICAL,PSTR("Fence floor disabled."));
                     }
                     break;
                 default:
@@ -1364,6 +1368,10 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             } else {
                 if (is_zero(packet.param5) && is_zero(packet.param6) && is_zero(packet.param7)) {
                     // don't allow the 0,0 position
+                    break;
+                }
+                // sanity check location
+                if (fabsf(packet.param5) > 90.0f || fabsf(packet.param6) > 180.0f) {
                     break;
                 }
                 Location new_home_loc {};
@@ -1432,10 +1440,10 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
     case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:
     {
         // mark the firmware version in the tlog
-        send_text_P(SEVERITY_LOW, PSTR(FIRMWARE_STRING));
+        send_text_P(MAV_SEVERITY_WARNING, PSTR(FIRMWARE_STRING));
 
 #if defined(PX4_GIT_VERSION) && defined(NUTTX_GIT_VERSION)
-        send_text_P(SEVERITY_LOW, PSTR("PX4: " PX4_GIT_VERSION " NuttX: " NUTTX_GIT_VERSION));
+        send_text_P(MAV_SEVERITY_WARNING, PSTR("PX4: " PX4_GIT_VERSION " NuttX: " NUTTX_GIT_VERSION));
 #endif
         handle_param_request_list(msg);
         break;
@@ -1494,9 +1502,11 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         mavlink_fence_point_t packet;
         mavlink_msg_fence_point_decode(msg, &packet);
         if (plane.g.fence_action != FENCE_ACTION_NONE) {
-            send_text_P(SEVERITY_LOW,PSTR("fencing must be disabled"));
+            send_text_P(MAV_SEVERITY_WARNING,PSTR("fencing must be disabled"));
         } else if (packet.count != plane.g.fence_total) {
-            send_text_P(SEVERITY_LOW,PSTR("bad fence point"));
+            send_text_P(MAV_SEVERITY_WARNING,PSTR("bad fence point"));
+        } else if (fabsf(packet.lat) > 90.0f || fabsf(packet.lng) > 180.0f) {
+            send_text_P(MAV_SEVERITY_WARNING,PSTR("invalid fence point, lat or lng too large"));
         } else {
             Vector2l point;
             point.x = packet.lat*1.0e7f;
@@ -1511,7 +1521,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         mavlink_fence_fetch_point_t packet;
         mavlink_msg_fence_fetch_point_decode(msg, &packet);
         if (packet.idx >= plane.g.fence_total) {
-            send_text_P(SEVERITY_LOW,PSTR("bad fence point"));
+            send_text_P(MAV_SEVERITY_WARNING,PSTR("bad fence point"));
         } else {
             Vector2l point = plane.get_fence_point_with_index(packet.idx);
             mavlink_msg_fence_point_send_buf(msg, chan, msg->sysid, msg->compid, packet.idx, plane.g.fence_total,
@@ -1528,12 +1538,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         
         if (packet.idx >= plane.rally.get_rally_total() || 
             packet.idx >= plane.rally.get_rally_max()) {
-            send_text_P(SEVERITY_LOW,PSTR("bad rally point message ID"));
+            send_text_P(MAV_SEVERITY_WARNING,PSTR("bad rally point message ID"));
             break;
         }
 
         if (packet.count != plane.rally.get_rally_total()) {
-            send_text_P(SEVERITY_LOW,PSTR("bad rally point message count"));
+            send_text_P(MAV_SEVERITY_WARNING,PSTR("bad rally point message count"));
             break;
         }
 
@@ -1553,12 +1563,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         mavlink_rally_fetch_point_t packet;
         mavlink_msg_rally_fetch_point_decode(msg, &packet);
         if (packet.idx > plane.rally.get_rally_total()) {
-            send_text_P(SEVERITY_LOW, PSTR("bad rally point index"));   
+            send_text_P(MAV_SEVERITY_WARNING, PSTR("bad rally point index"));   
             break;
         }
         RallyLocation rally_point;
         if (!plane.rally.get_rally_point_with_index(packet.idx, rally_point)) {
-            send_text_P(SEVERITY_LOW, PSTR("failed to set rally point"));   
+            send_text_P(MAV_SEVERITY_WARNING, PSTR("failed to set rally point"));   
             break;
         }
 
@@ -1782,7 +1792,7 @@ void Plane::mavlink_delay_cb()
     }
     if (tnow - last_5s > 5000) {
         last_5s = tnow;
-        gcs_send_text_P(SEVERITY_LOW, PSTR("Initialising APM..."));
+        gcs_send_text_P(MAV_SEVERITY_WARNING, PSTR("Initialising APM..."));
     }
     check_usb_mux();
 
@@ -1842,7 +1852,7 @@ void Plane::gcs_update(void)
     }
 }
 
-void Plane::gcs_send_text_P(gcs_severity severity, const prog_char_t *str)
+void Plane::gcs_send_text_P(MAV_SEVERITY severity, const prog_char_t *str)
 {
     for (uint8_t i=0; i<num_gcs; i++) {
         if (gcs[i].initialised) {
@@ -1862,7 +1872,7 @@ void Plane::gcs_send_text_P(gcs_severity severity, const prog_char_t *str)
 void Plane::gcs_send_text_fmt(const prog_char_t *fmt, ...)
 {
     va_list arg_list;
-    gcs[0].pending_status.severity = (uint8_t)SEVERITY_LOW;
+    gcs[0].pending_status.severity = (uint8_t)MAV_SEVERITY_WARNING;
     va_start(arg_list, fmt);
     hal.util->vsnprintf_P((char *)gcs[0].pending_status.text,
             sizeof(gcs[0].pending_status.text), fmt, arg_list);

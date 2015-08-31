@@ -122,9 +122,10 @@ void Copter::init_ardupilot()
 
     // initialise battery monitor
     battery.init();
-    
-    rssi_analog_source      = hal.analogin->channel(g.rssi_pin);
 
+    // Init RSSI
+    rssi.init();
+    
     barometer.init();
 
     // Register the mavlink service callback. This will run
@@ -353,7 +354,13 @@ bool Copter::optflow_position_ok()
 
     // get filter status from EKF
     nav_filter_status filt_status = inertial_nav.get_filter_status();
-    return (filt_status.flags.horiz_pos_rel || filt_status.flags.pred_horiz_pos_rel);
+
+    // if disarmed we accept a predicted horizontal relative position
+    if (!motors.armed()) {
+        return (filt_status.flags.pred_horiz_pos_rel);
+    } else {
+        return (filt_status.flags.horiz_pos_rel && !filt_status.flags.const_pos_mode);
+    }
 #endif
 }
 
