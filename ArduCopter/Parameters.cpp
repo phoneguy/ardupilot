@@ -496,6 +496,13 @@ const AP_Param::Info Copter::var_info[] PROGMEM = {
     // @User: Advanced
     GSCALAR(fs_ekf_thresh, "FS_EKF_THRESH",    FS_EKF_THRESHOLD_DEFAULT),
 
+    // @Param: FS_CRASH_CHECK
+    // @DisplayName: Crash check enable
+    // @Description: This enables automatic crash checking. When enabled the motors will disarm if a crash is detected.
+    // @Values: 0:Disabled, 1:Enabled
+    // @User: Advanced
+    GSCALAR(fs_crash_check, "FS_CRASH_CHECK",    1),
+    
 #if FRAME_CONFIG ==     HELI_FRAME
     // @Group: HS1_
     // @Path: ../libraries/RC_Channel/RC_Channel.cpp
@@ -509,6 +516,9 @@ const AP_Param::Info Copter::var_info[] PROGMEM = {
     // @Group: HS4_
     // @Path: ../libraries/RC_Channel/RC_Channel.cpp
     GGROUP(heli_servo_4,    "HS4_", RC_Channel),
+    // @Group: H_RSC_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(heli_servo_rsc,    "H_RSC_", RC_Channel),
 
     // @Param: H_STAB_COL_MIN
     // @DisplayName: Heli Stabilize Throttle Collective Minimum
@@ -972,8 +982,8 @@ const AP_Param::Info Copter::var_info[] PROGMEM = {
 
 #if FRAME_CONFIG ==     HELI_FRAME
     // @Group: H_
-    // @Path: ../libraries/AP_Motors/AP_MotorsHeli.cpp
-    GOBJECT(motors, "H_",           AP_MotorsHeli),
+    // @Path: ../libraries/AP_Motors/AP_MotorsHeli_Single.cpp
+    GOBJECT(motors, "H_",           AP_MotorsHeli_Single),
 
 #elif FRAME_CONFIG == SINGLE_FRAME
     // @Group: SS1_
