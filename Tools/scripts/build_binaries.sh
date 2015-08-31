@@ -39,6 +39,7 @@ checkout() {
     vehicle="$1"
     tag="$2"
     board="$3"
+    echo "Trying checkout $vehicle $tag $board"
     git stash
     if [ "$tag" = "latest" ]; then
 	vtag="master"
@@ -47,7 +48,7 @@ checkout() {
     fi
 
     # add board type specific branch extension
-    vtag2="$vtag"$(board_branch $b)
+    vtag2="$vtag"$(board_branch $board)
 
     git checkout -f "$vtag2" && {
         echo "Using board specific tag $vtag2"

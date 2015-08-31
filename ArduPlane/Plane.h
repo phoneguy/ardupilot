@@ -91,6 +91,7 @@
 #include <AP_Rally/AP_Rally.h>
 
 #include <AP_OpticalFlow/AP_OpticalFlow.h>     // Optical Flow library
+#include <AP_RSSI/AP_RSSI.h>                   // RSSI Library
 
 // Configuration
 #include "config.h"
@@ -248,10 +249,6 @@ private:
     // selected navigation controller
     AP_SpdHgtControl *SpdHgt_Controller = &TECS_controller;
 
-    // Analog Inputs
-    // a pin for reading the receiver RSSI voltage. 
-    AP_HAL::AnalogSource *rssi_analog_source;
-
     // Relay
     AP_Relay relay;
 
@@ -270,6 +267,9 @@ private:
 
     // Rally Ponints
     AP_Rally rally {ahrs};
+    
+    // RSSI 
+    AP_RSSI rssi;      
 
     // remember if USB is connected, so we can adjust baud rate
     bool usb_connected;
@@ -653,7 +653,7 @@ private:
 
     // Arming/Disarming mangement class
     AP_Arming_Plane arming {ahrs, barometer, compass, home_is_set, 
-            FUNCTOR_BIND_MEMBER(&Plane::gcs_send_text_P, void, gcs_severity, const prog_char_t *)};
+            FUNCTOR_BIND_MEMBER(&Plane::gcs_send_text_P, void, MAV_SEVERITY, const prog_char_t *)};
 
     AP_Param param_loader {var_info};
 
@@ -695,7 +695,7 @@ private:
     void gcs_send_mission_item_reached_message(uint16_t mission_index);
     void gcs_data_stream_send(void);
     void gcs_update(void);
-    void gcs_send_text_P(gcs_severity severity, const prog_char_t *str);
+    void gcs_send_text_P(MAV_SEVERITY severity, const prog_char_t *str);
     void gcs_send_airspeed_calibration(const Vector3f &vg);
     void gcs_retry_deferred(void);
     void do_erase_logs(void);
@@ -938,6 +938,7 @@ private:
     bool verify_command_callback(const AP_Mission::Mission_Command& cmd);
     void print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode);
     void run_cli(AP_HAL::UARTDriver *port);
+    void restart_landing_sequence();
     void log_init();
     uint32_t millis() const;
     uint32_t micros() const;

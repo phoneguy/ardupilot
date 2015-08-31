@@ -33,6 +33,7 @@
 #include <Filter/LowPassFilter.h>
 
 class AP_InertialSensor_Backend;
+class AuxiliaryBus;
 
 /*
   forward declare DataFlash class. We can't include DataFlash.h
@@ -53,6 +54,7 @@ class AP_InertialSensor
 
 public:
     AP_InertialSensor();
+    static AP_InertialSensor *get_instance();
 
     enum Start_style {
         COLD_START = 0,
@@ -238,11 +240,15 @@ public:
     void set_delta_velocity(uint8_t instance, float deltavt, const Vector3f &deltav);
     void set_delta_angle(uint8_t instance, const Vector3f &deltaa);
 
+    AuxiliaryBus *get_auxiliar_bus(int16_t backend_id);
+
 private:
 
     // load backend drivers
     void _add_backend(AP_InertialSensor_Backend *backend);
     void _detect_backends(void);
+    void _start_backends();
+    AP_InertialSensor_Backend *_find_backend(int16_t backend_id);
 
     // gyro initialisation
     void _init_gyro();
@@ -334,6 +340,8 @@ private:
     // should we log raw accel/gyro data?
     bool _log_raw_data:1;
 
+    bool _backends_detected:1;
+
     // the delta time in seconds for the last sample
     float _delta_time;
 
@@ -371,6 +379,8 @@ private:
     } _hil {};
 
     DataFlash_Class *_dataflash;
+
+    static AP_InertialSensor *_s_instance;
 };
 
 #include "AP_InertialSensor_Backend.h"
