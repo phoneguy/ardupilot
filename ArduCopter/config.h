@@ -331,6 +331,12 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Precision Landing with companion computer or IRLock sensor
+#ifndef PRECISION_LANDING
+ # define PRECISION_LANDING DISABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 //	EPM cargo gripper
 #ifndef EPM_ENABLED
  # define EPM_ENABLED ENABLED
@@ -693,6 +699,10 @@
 // the acceleration used to define the distance-velocity curve
 #ifndef ALT_HOLD_ACCEL_MAX
  # define ALT_HOLD_ACCEL_MAX 250    // if you change this you must also update the duplicate declaration in AC_WPNav.h
+#endif
+
+#ifndef AUTO_DISARMING_DELAY
+# define AUTO_DISARMING_DELAY  10
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

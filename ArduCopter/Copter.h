@@ -1,6 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-#ifndef _COPTER_H_
-#define _COPTER_H_
+
+#ifndef _COPTER_H
+#define _COPTER_H
 
 #define THISFIRMWARE "APM:Copter V3.4-dev"
 #define FIRMWARE_VERSION 3,4,0,FIRMWARE_VERSION_TYPE_DEV
@@ -108,6 +109,10 @@
 #include <AP_LandingGear/AP_LandingGear.h>     // Landing Gear library
 #include <AP_Terrain/AP_Terrain.h>
 #include <AP_RPM/AP_RPM.h>
+#if PRECISION_LANDING == ENABLED
+#include <AC_PrecLand/AC_PrecLand.h>
+#include <AP_IRLock/AP_IRLock.h>
+#endif
 
 // AP_HAL to Arduino compatibility layer
 // Configuration
@@ -128,7 +133,6 @@ class Copter {
     void loop();
 
 private:
-
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::MultiCopter aparm;
 
@@ -159,7 +163,7 @@ private:
     RC_Channel *channel_yaw;
 
     // Dataflash
-    DataFlash_Class DataFlash;
+    DataFlash_Class DataFlash{FIRMWARE_STRING};
 
     // the rate we run the main loop at
     const AP_InertialSensor::Sample_rate ins_sample_rate;
@@ -236,6 +240,7 @@ private:
             enum HomeState home_state   : 2; // 18,19   // home status (unset, set, locked)
             uint8_t using_interlock     : 1; // 20      // aux switch motor interlock function is in use
             uint8_t motor_emergency_stop: 1; // 21      // motor estop switch, shuts off motors when enabled
+            uint8_t land_repo_active    : 1; // 22      // true if the pilot is overriding the landing position
         };
         uint32_t value;
     } ap;
@@ -299,7 +304,7 @@ private:
 #elif FRAME_CONFIG == OCTA_QUAD_FRAME
  #define MOTOR_CLASS AP_MotorsOctaQuad
 #elif FRAME_CONFIG == HELI_FRAME
- #define MOTOR_CLASS AP_MotorsHeli
+ #define MOTOR_CLASS AP_MotorsHeli_Single
 #elif FRAME_CONFIG == SINGLE_FRAME
  #define MOTOR_CLASS AP_MotorsSingle
 #elif FRAME_CONFIG == COAX_FRAME
@@ -494,6 +499,11 @@ private:
     AP_Terrain terrain;
 #endif
 
+    // Precision Landing
+#if PRECISION_LANDING == ENABLED
+    AC_PrecLand precland;
+#endif
+
     // use this to prevent recursion during sensor init
     bool in_mavlink_delay;
 
@@ -524,6 +534,7 @@ private:
     static const struct LogStructure log_structure[];
 
     void compass_accumulate(void);
+    void compass_cal_update(void);
     void barometer_accumulate(void);
     void perf_update(void);
     void fast_loop();
@@ -623,6 +634,8 @@ private:
 #if FRAME_CONFIG == HELI_FRAME
     void Log_Write_Heli(void);
 #endif
+    void Log_Write_Precland();
+    void Log_Write_Vehicle_Startup_Messages();
     void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page);
     void start_logging() ;
     void load_parameters(void);
@@ -867,6 +880,8 @@ private:
     void init_compass();
     void init_optflow();
     void update_optical_flow(void);
+    void init_precland();
+    void update_precland();
     void read_battery(void);
     void read_receiver_rssi(void);
     void epm_update();
@@ -959,6 +974,7 @@ private:
     void log_init(void);
     void run_cli(AP_HAL::UARTDriver *port);
     void init_capabilities(void);
+    void dataflash_periodic(void);
 
 public:
     void mavlink_delay_cb();
