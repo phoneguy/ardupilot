@@ -82,6 +82,9 @@ public:
         // Landing gear object
         k_param_landinggear,    // 18
 
+        // precision landing object
+        k_param_precland,   // 19
+
         // Misc
         //
         k_param_log_bitmask_old = 20,           // Deprecated
@@ -161,11 +164,14 @@ public:
         k_param_heli_yaw_ff,        // remove
         k_param_heli_stab_col_min,
         k_param_heli_stab_col_max,  // 88
+        k_param_heli_servo_rsc,     // 89 = full!
 
         //
-        // 90: Motors
+        // 90: misc2
         //
         k_param_motors = 90,
+        k_param_disarm_delay,
+        k_param_fs_crash_check,
 
         // 97: RSSI
         k_param_rssi = 97,
@@ -342,6 +348,7 @@ public:
         k_param_rtl_climb_min,
         k_param_rpm_sensor,
         k_param_autotune_min_d, // 251
+        k_param_pi_precland,    // 252
 
         // 254,255: reserved
     };
@@ -424,15 +431,18 @@ public:
     AP_Int8         ch11_option;
     AP_Int8         ch12_option;
     AP_Int8         arming_check;
+    AP_Int8         disarm_delay;
 
     AP_Int8         land_repositioning;
     AP_Int8         fs_ekf_action;
+    AP_Int8         fs_crash_check;
     AP_Float        fs_ekf_thresh;
     AP_Int16        gcs_pid_mask;
 
 #if FRAME_CONFIG ==     HELI_FRAME
     // Heli
     RC_Channel      heli_servo_1, heli_servo_2, heli_servo_3, heli_servo_4;     // servos for swash plate and tail
+    RC_Channel      heli_servo_rsc;                                             // servo for rotor speed control output
     AP_Int16        heli_stab_col_min;                                          // min collective while pilot directly controls collective in stabilize mode
     AP_Int16        heli_stab_col_max;                                          // min collective while pilot directly controls collective in stabilize mode
 #endif
@@ -491,6 +501,10 @@ public:
     AC_P                    p_vel_z;
     AC_PID                  pid_accel_z;
 
+#if PRECISION_LANDING == ENABLED
+    AC_PI_2D                pi_precland;
+#endif
+
     AC_P                    p_pos_xy;
     AC_P                    p_stabilize_roll;
     AC_P                    p_stabilize_pitch;
@@ -511,6 +525,7 @@ public:
         heli_servo_2        (CH_2),
         heli_servo_3        (CH_3),
         heli_servo_4        (CH_4),
+        heli_servo_rsc      (CH_8),
 #endif
 #if FRAME_CONFIG ==     SINGLE_FRAME
         single_servo_1        (CH_1),
@@ -559,6 +574,10 @@ public:
 
         p_vel_z                 (VEL_Z_P),
         pid_accel_z             (ACCEL_Z_P,       ACCEL_Z_I,        ACCEL_Z_D,      ACCEL_Z_IMAX,       ACCEL_Z_FILT_HZ,    MAIN_LOOP_SECONDS),
+
+#if PRECISION_LANDING == ENABLED
+        pi_precland             (PRECLAND_P,      PRECLAND_I,                       PRECLAND_IMAX,      VEL_XY_FILT_HZ,     PRECLAND_UPDATE_TIME),
+#endif
 
         // P controller	        initial P
         //----------------------------------------------------------------------
