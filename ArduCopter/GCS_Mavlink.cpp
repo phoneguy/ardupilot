@@ -1263,6 +1263,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             result = MAV_RESULT_ACCEPTED;
             break;
 
+        case MAV_CMD_DO_MOUNT_CONTROL:
+#if MOUNT == ENABLED
+            copter.camera_mount.control(packet.param1, packet.param2, packet.param3, (MAV_MOUNT_MODE) packet.param7);
+#endif
+            break;
+
         case MAV_CMD_MISSION_START:
             if (copter.motors.armed() && copter.set_mode(AUTO)) {
                 copter.set_auto_armed(true);
@@ -1685,7 +1691,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
     case MAVLINK_MSG_ID_LOG_REQUEST_DATA:
     case MAVLINK_MSG_ID_LOG_ERASE:
         copter.in_log_download = true;
-        // fallthru
+        /* no break */
     case MAVLINK_MSG_ID_LOG_REQUEST_LIST:
         if (!copter.in_mavlink_delay && !copter.motors.armed()) {
             handle_log_message(msg, copter.DataFlash);
@@ -1721,10 +1727,11 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 #endif // CAMERA == ENABLED
 
 #if MOUNT == ENABLED
+    //deprecated. Use MAV_CMD_DO_MOUNT_CONFIGURE
     case MAVLINK_MSG_ID_MOUNT_CONFIGURE:        // MAV ID: 204
         copter.camera_mount.configure_msg(msg);
         break;
-
+    //deprecated. Use MAV_CMD_DO_MOUNT_CONTROL
     case MAVLINK_MSG_ID_MOUNT_CONTROL:
         copter.camera_mount.control_msg(msg);
         break;
