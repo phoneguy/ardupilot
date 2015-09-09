@@ -46,11 +46,13 @@ public:
     bool        init(void);
     void        read(void);
     void        accumulate(void);
+    float       get_conversion_ratio(void) override;
 
 private:
     static AP_Compass_Backend *_detect(Compass &compass, AP_AK8963_SerialBus *bus);
 
     void _make_factory_sensitivity_adjustment(Vector3f& field) const;
+    void _make_adc_sensitivity_adjustment(Vector3f& field) const;
     Vector3f _get_filtered_field() const;
     void _reset_filter();
 
