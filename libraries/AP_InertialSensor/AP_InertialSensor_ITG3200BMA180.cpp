@@ -194,8 +194,9 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
     _have_gyro_sample = false;
     _have_accel_sample = false;
     hal.scheduler->resume_timer_procs();
-    _publish_accel(_accel_instance, accel, false);
-    _publish_gyro(_gyro_instance, gyro, false);
+
+    _publish_accel(_accel_instance, accel);
+    _publish_gyro(_gyro_instance, gyro);
 
     if (_last_accel_filter_hz != _accel_filter_cutoff()) {
         _set_accel_filter(_accel_filter_cutoff());
@@ -232,6 +233,7 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
         // Adjust for chip scaling to get m/s/s
         accel *= BMA180_ACC_SCALE_M_S;
         _rotate_and_correct_accel(_accel_instance, accel);
+        _notify_new_accel_raw_sample(_accel_instance, accel);
         _accel_filtered = _accel_filter.apply(accel);
         _have_accel_sample = true;
         _last_accel_timestamp = now;
