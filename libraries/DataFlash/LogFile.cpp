@@ -747,6 +747,21 @@ void DataFlash_Class::Log_Write_GPS(const AP_GPS &gps, uint8_t i, int32_t relati
     WriteBlock(&pkt2, sizeof(pkt2));
 }
 
+
+// Write an RFND (rangefinder) packet
+void DataFlash_Class::Log_Write_RFND(const RangeFinder &rangefinder)
+{
+    struct log_RFND pkt = {
+        LOG_PACKET_HEADER_INIT((uint8_t)(LOG_RFND_MSG)),
+        time_us       : hal.scheduler->micros64(),
+        dist1         : rangefinder.distance_cm(0),
+        dist2         : rangefinder.distance_cm(1),
+        dist3         : rangefinder.distance_cm(2),
+        dist4         : rangefinder.distance_cm(3)
+    };
+    WriteBlock(&pkt, sizeof(pkt));
+}
+
 // Write an RCIN packet
 void DataFlash_Class::Log_Write_RCIN(void)
 {
@@ -794,6 +809,17 @@ void DataFlash_Class::Log_Write_RCOUT(void)
     Log_Write_ESC();
 }
 
+// Write an RSSI packet
+void DataFlash_Class::Log_Write_RSSI(AP_RSSI &rssi)
+{
+    struct log_RSSI pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_RSSI_MSG),
+        time_us       : hal.scheduler->micros64(),
+        RXRSSI        : rssi.read_receiver_rssi()
+    };
+    WriteBlock(&pkt, sizeof(pkt));
+}
+
 // Write a BARO packet
 void DataFlash_Class::Log_Write_Baro(AP_Baro &baro)
 {
@@ -818,6 +844,19 @@ void DataFlash_Class::Log_Write_Baro(AP_Baro &baro)
             climbrate     : baro.get_climb_rate()
         };
         WriteBlock(&pkt2, sizeof(pkt2));        
+    }
+#endif
+#if BARO_MAX_INSTANCES > 2
+    if (baro.num_instances() > 2 && baro.healthy(2)) {
+        struct log_BARO pkt3 = {
+            LOG_PACKET_HEADER_INIT(LOG_BAR3_MSG),
+            time_us       : time_us,
+            altitude      : baro.get_altitude(2),
+            pressure	  : baro.get_pressure(2),
+            temperature   : (int16_t)(baro.get_temperature(2) * 100),
+            climbrate     : baro.get_climb_rate()
+        };
+        WriteBlock(&pkt3, sizeof(pkt3));        
     }
 #endif
 }

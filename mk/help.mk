@@ -33,3 +33,4 @@ help:
 	@echo "  bbbmini - the Beagle Bone Black mini"
 	@echo "  bebop - the Parrot Bebop"
 	@echo "  bbb - beaglebone black dual imu"
+	@echo "  raspilot - the RaspberryPi + pilot cape combination"

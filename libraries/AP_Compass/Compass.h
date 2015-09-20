@@ -21,6 +21,7 @@
 #define AP_COMPASS_TYPE_VRBRAIN         0x05
 #define AP_COMPASS_TYPE_AK8963_MPU9250  0x06
 #define AP_COMPASS_TYPE_AK8963_I2C      0x07
+#define AP_COMPASS_TYPE_LSM303D         0x08
 
 // motor compensation types (for use with motor_comp_enabled)
 #define AP_COMPASS_MOT_COMP_DISABLED    0x00
@@ -30,6 +31,10 @@
 // setup default mag orientation for some board types
 #if CONFIG_HAL_BOARD == HAL_BOARD_APM1
 # define MAG_BOARD_ORIENTATION ROTATION_ROLL_180
+#elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RASPILOT
+# define MAG_BOARD_ORIENTATION ROTATION_ROLL_180
+#elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
+# define MAG_BOARD_ORIENTATION ROTATION_YAW_90
 #else
 # define MAG_BOARD_ORIENTATION ROTATION_NONE
 #endif
@@ -49,6 +54,9 @@
 //MAXIMUM COMPASS REPORTS
 #define MAX_CAL_REPORTS 10
 #define CONTINUOUS_REPORTS 0
+#define AP_COMPASS_MAX_XYZ_ANG_DIFF radians(50.0f)
+#define AP_COMPASS_MAX_XY_ANG_DIFF radians(30.0f)
+#define AP_COMPASS_MAX_XY_LENGTH_DIFF 100.0f
 
 class Compass
 {
@@ -161,6 +169,9 @@ public:
 
     void send_mag_cal_progress(mavlink_channel_t chan);
     void send_mag_cal_report(mavlink_channel_t chan);
+
+    // check if the compasses are pointing in the same direction
+    bool consistent() const;
 
     /// Return the health of a compass
     bool healthy(uint8_t i) const { return _state[i].healthy; }
@@ -403,6 +414,8 @@ private:
 
     // if we want HIL only
     bool _hil_mode:1;
+
+    AP_Float _calibration_threshold;
 };
 
 #include "AP_Compass_Backend.h"
@@ -410,4 +423,5 @@ private:
 #include "AP_Compass_HIL.h"
 #include "AP_Compass_AK8963.h"
 #include "AP_Compass_PX4.h"
+#include "AP_Compass_LSM303D.h"
 #endif

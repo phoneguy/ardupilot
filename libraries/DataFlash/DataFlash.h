@@ -11,6 +11,7 @@
 #include <AP_Param/AP_Param.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AP_InertialSensor/AP_InertialSensor.h>
+#include <AP_RSSI/AP_RSSI.h>
 #include <AP_Baro/AP_Baro.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Vehicle/AP_Vehicle.h>
@@ -18,6 +19,7 @@
 #include <AP_Airspeed/AP_Airspeed.h>
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <AP_RPM/AP_RPM.h>
+#include <AP_RangeFinder/AP_RangeFinder.h>
 #include <stdint.h>
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
@@ -87,11 +89,13 @@ public:
     bool Log_Write_Format(const struct LogStructure *structure);
     bool Log_Write_Parameter(const char *name, float value);
     void Log_Write_GPS(const AP_GPS &gps, uint8_t instance, int32_t relative_alt);
+    void Log_Write_RFND(const RangeFinder &rangefinder);
     void Log_Write_IMU(const AP_InertialSensor &ins);
     void Log_Write_IMUDT(const AP_InertialSensor &ins);
     void Log_Write_Vibration(const AP_InertialSensor &ins);
     void Log_Write_RCIN(void);
     void Log_Write_RCOUT(void);
+    void Log_Write_RSSI(AP_RSSI &rssi);
     void Log_Write_Baro(AP_Baro &baro);
     void Log_Write_Power(void);
     void Log_Write_AHRS2(AP_AHRS &ahrs);
@@ -299,6 +303,12 @@ struct PACKED log_RCOUT {
     uint16_t chan10;
     uint16_t chan11;
     uint16_t chan12;
+};
+
+struct PACKED log_RSSI {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float RXRSSI;
 };
 
 struct PACKED log_BARO {
@@ -516,6 +526,18 @@ struct PACKED log_Mode {
 };
 
 /*
+  rangefinder - support for 4 sensors
+ */
+struct PACKED log_RFND {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint16_t dist1;
+    uint16_t dist2;
+    uint16_t dist3;
+    uint16_t dist4;
+};
+
+/*
   terrain log structure
  */
 struct PACKED log_TERRAIN {
@@ -716,6 +738,8 @@ Format characters in the format string for binary log messages
       "RCIN",  "Qhhhhhhhhhhhhhh",     "TimeUS,C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11,C12,C13,C14" }, \
     { LOG_RCOUT_MSG, sizeof(log_RCOUT), \
       "RCOU",  "Qhhhhhhhhhhhh",     "TimeUS,Ch1,Ch2,Ch3,Ch4,Ch5,Ch6,Ch7,Ch8,Ch9,Ch10,Ch11,Ch12" }, \
+    { LOG_RSSI_MSG, sizeof(log_RSSI), \
+      "RSSI",  "Qf",     "TimeUS,RXRSSI" }, \
     { LOG_BARO_MSG, sizeof(log_BARO), \
       "BARO",  "Qffcf", "TimeUS,Alt,Press,Temp,CRt" }, \
     { LOG_POWR_MSG, sizeof(log_POWR), \
@@ -735,7 +759,9 @@ Format characters in the format string for binary log messages
     { LOG_COMPASS_MSG, sizeof(log_Compass), \
       "MAG", "QhhhhhhhhhB",    "TimeUS,MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ,Health" }, \
     { LOG_MODE_MSG, sizeof(log_Mode), \
-      "MODE", "QMB",         "TimeUS,Mode,ModeNum" }
+      "MODE", "QMB",         "TimeUS,Mode,ModeNum" }, \
+    { LOG_RFND_MSG, sizeof(log_RFND), \
+      "RFND", "QCCCC",         "TimeUS,Dist1,Dist2,Dist3,Dist4" }
 
 // messages for more advanced boards
 #define LOG_EXTRA_STRUCTURES \
@@ -819,6 +845,8 @@ Format characters in the format string for binary log messages
       "PIDS", "Qffffff",  "TimeUS,Des,P,I,D,FF,AFF" }, \
     { LOG_BAR2_MSG, sizeof(log_BARO), \
       "BAR2",  "Qffcf", "TimeUS,Alt,Press,Temp,CRt" }, \
+    { LOG_BAR3_MSG, sizeof(log_BARO), \
+      "BAR3",  "Qffcf", "TimeUS,Alt,Press,Temp,CRt" }, \
     { LOG_VIBE_MSG, sizeof(log_Vibe), \
       "VIBE", "QfffIII",     "TimeUS,VibeX,VibeY,VibeZ,Clip0,Clip1,Clip2" }, \
     { LOG_IMUDT_MSG, sizeof(log_IMUDT), \
@@ -850,6 +878,7 @@ enum LogMessages {
     LOG_MESSAGE_MSG,
     LOG_RCIN_MSG,
     LOG_RCOUT_MSG,
+    LOG_RSSI_MSG,
     LOG_IMU2_MSG,
     LOG_BARO_MSG,
     LOG_POWR_MSG,
@@ -909,6 +938,8 @@ enum LogMessages {
     LOG_RPM_MSG,
     LOG_GPA_MSG,
     LOG_GPA2_MSG,
+    LOG_RFND_MSG,
+    LOG_BAR3_MSG,
 };
 
 enum LogOriginType {
