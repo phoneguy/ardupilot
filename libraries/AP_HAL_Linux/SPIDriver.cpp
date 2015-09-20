@@ -46,6 +46,16 @@ LinuxSPIDeviceDriver LinuxSPIDeviceManager::_device[] = {
     LinuxSPIDeviceDriver(2, 0, AP_HAL::SPIDevice_MPU9250,    SPI_MODE_3, 8, SPI_CS_KERNEL,  1*MHZ, 20*MHZ),
     LinuxSPIDeviceDriver(2, 1, AP_HAL::SPIDevice_MS5611,     SPI_MODE_3, 8, SPI_CS_KERNEL,  10*MHZ,10*MHZ),
 };
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RASPILOT
+LinuxSPIDeviceDriver LinuxSPIDeviceManager::_device[] = {
+    /* MPU9250 is restricted to 1MHz for non-data and interrupt registers */
+    LinuxSPIDeviceDriver(0, 0, AP_HAL::SPIDevice_MPU6000, SPI_MODE_3, 8, RPI_GPIO_25,  1*MHZ, 8*MHZ),
+    LinuxSPIDeviceDriver(0, 0, AP_HAL::SPIDevice_MS5611,  SPI_MODE_3, 8, RPI_GPIO_23,  1*MHZ, 8*MHZ),
+    LinuxSPIDeviceDriver(0, 0, AP_HAL::SPIDevice_L3GD20,  SPI_MODE_3, 8, RPI_GPIO_12,  1*MHZ, 8*MHZ),
+    LinuxSPIDeviceDriver(0, 0, AP_HAL::SPIDevice_LSM303D, SPI_MODE_3, 8, RPI_GPIO_22,  1*MHZ, 8*MHZ),
+    LinuxSPIDeviceDriver(0, 0, AP_HAL::SPIDevice_Dataflash, SPI_MODE_3, 8, RPI_GPIO_5,  1*MHZ, 8*MHZ),
+    LinuxSPIDeviceDriver(0, 0, AP_HAL::SPIDevice_RASPIO, SPI_MODE_3, 8, RPI_GPIO_7,  8*MHZ, 8*MHZ),
+};
 #else
 // empty device table
 LinuxSPIDeviceDriver LinuxSPIDeviceManager::_device[0];
@@ -251,11 +261,16 @@ bool LinuxSPIDeviceManager::transaction(LinuxSPIDeviceDriver &driver, const uint
 /*
   return a SPIDeviceDriver for a particular device
  */
-AP_HAL::SPIDeviceDriver *LinuxSPIDeviceManager::device(enum AP_HAL::SPIDevice dev)
+AP_HAL::SPIDeviceDriver *LinuxSPIDeviceManager::device(enum AP_HAL::SPIDevice dev, uint8_t index)
 {
+    uint8_t count = 0;
     for (uint8_t i=0; i<LINUX_SPI_DEVICE_NUM_DEVICES; i++) {
         if (_device[i]._type == dev) {
-            return &_device[i];
+            if (count == index) {
+                return &_device[i];
+            } else {
+                count++;
+            }
         }
     }
     return NULL;
