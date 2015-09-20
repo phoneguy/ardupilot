@@ -248,9 +248,9 @@ case $FRAME in
 	BUILD_TARGET="sitl-octa"
         MODEL="$FRAME"
 	;;
-    heli)
+    heli*)
 	BUILD_TARGET="sitl-heli"
-        MODEL="heli"
+        MODEL="$FRAME"
 	;;
     heli-dual)
   BUILD_TARGET="sitl-heli-dual"
@@ -414,6 +414,10 @@ elif [ $USE_GDB == 1 ]; then
 else
     $autotest/run_in_terminal_window.sh "ardupilot" $cmd || exit 1
 fi
+fi
+
+if [ $START_HIL == 1 ]; then
+    $autotest/run_in_terminal_window.sh "JSBSim" $autotest/jsb_sim/runsim.py --home $SIMHOME --speedup=$SPEEDUP || exit 1
 fi
 
 trap kill_tasks SIGINT
