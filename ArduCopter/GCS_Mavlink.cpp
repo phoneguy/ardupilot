@@ -1310,11 +1310,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                 break;
             }
             if (is_equal(packet.param1,1.0f)) {
-                // gyro offset calibration
-                copter.ins.init_gyro();
-                // reset ahrs gyro bias
-                if (copter.ins.gyro_calibrated_ok_all()) {
-                    copter.ahrs.reset_gyro_drift();
+                if (copter.calibrate_gyros()) {
                     result = MAV_RESULT_ACCEPTED;
                 } else {
                     result = MAV_RESULT_FAILED;
@@ -1327,8 +1323,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                 result = MAV_RESULT_UNSUPPORTED;
             } else if (is_equal(packet.param5,1.0f)) {
                 // 3d accel calibration
-                float trim_roll, trim_pitch;
+                if (!copter.calibrate_gyros()) {
+                    result = MAV_RESULT_FAILED;
+                    break;
+                }
                 // this blocks
+                float trim_roll, trim_pitch;
                 AP_InertialSensor_UserInteract_MAVLink interact(this);
                 if(copter.ins.calibrate_accel(&interact, trim_roll, trim_pitch)) {
                     // reset ahrs's trim to suggested values from calibration routine
@@ -1338,6 +1338,11 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                     result = MAV_RESULT_FAILED;
                 }
             } else if (is_equal(packet.param5,2.0f)) {
+                // calibrate gyros
+                if (!copter.calibrate_gyros()) {
+                    result = MAV_RESULT_FAILED;
+                    break;
+                }
                 // accel trim
                 float trim_roll, trim_pitch;
                 if(copter.ins.calibrate_trim(trim_roll, trim_pitch)) {

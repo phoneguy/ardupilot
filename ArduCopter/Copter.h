@@ -842,6 +842,7 @@ private:
     bool pre_arm_checks(bool display_failure);
     void pre_arm_rc_checks();
     bool pre_arm_gps_checks(bool display_failure);
+    bool pre_arm_ekf_attitude_check();
     bool arm_checks(bool display_failure, bool arming_from_gcs);
     void init_disarm_motors();
     void motors_output();
@@ -912,7 +913,8 @@ private:
     void save_trim();
     void auto_trim();
     void init_ardupilot();
-    void startup_ground(bool force_gyro_cal);
+    void startup_INS_ground();
+    bool calibrate_gyros();
     bool position_ok();
     bool ekf_position_ok();
     bool optflow_position_ok();
