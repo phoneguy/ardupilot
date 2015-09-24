@@ -3,8 +3,8 @@
 #ifndef _PLANE_H
 #define _PLANE_H
 
-#define THISFIRMWARE "ArduPlane V3.4.0beta3"
-#define FIRMWARE_VERSION 3,4,0,FIRMWARE_VERSION_TYPE_BETA+2
+#define THISFIRMWARE "ArduPlane V3.4.1dev"
+#define FIRMWARE_VERSION 3,4,1,FIRMWARE_VERSION_TYPE_DEV
 
 /*
    Lead developer: Andrew Tridgell
@@ -79,6 +79,7 @@
 #include <AP_SpdHgtControl/AP_SpdHgtControl.h>
 #include <AP_TECS/AP_TECS.h>
 #include <AP_NavEKF/AP_NavEKF.h>
+#include <AP_NavEKF2/AP_NavEKF2.h>
 #include <AP_Mission/AP_Mission.h>     // Mission command library
 
 #include <AP_Notify/AP_Notify.h>      // Notify library
@@ -208,7 +209,8 @@ private:
 // Inertial Navigation EKF
 #if AP_AHRS_NAVEKF_AVAILABLE
     NavEKF EKF{&ahrs, barometer, rangefinder};
-    AP_AHRS_NavEKF ahrs {ins, barometer, gps, rangefinder, EKF};
+    NavEKF2 EKF2{&ahrs, barometer, rangefinder};
+    AP_AHRS_NavEKF ahrs {ins, barometer, gps, rangefinder, EKF, EKF2};
 #else
     AP_AHRS_DCM ahrs {ins, barometer, gps};
 #endif
