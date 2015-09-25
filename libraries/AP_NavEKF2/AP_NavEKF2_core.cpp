@@ -58,7 +58,7 @@ bool NavEKF2_core::healthy(void) const
     if (faultInt > 0) {
         return false;
     }
-    if (frontend._fallback && velTestRatio > 1 && posTestRatio > 1 && hgtTestRatio > 1) {
+    if (velTestRatio > 1 && posTestRatio > 1 && hgtTestRatio > 1) {
         // all three metrics being above 1 means the filter is
         // extremely unhealthy.
         return false;
@@ -317,7 +317,7 @@ void NavEKF2_core::SelectVelPosFusion()
             ResetVelocity();
             CovarianceInit();
             // record the fail time
-            lastPosFailTime = imuSampleTime_ms;
+            lastPosFailTime_ms = imuSampleTime_ms;
             // Reset the normalised innovation to avoid false failing the bad position fusion test
             posTestRatio = 0.0f;
         }
@@ -331,8 +331,8 @@ void NavEKF2_core::SelectVelPosFusion()
 
     // If we haven't received height data for a while, then declare the height data as being timed out
     // set timeout period based on whether we have vertical GPS velocity available to constrain drift
-    hgtRetryTime = (useGpsVertVel && !velTimeout) ? frontend.hgtRetryTimeMode0 : frontend.hgtRetryTimeMode12;
-    if (imuSampleTime_ms - lastHgtReceived_ms > hgtRetryTime) {
+    hgtRetryTime_ms = (useGpsVertVel && !velTimeout) ? frontend.hgtRetryTimeMode0_ms : frontend.hgtRetryTimeMode12_ms;
+    if (imuSampleTime_ms - lastHgtReceived_ms > hgtRetryTime_ms) {
         hgtTimeout = true;
     }
 
@@ -355,11 +355,11 @@ void NavEKF2_core::SelectVelPosFusion()
     // of GPS and severe loss of position accuracy.
     uint32_t gpsRetryTime;
     if (useAirspeed()) {
-        gpsRetryTime = frontend.gpsRetryTimeUseTAS;
+        gpsRetryTime = frontend.gpsRetryTimeUseTAS_ms;
     } else {
-        gpsRetryTime = frontend.gpsRetryTimeNoTAS;
+        gpsRetryTime = frontend.gpsRetryTimeNoTAS_ms;
     }
-    if ((posTestRatio > 2.0f) && ((imuSampleTime_ms - lastPosFailTime) < gpsRetryTime) && ((imuSampleTime_ms - lastPosFailTime) > gpsRetryTime/2) && fusePosData) {
+    if ((posTestRatio > 2.0f) && ((imuSampleTime_ms - lastPosFailTime_ms) < gpsRetryTime) && ((imuSampleTime_ms - lastPosFailTime_ms) > gpsRetryTime/2) && fusePosData) {
         lastGpsAidBadTime_ms = imuSampleTime_ms;
         gpsAidingBad = true;
     }
@@ -413,7 +413,7 @@ void NavEKF2_core::SelectTasFusion()
     readAirSpdData();
 
     // If we haven't received airspeed data for a while, then declare the airspeed data as being timed out
-    if (imuSampleTime_ms - tasDataNew.time_ms > frontend.tasRetryTime) {
+    if (imuSampleTime_ms - tasDataNew.time_ms > frontend.tasRetryTime_ms) {
         tasTimeout = true;
     }
 
@@ -424,7 +424,7 @@ void NavEKF2_core::SelectTasFusion()
         // ensure that the covariance prediction is up to date before fusing data
         if (!covPredStep) CovariancePrediction();
         FuseAirspeed();
-        TASmsecPrev = imuSampleTime_ms;
+        prevTasStep_ms = imuSampleTime_ms;
         tasDataWaiting = false;
         newDataTas = false;
     }
@@ -436,9 +436,9 @@ void NavEKF2_core::SelectTasFusion()
 void NavEKF2_core::SelectBetaFusion()
 {
     // set true when the fusion time interval has triggered
-    bool f_timeTrigger = ((imuSampleTime_ms - BETAmsecPrev) >= frontend.msecBetaAvg);
+    bool f_timeTrigger = ((imuSampleTime_ms - prevBetaStep_ms) >= frontend.betaAvg_ms);
     // set true when use of synthetic sideslip fusion is necessary because we have limited sensor data or are dead reckoning position
-    bool f_required = !(use_compass() && useAirspeed() && ((imuSampleTime_ms - lastPosPassTime) < frontend.gpsRetryTimeNoTAS));
+    bool f_required = !(use_compass() && useAirspeed() && ((imuSampleTime_ms - lastPosPassTime_ms) < frontend.gpsRetryTimeNoTAS_ms));
     // set true when sideslip fusion is feasible (requires zero sideslip assumption to be valid and use of wind states)
     bool f_feasible = (assume_zero_sideslip() && !inhibitWindStates);
     // use synthetic sideslip fusion if feasible, required and enough time has lapsed since the last fusion
@@ -446,7 +446,7 @@ void NavEKF2_core::SelectBetaFusion()
         // ensure that the covariance prediction is up to date before fusing data
         if (!covPredStep) CovariancePrediction();
         FuseSideslip();
-        BETAmsecPrev = imuSampleTime_ms;
+        prevBetaStep_ms = imuSampleTime_ms;
     }
 }
 
@@ -1293,8 +1293,8 @@ void NavEKF2_core::FuseVelPosNED()
 
         // set the GPS data timeout depending on whether airspeed data is present
         uint32_t gpsRetryTime;
-        if (useAirspeed()) gpsRetryTime = frontend.gpsRetryTimeUseTAS;
-        else gpsRetryTime = frontend.gpsRetryTimeNoTAS;
+        if (useAirspeed()) gpsRetryTime = frontend.gpsRetryTimeUseTAS_ms;
+        else gpsRetryTime = frontend.gpsRetryTimeNoTAS_ms;
 
         // form the observation vector and zero velocity and horizontal position observations if in constant position mode
         // If in constant velocity mode, hold the last known horizontal velocity vector
@@ -1348,7 +1348,7 @@ void NavEKF2_core::FuseVelPosNED()
         // if vertical GPS velocity data is being used, check to see if the GPS vertical velocity and barometer
         // innovations have the same sign and are outside limits. If so, then it is likely aliasing is affecting
         // the accelerometers and we should disable the GPS and barometer innovation consistency checks.
-        if (useGpsVertVel && fuseVelData && (imuSampleTime_ms - lastHgtReceived_ms) <  (2 * frontend.msecHgtAvg)) {
+        if (useGpsVertVel && fuseVelData && (imuSampleTime_ms - lastHgtReceived_ms) <  (2 * frontend.hgtAvg_ms)) {
             // calculate innovations for height and vertical GPS vel measurements
             float hgtErr  = stateStruct.position.z - observation[5];
             float velDErr = stateStruct.velocity.z - observation[2];
@@ -1373,13 +1373,13 @@ void NavEKF2_core::FuseVelPosNED()
             posTestRatio = (sq(innovVelPos[3]) + sq(innovVelPos[4])) / maxPosInnov2;
             posHealth = ((posTestRatio < 1.0f) || badIMUdata);
             // declare a timeout condition if we have been too long without data or not aiding
-            posTimeout = (((imuSampleTime_ms - lastPosPassTime) > gpsRetryTime) || PV_AidingMode == AID_NONE);
+            posTimeout = (((imuSampleTime_ms - lastPosPassTime_ms) > gpsRetryTime) || PV_AidingMode == AID_NONE);
             // use position data if healthy, timed out, or in constant position mode
             if (posHealth || posTimeout || constPosMode) {
                 posHealth = true;
                 // only reset the failed time and do glitch timeout checks if we are doing full aiding
                 if (PV_AidingMode == AID_ABSOLUTE) {
-                    lastPosPassTime = imuSampleTime_ms;
+                    lastPosPassTime_ms = imuSampleTime_ms;
                     // if timed out or outside the specified uncertainty radius, increment the offset applied to GPS data to compensate for large GPS position jumps
                     if (posTimeout || ((varInnovVelPos[3] + varInnovVelPos[4]) > sq(float(frontend._gpsGlitchRadiusMax)))) {
                         gpsPosGlitchOffsetNE.x += innovVelPos[3];
@@ -1393,7 +1393,7 @@ void NavEKF2_core::FuseVelPosNED()
                         // don't fuse data on this time step
                         fusePosData = false;
                         // record the fail time
-                        lastPosFailTime = imuSampleTime_ms;
+                        lastPosFailTime_ms = imuSampleTime_ms;
                         // Reset the normalised innovation to avoid false failing the bad position fusion test
                         posTestRatio = 0.0f;
                     }
@@ -1429,12 +1429,12 @@ void NavEKF2_core::FuseVelPosNED()
             // fail if the ratio is greater than 1
             velHealth = ((velTestRatio < 1.0f)  || badIMUdata);
             // declare a timeout if we have not fused velocity data for too long or not aiding
-            velTimeout = (((imuSampleTime_ms - lastVelPassTime) > gpsRetryTime) || PV_AidingMode == AID_NONE);
+            velTimeout = (((imuSampleTime_ms - lastVelPassTime_ms) > gpsRetryTime) || PV_AidingMode == AID_NONE);
             // if data is healthy  or in constant velocity mode we fuse it
             if (velHealth || velTimeout || constVelMode) {
                 velHealth = true;
                 // restart the timeout count
-                lastVelPassTime = imuSampleTime_ms;
+                lastVelPassTime_ms = imuSampleTime_ms;
             } else if (velTimeout && !posHealth && PV_AidingMode == AID_ABSOLUTE) {
                 // if data is not healthy and timed out and position is unhealthy and we are using aiding, we reset the velocity, but do not fuse data on this time step
                 ResetVelocity();
@@ -1455,11 +1455,11 @@ void NavEKF2_core::FuseVelPosNED()
             hgtTestRatio = sq(innovVelPos[5]) / (sq(frontend._hgtInnovGate) * varInnovVelPos[5]);
             // fail if the ratio is > 1, but don't fail if bad IMU data
             hgtHealth = ((hgtTestRatio < 1.0f) || badIMUdata);
-            hgtTimeout = (imuSampleTime_ms - lastHgtPassTime) > hgtRetryTime;
+            hgtTimeout = (imuSampleTime_ms - lastHgtPassTime_ms) > hgtRetryTime_ms;
             // Fuse height data if healthy or timed out or in constant position mode
             if (hgtHealth || hgtTimeout || constPosMode) {
                 hgtHealth = true;
-                lastHgtPassTime = imuSampleTime_ms;
+                lastHgtPassTime_ms = imuSampleTime_ms;
                 // if timed out, reset the height, but do not fuse data on this time step
                 if (hgtTimeout) {
                     ResetHeight();
@@ -2065,13 +2065,13 @@ void NavEKF2_core::FuseAirspeed()
 
         // fail if the ratio is > 1, but don't fail if bad IMU data
         tasHealth = ((tasTestRatio < 1.0f) || badIMUdata);
-        tasTimeout = (imuSampleTime_ms - lastTasPassTime) > frontend.tasRetryTime;
+        tasTimeout = (imuSampleTime_ms - lastTasPassTime_ms) > frontend.tasRetryTime_ms;
 
         // test the ratio before fusing data, forcing fusion if airspeed and position are timed out as we have no choice but to try and use airspeed to constrain error growth
         if (tasHealth || (tasTimeout && posTimeout)) {
 
             // restart the counter
-            lastTasPassTime = imuSampleTime_ms;
+            lastTasPassTime_ms = imuSampleTime_ms;
 
 
             // zero the attitude error state - by definition it is assumed to be zero before each observaton fusion
@@ -2768,7 +2768,7 @@ void NavEKF2_core::EstimateTerrainOffset()
 
         // in addition to a terrain gradient error model, we also have a time based error growth that is scaled using the gradient parameter
         float timeLapsed = min(0.001f * (imuSampleTime_ms - timeAtLastAuxEKF_ms), 1.0f);
-        float Pincrement = (distanceTravelledSq * sq(0.01f*float(frontend._gndGradientSigma))) + sq(float(frontend._gndGradientSigma) * timeLapsed);
+        float Pincrement = (distanceTravelledSq * sq(0.01f*float(frontend.gndGradientSigma))) + sq(float(frontend.gndGradientSigma) * timeLapsed);
         Popt += Pincrement;
         timeAtLastAuxEKF_ms = imuSampleTime_ms;
 
@@ -2784,7 +2784,7 @@ void NavEKF2_core::EstimateTerrainOffset()
             float q3 = stateStruct.quat[3]; // quaternion at optical flow measurement time
 
             // Set range finder measurement noise variance. TODO make this a function of range and tilt to allow for sensor, alignment and AHRS errors
-            float R_RNG = 0.5f;
+            float R_RNG = frontend._rngNoise;
 
             // calculate Kalman gain
             float SK_RNG = sq(q0) - sq(q1) - sq(q2) + sq(q3);
@@ -3272,16 +3272,16 @@ void NavEKF2_core::getGyroBias(Vector3f &gyroBias) const
     gyroBias = stateStruct.gyro_bias / dtIMUavg;
 }
 
-// return body axis gyro scale factor estimates
-void NavEKF2_core::getGyroScale(Vector3f &gyroScale) const
+// return body axis gyro scale factor error as a percentage
+void NavEKF2_core::getGyroScaleErrorPercentage(Vector3f &gyroScale) const
 {
     if (!statesInitialised) {
         gyroScale.x = gyroScale.y = gyroScale.z = 0;
         return;
     }
-    gyroScale.x = 1.0f/stateStruct.gyro_scale.x - 1.0f;
-    gyroScale.y = 1.0f/stateStruct.gyro_scale.y - 1.0f;
-    gyroScale.z = 1.0f/stateStruct.gyro_scale.z - 1.0f;
+    gyroScale.x = 100.0f/stateStruct.gyro_scale.x - 100.0f;
+    gyroScale.y = 100.0f/stateStruct.gyro_scale.y - 100.0f;
+    gyroScale.z = 100.0f/stateStruct.gyro_scale.z - 100.0f;
 }
 
 // return tilt error convergence metric
@@ -3360,20 +3360,12 @@ void NavEKF2_core::getEkfControlLimits(float &ekfGndSpdLimit, float &ekfNavVelGa
     }
 }
 
-// return weighting of first IMU in blending function
-void NavEKF2_core::getIMU1Weighting(float &ret) const
-{
-    ret = IMU1_weighting;
-}
-
-// return the individual Z-accel bias estimates in m/s^2
-void NavEKF2_core::getAccelZBias(float &zbias1, float &zbias2) const {
+// return the Z-accel bias estimate in m/s^2
+void NavEKF2_core::getAccelZBias(float &zbias) const {
     if (dtIMUavg > 0) {
-        zbias1 = stateStruct.accel_zbias / dtIMUavg;
-        zbias2 = 0;
+        zbias = stateStruct.accel_zbias / dtIMUavg;
     } else {
-        zbias1 = 0;
-        zbias2 = 0;
+        zbias = 0;
     }
 }
 
@@ -3737,7 +3729,7 @@ void NavEKF2_core::readGpsData()
 
         // estimate when the GPS fix was valid, allowing for GPS processing and other delays
         // ideally we should be using a timing signal from the GPS receiver to set this time
-        gpsDataNew.time_ms = lastTimeGpsReceived_ms - frontend._msecGpsDelay;
+        gpsDataNew.time_ms = lastTimeGpsReceived_ms - frontend._gpsDelay_ms;
 
         // read the NED velocity from the GPS
         gpsDataNew.vel = _ahrs->get_gps().velocity();
@@ -3812,7 +3804,7 @@ void NavEKF2_core::readGpsData()
         gpsNotAvailable = true;
         if (imuSampleTime_ms - gpsDataNew.time_ms > 200) {
             gpsDataNew.pos.zero();
-            gpsDataNew.time_ms = imuSampleTime_ms-frontend._msecGpsDelay;
+            gpsDataNew.time_ms = imuSampleTime_ms-frontend._gpsDelay_ms;
             // save measurement to buffer to be fused later
             StoreGPS();
         }
@@ -3854,7 +3846,7 @@ void NavEKF2_core::readHgtData()
         // it is is reset to last height measurement on disarming in performArmingChecks()
         if (!getTakeoffExpected()) {
             const float gndHgtFiltTC = 0.5f;
-            const float dtBaro = frontend.msecHgtAvg*1.0e-3f;
+            const float dtBaro = frontend.hgtAvg_ms*1.0e-3f;
             float alpha = constrain_float(dtBaro / (dtBaro+gndHgtFiltTC),0.0f,1.0f);
             meaHgtAtTakeOff += (baroDataDelayed.hgt-meaHgtAtTakeOff)*alpha;
         } else if (filterArmed && getTakeoffExpected()) {
@@ -3867,7 +3859,7 @@ void NavEKF2_core::readHgtData()
         lastHgtReceived_ms = _baro.get_last_update();
 
         // estimate of time height measurement was taken, allowing for delays
-        hgtMeasTime_ms = lastHgtReceived_ms - frontend.msecHgtDelay;
+        hgtMeasTime_ms = lastHgtReceived_ms - frontend._hgtDelay_ms;
 
         // save baro measurement to buffer to be fused later
         baroDataNew.time_ms = hgtMeasTime_ms;
@@ -3878,12 +3870,12 @@ void NavEKF2_core::readHgtData()
 // check for new magnetometer data and update store measurements if available
 void NavEKF2_core::readMagData()
 {
-    if (use_compass() && _ahrs->get_compass()->last_update_usec() != lastMagUpdate) {
+    if (use_compass() && _ahrs->get_compass()->last_update_usec() != lastMagUpdate_ms) {
         // store time of last measurement update
-        lastMagUpdate = _ahrs->get_compass()->last_update_usec();
+        lastMagUpdate_ms = _ahrs->get_compass()->last_update_usec();
 
         // estimate of time magnetometer measurement was taken, allowing for delays
-        magMeasTime_ms = imuSampleTime_ms - frontend.msecMagDelay;
+        magMeasTime_ms = imuSampleTime_ms - frontend.magDelay_ms;
 
         // read compass data and scale to improve numerical conditioning
         magDataNew.mag = _ahrs->get_compass()->get_field() * 0.001f;
@@ -3919,7 +3911,7 @@ void NavEKF2_core::readAirSpdData()
             aspeed->last_update_ms() != timeTasReceived_ms) {
         tasDataNew.tas = aspeed->get_airspeed() * aspeed->get_EAS2TAS();
         timeTasReceived_ms = aspeed->last_update_ms();
-        tasDataNew.time_ms = timeTasReceived_ms - frontend.msecTasDelay;
+        tasDataNew.time_ms = timeTasReceived_ms - frontend.tasDelay_ms;
         newDataTas = true;
         StoreTAS();
         RecallTAS();
@@ -3939,7 +3931,6 @@ void NavEKF2_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
     // This filter uses a different definition of optical flow rates to the sensor with a positive optical flow rate produced by a
     // negative rotation about that axis. For example a positive rotation of the flight vehicle about its X (roll) axis would produce a negative X flow rate
     flowMeaTime_ms = imuSampleTime_ms;
-    flowQuality = rawFlowQuality;
     // calculate bias errors on flow sensor gyro rates, but protect against spikes in data
     // reset the accumulated body delta angle and time
     // don't do the calculation if not enough time lapsed for a reliable body rate measurement
@@ -3971,7 +3962,7 @@ void NavEKF2_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
         // record time last observation was received so we can detect loss of data elsewhere
         flowValidMeaTime_ms = imuSampleTime_ms;
         // estimate sample time of the measurement
-        ofDataNew.time_ms = imuSampleTime_ms - frontend._msecFlowDelay - frontend.flowTimeDeltaAvg_ms/2;
+        ofDataNew.time_ms = imuSampleTime_ms - frontend._flowDelay_ms - frontend.flowTimeDeltaAvg_ms/2;
         // Save data to buffer
         StoreOF();
         // Check for data at the fusion time horizon
@@ -4024,10 +4015,12 @@ Quaternion NavEKF2_core::calcQuatAndFieldStates(float roll, float pitch)
             // store the yaw change so that it can be retrieved externally for use by the control loops to prevent yaw disturbances following a reset
             Vector3f tempEuler;
             stateStruct.quat.to_euler(tempEuler.x, tempEuler.y, tempEuler.z);
-            yawResetAngle = wrap_PI(yaw - tempEuler.z);
-            // set the flag to indicate that an in-flight yaw reset has been performed
-            // this will be cleared when the reset value is retrieved
-            yawResetAngleWaiting = true;
+            // this check ensures we accumulate the resets that occur within a single iteration of the EKF
+            if (imuSampleTime_ms != lastYawReset_ms) {
+                yawResetAngle = 0.0f;
+            }
+            yawResetAngle += wrap_PI(yaw - tempEuler.z);
+            lastYawReset_ms = imuSampleTime_ms;
             // calculate an initial quaternion using the new yaw value
             initQuat.from_euler(roll, pitch, yaw);
         } else {
@@ -4151,16 +4144,15 @@ void NavEKF2_core::InitialiseVariables()
     // initialise time stamps
     imuSampleTime_ms = hal.scheduler->millis();
     lastHealthyMagTime_ms = imuSampleTime_ms;
-    TASmsecPrev = imuSampleTime_ms;
-    BETAmsecPrev = imuSampleTime_ms;
-    lastMagUpdate = 0;
+    prevTasStep_ms = imuSampleTime_ms;
+    prevBetaStep_ms = imuSampleTime_ms;
+    lastMagUpdate_ms = 0;
     lastHgtReceived_ms = imuSampleTime_ms;
-    lastVelPassTime = imuSampleTime_ms;
-    lastPosPassTime = imuSampleTime_ms;
-    lastPosFailTime = 0;
-    lastHgtPassTime = imuSampleTime_ms;
-    lastTasPassTime = imuSampleTime_ms;
-    lastStateStoreTime_ms = imuSampleTime_ms;
+    lastVelPassTime_ms = imuSampleTime_ms;
+    lastPosPassTime_ms = imuSampleTime_ms;
+    lastPosFailTime_ms = 0;
+    lastHgtPassTime_ms = imuSampleTime_ms;
+    lastTasPassTime_ms = imuSampleTime_ms;
     lastTimeGpsReceived_ms = 0;
     secondLastGpsTime_ms = 0;
     lastDecayTime_ms = imuSampleTime_ms;
@@ -4189,10 +4181,6 @@ void NavEKF2_core::InitialiseVariables()
     secondMagYawInit = false;
     dtIMUavg = 0.0025f;
     dt = 0;
-    lastGyroBias.zero();
-    lastAngRate.zero();
-    lastAccel1.zero();
-    lastAccel2.zero();
     velDotNEDfilt.zero();
     summedDelAng.zero();
     summedDelVel.zero();
@@ -4204,7 +4192,6 @@ void NavEKF2_core::InitialiseVariables()
     memset(&processNoise[0], 0, sizeof(processNoise));
     flowDataValid = false;
     newDataRng  = false;
-    flowFusePerformed = false;
     fuseOptFlowData = false;
     Popt = 0.0f;
     terrainState = 0.0f;
@@ -4228,14 +4215,12 @@ void NavEKF2_core::InitialiseVariables()
     hgtRate = 0.0f;
     mag_state.q0 = 1;
     mag_state.DCM.identity();
-    IMU1_weighting = 0.5f;
     onGround = true;
     manoeuvring = false;
     yawAligned = false;
     inhibitWindStates = true;
     inhibitMagStates = true;
     gndOffsetValid =  false;
-    flowXfailed = false;
     validOrigin = false;
     takeoffExpectedSet_ms = 0;
     expectGndEffectTakeoff = false;
@@ -4247,7 +4232,7 @@ void NavEKF2_core::InitialiseVariables()
     highYawRate = false;
     yawRateFilt = 0.0f;
     yawResetAngle = 0.0f;
-    yawResetAngleWaiting = false;
+    lastYawReset_ms = 0;
     tiltErrFilt = 1.0f;
     tiltAlignComplete = false;
     yawAlignComplete = false;
@@ -4426,7 +4411,7 @@ void  NavEKF2_core::getFilterStatus(nav_filter_status &status) const
     status.flags.takeoff_detected = takeOffDetected; // takeoff for optical flow navigation has been detected
     status.flags.takeoff = expectGndEffectTakeoff; // The EKF has been told to expect takeoff and is in a ground effect mitigation mode
     status.flags.touchdown = expectGndEffectTouchdown; // The EKF has been told to detect touchdown and is in a ground effect mitigation mode
-    status.flags.using_gps = (imuSampleTime_ms - lastPosPassTime) < 4000;
+    status.flags.using_gps = (imuSampleTime_ms - lastPosPassTime_ms) < 4000;
 }
 
 // send an EKF_STATUS message to GCS
@@ -4567,9 +4552,9 @@ void NavEKF2_core::performArmingChecks()
                 lastTimeGpsReceived_ms = imuSampleTime_ms;
                 secondLastGpsTime_ms = imuSampleTime_ms;
                 // reset the last valid position fix time to prevent unwanted activation of GPS glitch logic
-                lastPosPassTime = imuSampleTime_ms;
+                lastPosPassTime_ms = imuSampleTime_ms;
                 // reset the fail time to prevent premature reporting of loss of position accruacy
-                lastPosFailTime = 0;
+                lastPosFailTime_ms = 0;
             }
         }
         // Reset all position, velocity and covariance
@@ -4807,14 +4792,6 @@ bool NavEKF2_core::getHeightControlLimit(float &height) const
     }
 }
 
-// provides the delta quaternion that was used by the INS calculation to rotate from the previous orientation to the orientation at the current time
-// the delta quaternion returned will be a zero rotation if the INS calculation was not performed on that time step
-Quaternion NavEKF2_core::getDeltaQuaternion(void) const
-{
-    // Note: correctedDelAngQuat is reset to a zero rotation at the start of every update cycle in UpdateFilter()
-    return correctedDelAngQuat;
-}
-
 // return the quaternions defining the rotation from NED to XYZ (body) axes
 void NavEKF2_core::getQuaternion(Quaternion& ret) const
 {
@@ -4835,18 +4812,11 @@ void NavEKF2_core::alignMagStateDeclination()
 }
 
 // return the amount of yaw angle change due to the last yaw angle reset in radians
-// returns true if a reset yaw angle has been updated and not queried
-// this function should not have more than one client
-bool NavEKF2_core::getLastYawResetAngle(float &yawAng)
+// returns the time of the last yaw angle reset or 0 if no reset has ever occurred
+uint32_t NavEKF2_core::getLastYawResetAngle(float &yawAng)
 {
-    if (yawResetAngleWaiting) {
-        yawAng = yawResetAngle;
-        yawResetAngleWaiting = false;
-        return true;
-    } else {
-        yawAng = yawResetAngle;
-        return false;
-    }
+    yawAng = yawResetAngle;
+    return lastYawReset_ms;
 }
 
 // Fuse compass measurements usinga simple declination observation model that doesn't use magnetic field states

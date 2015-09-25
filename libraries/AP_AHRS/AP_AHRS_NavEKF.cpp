@@ -200,29 +200,22 @@ void AP_AHRS_NavEKF::update_EKF2(void)
             }
             _gyro_estimate += _gyro_bias;
 
-            float abias1, abias2;
-            EKF2.getAccelZBias(abias1, abias2);
+            float abias;
+            EKF2.getAccelZBias(abias);
 
+            // This EKF uses the primary IMU
+            // Eventually we will run a separate instance of the EKF for each IMU and do the selection and blending of EKF outputs upstream
             // update _accel_ef_ekf
             for (uint8_t i=0; i<_ins.get_accel_count(); i++) {
                 Vector3f accel = _ins.get_accel(i);
-                if (i==0) {
-                    accel.z -= abias1;
-                } else if (i==1) {
-                    accel.z -= abias2;
+                if (i==_ins.get_primary_accel()) {
+                    accel.z -= abias;
                 }
                 if (_ins.get_accel_health(i)) {
                     _accel_ef_ekf[i] = _dcm_matrix * accel;
                 }
             }
-
-            if(_ins.use_accel(0) && _ins.use_accel(1)) {
-                float IMU1_weighting;
-                EKF2.getIMU1Weighting(IMU1_weighting);
-                _accel_ef_ekf_blended = _accel_ef_ekf[0] * IMU1_weighting + _accel_ef_ekf[1] * (1.0f-IMU1_weighting);
-            } else {
-                _accel_ef_ekf_blended = _accel_ef_ekf[_ins.get_primary_accel()];
-            }
+            _accel_ef_ekf_blended = _accel_ef_ekf[_ins.get_primary_accel()];
         }
     }
 }
@@ -686,9 +679,8 @@ const char *AP_AHRS_NavEKF::prearm_failure_reason(void) const
 }
 
 // return the amount of yaw angle change due to the last yaw angle reset in radians
-// returns true if a reset yaw angle has been updated and not queried
-// this function should not have more than one client
-bool AP_AHRS_NavEKF::getLastYawResetAngle(float &yawAng)
+// returns the time of the last yaw angle reset or 0 if no reset has ever occurred
+uint32_t AP_AHRS_NavEKF::getLastYawResetAngle(float &yawAng)
 {
     switch (ekf_type()) {
     case 1:

@@ -71,8 +71,8 @@ public:
     // return body axis gyro bias estimates in rad/sec
     void getGyroBias(Vector3f &gyroBias) const;
 
-    // return body axis gyro scale factor estimates
-    void getGyroScale(Vector3f &gyroScale) const;
+    // return body axis gyro scale factor error as a percentage
+    void getGyroScaleErrorPercentage(Vector3f &gyroScale) const;
 
     // return tilt error convergence metric
     void getTiltError(float &ang) const;
@@ -99,11 +99,8 @@ public:
     // return the scale factor to be applied to navigation velocity gains to compensate for increase in velocity noise with height when using optical flow
     void getEkfControlLimits(float &ekfGndSpdLimit, float &ekfNavVelGainScaler) const;
 
-    // return weighting of first IMU in blending function
-    void getIMU1Weighting(float &ret) const;
-
-    // return the individual Z-accel bias estimates in m/s^2
-    void getAccelZBias(float &zbias1, float &zbias2) const;
+    // return the Z-accel bias estimate in m/s^2
+    void getAccelZBias(float &zbias) const;
 
     // return the NED wind speed estimates in m/s (positive is air moving in the direction of the axis)
     void getWind(Vector3f &wind) const;
@@ -216,14 +213,9 @@ public:
     // this is needed to ensure the vehicle does not fly too high when using optical flow navigation
     bool getHeightControlLimit(float &height) const;
 
-    // provides the quaternion that was used by the INS calculation to rotate from the previous orientation to the orientaion at the current time step
-    // returns a zero rotation quaternion if the INS calculation was not performed on that time step.
-    Quaternion getDeltaQuaternion(void) const;
-
     // return the amount of yaw angle change due to the last yaw angle reset in radians
-    // returns true if a reset yaw angle has been updated and not queried
-    // this function should not have more than one client
-    bool getLastYawResetAngle(float &yawAng);
+    // returns the time of the last yaw angle reset or 0 if no reset has ever occurred
+    uint32_t getLastYawResetAngle(float &yawAng);
 
     // allow the enable flag to be set by Replay
     void set_enable(bool enable) { _enable.set(enable); }
@@ -249,7 +241,8 @@ private:
     AP_Float _accNoise;             // accelerometer process noise : m/s^2
     AP_Float _gyroBiasProcessNoise; // gyro bias state process noise : rad/s
     AP_Float _accelBiasProcessNoise;// accel bias state process noise : m/s^2
-    AP_Int16 _msecGpsDelay;         // effective average delay of GPS measurements relative to time of receipt (msec)
+    AP_Int16 _gpsDelay_ms;          // effective average delay of GPS measurements relative to inertial measurement (msec)
+    AP_Int16 _hgtDelay_ms;          // effective average delay of Height measurements relative to inertial measurements (msec)
     AP_Int8  _fusionModeGPS;        // 0 = use 3D velocity, 1 = use 2D velocity, 2 = use no velocity
     AP_Int8  _gpsVelInnovGate;      // Number of standard deviations applied to GPS velocity innovation consistency check
     AP_Int8  _gpsPosInnovGate;      // Number of standard deviations applied to GPS position innovation consistency check
@@ -258,49 +251,42 @@ private:
     AP_Int8  _tasInnovGate;         // Number of standard deviations applied to true airspeed innovation consistency check
     AP_Int8  _magCal;               // Sets activation condition for in-flight magnetometer calibration
     AP_Int8 _gpsGlitchRadiusMax;    // Maximum allowed discrepancy between inertial and GPS Horizontal position before GPS glitch is declared : m
-    AP_Int8 _gndGradientSigma;      // RMS terrain gradient percentage assumed by the terrain height estimation.
     AP_Float _flowNoise;            // optical flow rate measurement noise
     AP_Int8  _flowInnovGate;        // Number of standard deviations applied to optical flow innovation consistency check
-    AP_Int8  _msecFlowDelay;        // effective average delay of optical flow measurements rel to IMU (msec)
+    AP_Int8  _flowDelay_ms;         // effective average delay of optical flow measurements rel to IMU (msec)
     AP_Int8  _rngInnovGate;         // Number of standard deviations applied to range finder innovation consistency check
     AP_Float _maxFlowRate;          // Maximum flow rate magnitude that will be accepted by the filter
-    AP_Int8 _fallback;              // EKF-to-DCM fallback strictness. 0 = trust EKF more, 1 = fallback more conservatively.
     AP_Int8 _altSource;             // Primary alt source during optical flow navigation. 0 = use Baro, 1 = use range finder.
     AP_Float _gyroScaleProcessNoise;// gyro scale factor state process noise : 1/s
+    AP_Float _rngNoise;             // Range finder noise : m
 
     // Tuning parameters
     const float gpsNEVelVarAccScale;    // Scale factor applied to NE velocity measurement variance due to manoeuvre acceleration
     const float gpsDVelVarAccScale;     // Scale factor applied to vertical velocity measurement variance due to manoeuvre acceleration
     const float gpsPosVarAccScale;      // Scale factor applied to horizontal position measurement variance due to manoeuvre acceleration
-    const uint16_t msecHgtDelay;        // Height measurement delay (msec)
-    const uint16_t msecMagDelay;        // Magnetometer measurement delay (msec)
-    const uint16_t msecTasDelay;        // Airspeed measurement delay (msec)
-    const uint16_t gpsRetryTimeUseTAS;  // GPS retry time with airspeed measurements (msec)
-    const uint16_t gpsRetryTimeNoTAS;   // GPS retry time without airspeed measurements (msec)
-    const uint16_t gpsFailTimeWithFlow; // If we have no GPs for longer than this and we have optical flow, then we will switch across to using optical flow (msec)
-    const uint16_t hgtRetryTimeMode0;   // Height retry time with vertical velocity measurement (msec)
-    const uint16_t hgtRetryTimeMode12;  // Height retry time without vertical velocity measurement (msec)
-    const uint16_t tasRetryTime;        // True airspeed timeout and retry interval (msec)
+    const uint16_t magDelay_ms;         // Magnetometer measurement delay (msec)
+    const uint16_t tasDelay_ms;         // Airspeed measurement delay (msec)
+    const uint16_t gpsRetryTimeUseTAS_ms;  // GPS retry time with airspeed measurements (msec)
+    const uint16_t gpsRetryTimeNoTAS_ms;   // GPS retry time without airspeed measurements (msec)
+    const uint16_t gpsFailTimeWithFlow_ms; // If we have no GPs for longer than this and we have optical flow, then we will switch across to using optical flow (msec)
+    const uint16_t hgtRetryTimeMode0_ms;   // Height retry time with vertical velocity measurement (msec)
+    const uint16_t hgtRetryTimeMode12_ms;  // Height retry time without vertical velocity measurement (msec)
+    const uint16_t tasRetryTime_ms;     // True airspeed timeout and retry interval (msec)
     const uint32_t magFailTimeLimit_ms; // number of msec before a magnetometer failing innovation consistency checks is declared failed (msec)
     const float magVarRateScale;        // scale factor applied to magnetometer variance due to angular rate
     const float gyroBiasNoiseScaler;    // scale factor applied to gyro bias state process noise when on ground
     const float accelBiasNoiseScaler;   // scale factor applied to accel bias state process noise when on ground
-    const uint16_t msecGpsAvg;          // average number of msec between GPS measurements
-    const uint16_t msecHgtAvg;          // average number of msec between height measurements
-    const uint16_t msecMagAvg;          // average number of msec between magnetometer measurements
-    const uint16_t msecBetaAvg;         // average number of msec between synthetic sideslip measurements
-    const uint16_t msecBetaMax;         // maximum number of msec between synthetic sideslip measurements
-    const uint16_t msecFlowAvg;         // average number of msec between optical flow measurements
-    const float dtVelPos;               // number of seconds between position and velocity corrections. This should be a multiple of the imu update interval.
+    const uint16_t hgtAvg_ms;           // average number of msec between height measurements
+    const uint16_t betaAvg_ms;          // average number of msec between synthetic sideslip measurements
     const float covTimeStepMax;         // maximum time (sec) between covariance prediction updates
     const float covDelAngMax;           // maximum delta angle between covariance prediction updates
-    const uint32_t TASmsecMax;          // maximum allowed interval between airspeed measurement updates
     const float DCM33FlowMin;           // If Tbn(3,3) is less than this number, optical flow measurements will not be fused as tilt is too high.
     const float fScaleFactorPnoise;     // Process noise added to focal length scale factor state variance at each time step
     const uint8_t flowTimeDeltaAvg_ms;  // average interval between optical flow measurements (msec)
     const uint32_t flowIntervalMax_ms;  // maximum allowable time between flow fusion events
-    const uint16_t gndEffectTimeout_ms;      // time in msec that ground effect mode is active after being activated
+    const uint16_t gndEffectTimeout_ms; // time in msec that ground effect mode is active after being activated
     const float gndEffectBaroScaler;    // scaler applied to the barometer observation variance when ground effect mode is active
+    const uint8_t gndGradientSigma;     // RMS terrain gradient percentage assumed by the terrain height estimation
 };
 
 #endif //AP_NavEKF2

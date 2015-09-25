@@ -4516,10 +4516,12 @@ Quaternion NavEKF::calcQuatAndFieldStates(float roll, float pitch)
             // store the yaw change so that it can be retrieved externally for use by the control loops to prevent yaw disturbances following a reset
             Vector3f tempEuler;
             state.quat.to_euler(tempEuler.x, tempEuler.y, tempEuler.z);
-            yawResetAngle = wrap_PI(yaw - tempEuler.z);
-            // set the flag to indicate that an in-flight yaw reset has been performed
-            // this will be cleared when the reset value is retrieved
-            yawResetAngleWaiting = true;
+            // this check ensures we accumulate the resets that occur within a single iteration of the EKF
+            if (imuSampleTime_ms != lastYawReset_ms) {
+                yawResetAngle = 0.0f;
+            }
+            yawResetAngle += wrap_PI(yaw - tempEuler.z);
+            lastYawReset_ms = imuSampleTime_ms;
             // calculate an initial quaternion using the new yaw value
             initQuat.from_euler(roll, pitch, yaw);
         } else {
@@ -4777,7 +4779,7 @@ void NavEKF::InitialiseVariables()
     highYawRate = false;
     yawRateFilt = 0.0f;
     yawResetAngle = 0.0f;
-    yawResetAngleWaiting = false;
+    lastYawReset_ms = 0;
     imuNoiseFiltState1 = 0.0f;
     imuNoiseFiltState2 = 0.0f;
     lastImuSwitchState = IMUSWITCH_MIXED;
@@ -4876,9 +4878,9 @@ return the filter fault status as a bitmasked integer
  1 = velocities are NaN
  2 = badly conditioned X magnetometer fusion
  3 = badly conditioned Y magnetometer fusion
- 5 = badly conditioned Z magnetometer fusion
- 6 = badly conditioned airspeed fusion
- 7 = badly conditioned synthetic sideslip fusion
+ 4 = badly conditioned Z magnetometer fusion
+ 5 = badly conditioned airspeed fusion
+ 6 = badly conditioned synthetic sideslip fusion
  7 = filter is not initialised
 */
 void  NavEKF::getFilterFaults(uint8_t &faults) const
@@ -5379,14 +5381,6 @@ bool NavEKF::getHeightControlLimit(float &height) const
     }
 }
 
-// provides the delta quaternion that was used by the INS calculation to rotate from the previous orientation to the orientation at the current time
-// the delta quaternion returned will be a zero rotation if the INS calculation was not performed on that time step
-Quaternion NavEKF::getDeltaQuaternion(void) const
-{
-    // Note: correctedDelAngQuat is reset to a zero rotation at the start of every update cycle in UpdateFilter()
-    return correctedDelAngQuat;
-}
-
 // return the quaternions defining the rotation from NED to XYZ (body) axes
 void NavEKF::getQuaternion(Quaternion& ret) const
 {
@@ -5407,18 +5401,11 @@ void NavEKF::alignMagStateDeclination()
 }
 
 // return the amount of yaw angle change due to the last yaw angle reset in radians
-// returns true if a reset yaw angle has been updated and not queried
-// this function should not have more than one client
-bool NavEKF::getLastYawResetAngle(float &yawAng)
+// returns the time of the last yaw angle reset or 0 if no reset has ever occurred
+uint32_t NavEKF::getLastYawResetAngle(float &yawAng)
 {
-    if (yawResetAngleWaiting) {
-        yawAng = yawResetAngle;
-        yawResetAngleWaiting = false;
-        return true;
-    } else {
-        yawAng = yawResetAngle;
-        return false;
-    }
+    yawAng = yawResetAngle;
+    return lastYawReset_ms;
 }
 
 // Check for signs of bad gyro health before flight
