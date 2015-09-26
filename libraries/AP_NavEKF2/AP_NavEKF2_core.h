@@ -612,7 +612,6 @@ private:
     bool magFuseRequired;           // boolean set to true when magnetometer fusion will be perfomred in the next time step
     uint32_t prevTasStep_ms;        // time stamp of last TAS fusion step
     uint32_t prevBetaStep_ms;       // time stamp of last synthetic sideslip fusion step
-    bool constPosMode;              // true when fusing a constant position to maintain attitude reference for planned operation without GPS or optical flow data
     uint32_t lastMagUpdate_ms;      // last time compass was updated
     Vector3f velDotNED;             // rate of change of velocity in NED frame
     Vector3f velDotNEDfilt;         // low pass filtered velDotNED
@@ -623,7 +622,6 @@ private:
     uint16_t hgtRetryTime_ms;       // time allowed without use of height measurements before a height timeout is declared
     uint32_t lastVelPassTime_ms;    // time stamp when GPS velocity measurement last passed innovation consistency check (msec)
     uint32_t lastPosPassTime_ms;    // time stamp when GPS position measurement last passed innovation consistency check (msec)
-    uint32_t lastPosFailTime_ms;    // time stamp when GPS position measurement last failed innovation consistency check (msec)
     uint32_t lastHgtPassTime_ms;    // time stamp when height measurement last passed innovation consistency check (msec)
     uint32_t lastTasPassTime_ms;    // time stamp when airspeed measurement last passed innovation consistency check (msec)
     uint32_t lastTimeGpsReceived_ms;// last time we recieved GPS data
@@ -660,7 +658,6 @@ private:
     float gpsSpdAccuracy;           // estimated speed accuracy in m/s returned by the UBlox GPS receiver
     uint32_t lastGpsVelFail_ms;     // time of last GPS vertical velocity consistency check fail
     Vector3f lastMagOffsets;        // magnetometer offsets returned by compass object from previous update
-    bool gpsAidingBad;              // true when GPS position measurements have been consistently rejected by the filter
     uint32_t lastGpsAidBadTime_ms;  // time in msec gps aiding was last detected to be bad
     float posDownAtArming;          // flight vehicle vertical position at arming used as a reference point
     bool highYawRate;               // true when the vehicle is doing rapid yaw rotation where gyro scale factor errors could cause loss of heading reference
@@ -699,6 +696,8 @@ private:
     float innovYaw;                 // compass yaw angle innovation (rad)
     uint32_t timeTasReceived_ms;    // tie last TAS data was received (msec)
     bool gpsQualGood;               // true when the GPS quality can be used to initialise the navigation system
+    uint32_t magYawResetTimer_ms;   // timer in msec used to track how long good magnetometer data is failing innovation consistency checks
+    bool consistentMagData;         // true when the magnetometers are passing consistency checks
 
     // variables added for optical flow fusion
     of_elements storedOF[OBS_BUFFER_LENGTH];    // OF data buffer
@@ -737,8 +736,6 @@ private:
     float auxRngTestRatio;          // square of range finder innovations divided by fail threshold used by main filter where >1.0 is a fail
     Vector2f flowGyroBias;          // bias error of optical flow sensor gyro output
     bool newDataRng;                // true when new valid range finder data has arrived.
-    bool constVelMode;              // true when fusing a constant velocity to maintain attitude reference when either optical flow or GPS measurements are lost after arming
-    bool lastConstVelMode;          // last value of holdVelocity
     Vector2f heldVelNE;             // velocity held when no aiding is available
     enum AidingMode {AID_ABSOLUTE=0,    // GPS aiding is being used (optical flow may also be used) so position estimates are absolute.
                      AID_NONE=1,       // no aiding is being used so only attitude and height estimates are available. Either constVelMode or constPosMode must be used to constrain tilt drift.
@@ -798,6 +795,9 @@ private:
         Vector9 SH_MAG;
     } mag_state;
 
+
+    // string representing last reason for prearm failure
+    char prearm_fail_string[40];
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
     // performance counters
