@@ -3,7 +3,7 @@
 #include "Plane.h"
 
 // default sensors are present and healthy: gyro, accelerometer, barometer, rate_control, attitude_stabilization, yaw_position, altitude control, x/y position control, motor_control
-#define MAVLINK_SENSOR_PRESENT_DEFAULT (MAV_SYS_STATUS_SENSOR_3D_GYRO | MAV_SYS_STATUS_SENSOR_3D_ACCEL | MAV_SYS_STATUS_SENSOR_ABSOLUTE_PRESSURE | MAV_SYS_STATUS_SENSOR_ANGULAR_RATE_CONTROL | MAV_SYS_STATUS_SENSOR_ATTITUDE_STABILIZATION | MAV_SYS_STATUS_SENSOR_YAW_POSITION | MAV_SYS_STATUS_SENSOR_Z_ALTITUDE_CONTROL | MAV_SYS_STATUS_SENSOR_XY_POSITION_CONTROL | MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS | MAV_SYS_STATUS_AHRS)
+#define MAVLINK_SENSOR_PRESENT_DEFAULT (MAV_SYS_STATUS_SENSOR_3D_GYRO | MAV_SYS_STATUS_SENSOR_3D_ACCEL | MAV_SYS_STATUS_SENSOR_ABSOLUTE_PRESSURE | MAV_SYS_STATUS_SENSOR_ANGULAR_RATE_CONTROL | MAV_SYS_STATUS_SENSOR_ATTITUDE_STABILIZATION | MAV_SYS_STATUS_SENSOR_YAW_POSITION | MAV_SYS_STATUS_SENSOR_Z_ALTITUDE_CONTROL | MAV_SYS_STATUS_SENSOR_XY_POSITION_CONTROL | MAV_SYS_STATUS_SENSOR_MOTOR_OUTPUTS | MAV_SYS_STATUS_AHRS | MAV_SYS_STATUS_SENSOR_RC_RECEIVER)
 
 void Plane::send_heartbeat(mavlink_channel_t chan)
 {
@@ -237,7 +237,7 @@ void Plane::send_extended_status1(mavlink_channel_t chan)
         control_sensors_health |= MAV_SYS_STATUS_SENSOR_OPTICAL_FLOW;
     }
 #endif
-    if (!ins.get_gyro_health_all() || (!g.skip_gyro_cal && !ins.gyro_calibrated_ok_all())) {
+    if (!ins.get_gyro_health_all() || !ins.gyro_calibrated_ok_all()) {
         control_sensors_health &= ~MAV_SYS_STATUS_SENSOR_3D_GYRO;
     }
     if (!ins.get_accel_health_all()) {
@@ -252,6 +252,12 @@ void Plane::send_extended_status1(mavlink_channel_t chan)
     }
 #endif
 
+    if (millis() - failsafe.last_valid_rc_ms < 200) {
+        control_sensors_health |= MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
+    } else {
+        control_sensors_health &= ~MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
+    }
+    
     int16_t battery_current = -1;
     int8_t battery_remaining = -1;
 
@@ -468,6 +474,19 @@ void Plane::send_wind(mavlink_channel_t chan)
                                           // direction wind is coming from
         wind.length(),
         wind.z);
+}
+
+/*
+  send RPM packet
+ */
+void NOINLINE Plane::send_rpm(mavlink_channel_t chan)
+{
+    if (rpm_sensor.healthy(0) || rpm_sensor.healthy(1)) {
+        mavlink_msg_rpm_send(
+            chan,
+            rpm_sensor.get_rpm(0),
+            rpm_sensor.get_rpm(1));
+    }
 }
 
 /*
@@ -770,7 +789,7 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
     case MSG_EKF_STATUS_REPORT:
 #if AP_AHRS_NAVEKF_AVAILABLE
         CHECK_PAYLOAD_SIZE(EKF_STATUS_REPORT);
-        plane.ahrs.get_NavEKF().send_status_report(chan);
+        plane.ahrs.send_ekf_status_report(chan);
 #endif
         break;
 
@@ -799,7 +818,8 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
         break;
 
     case MSG_RPM:
-        // unused
+        CHECK_PAYLOAD_SIZE(RPM);
+        plane.send_rpm(chan);
         break;
 
     case MSG_MISSION_ITEM_REACHED:
@@ -1025,6 +1045,7 @@ GCS_MAVLINK::data_stream_send(void)
     if (stream_trigger(STREAM_EXTRA1)) {
         send_message(MSG_ATTITUDE);
         send_message(MSG_SIMSTATE);
+        send_message(MSG_RPM);
         if (plane.control_mode != MANUAL) {
             send_message(MSG_PID_TUNING);
         }
@@ -1219,10 +1240,11 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             } else if (is_equal(packet.param5,1.0f)) {
                 float trim_roll, trim_pitch;
                 AP_InertialSensor_UserInteract_MAVLink interact(this);
-                if (plane.g.skip_gyro_cal) {
-                    // start with gyro calibration, otherwise if the user
-                    // has SKIP_GYRO_CAL=1 they don't get to do it
-                    plane.ins.init_gyro();
+                // start with gyro calibration
+                plane.ins.init_gyro();
+                // reset ahrs gyro bias
+                if (plane.ins.gyro_calibrated_ok_all()) {
+                    plane.ahrs.reset_gyro_drift();
                 }
                 if(plane.ins.calibrate_accel(&interact, trim_roll, trim_pitch)) {
                     // reset ahrs's trim to suggested values from calibration routine
@@ -1232,6 +1254,8 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                     result = MAV_RESULT_FAILED;
                 }
             } else if (is_equal(packet.param5,2.0f)) {
+                // start with gyro calibration
+                plane.ins.init_gyro();
                 // accel trim
                 float trim_roll, trim_pitch;
                 if(plane.ins.calibrate_trim(trim_roll, trim_pitch)) {
@@ -1278,6 +1302,10 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             } else {
                 result = MAV_RESULT_UNSUPPORTED;
             }
+            break;
+
+        case MAV_CMD_GET_HOME_POSITION:
+            send_home(plane.ahrs.get_home());
             break;
 
         case MAV_CMD_DO_SET_MODE:
@@ -1424,6 +1452,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                 plane.ahrs.set_home(new_home_loc);
                 plane.home_is_set = HOME_SET_NOT_LOCKED;
                 plane.Log_Write_Home_And_Origin();
+                GCS_MAVLINK::send_home_all(new_home_loc);
                 result = MAV_RESULT_ACCEPTED;
                 plane.gcs_send_text_fmt(PSTR("set home to %.6f %.6f at %um"),
                                         (double)(new_home_loc.lat*1.0e-7f),
@@ -1780,7 +1809,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
     case MAVLINK_MSG_ID_LOG_REQUEST_DATA:
     case MAVLINK_MSG_ID_LOG_ERASE:
         plane.in_log_download = true;
-        // fallthru
+        /* no break */
     case MAVLINK_MSG_ID_LOG_REQUEST_LIST:
         if (!plane.in_mavlink_delay) {
             handle_log_message(msg, plane.DataFlash);
@@ -1814,7 +1843,33 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
     case MAVLINK_MSG_ID_AUTOPILOT_VERSION_REQUEST:
         plane.gcs[chan-MAVLINK_COMM_0].send_autopilot_version(FIRMWARE_VERSION);
         break;
-        
+
+    case MAVLINK_MSG_ID_SET_HOME_POSITION:
+    {
+        mavlink_set_home_position_t packet;
+        mavlink_msg_set_home_position_decode(msg, &packet);
+        if((packet.latitude == 0) && (packet.longitude == 0) && (packet.altitude == 0)) {
+            // don't allow the 0,0 position
+            break;
+        }
+        // sanity check location
+        if (labs(packet.latitude) > 90*10e7 || labs(packet.longitude) > 180 * 10e7) {
+            break;
+        }
+        Location new_home_loc {};
+        new_home_loc.lat = packet.latitude;
+        new_home_loc.lng = packet.longitude;
+        new_home_loc.alt = packet.altitude * 100;
+        plane.ahrs.set_home(new_home_loc);
+        plane.home_is_set = HOME_SET_NOT_LOCKED;
+        plane.Log_Write_Home_And_Origin();
+        GCS_MAVLINK::send_home_all(new_home_loc);
+        plane.gcs_send_text_fmt(PSTR("set home to %.6f %.6f at %um"),
+                                (double)(new_home_loc.lat*1.0e-7f),
+                                (double)(new_home_loc.lng*1.0e-7f),
+                                (uint32_t)(new_home_loc.alt*0.01f));
+        break;
+    }
     } // end switch
 } // end handle mavlink
 

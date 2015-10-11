@@ -81,7 +81,7 @@ void Tracker::init_tracker()
     ahrs.init();
     ahrs.set_fly_forward(false);
 
-    ins.init(AP_InertialSensor::WARM_START, ins_sample_rate);
+    ins.init(ins_sample_rate);
     ahrs.reset();
 
     init_barometer();
@@ -165,6 +165,7 @@ void Tracker::set_home(struct Location temp)
 {
     set_home_eeprom(temp);
     current_loc = temp;
+    GCS_MAVLINK::send_home_all(temp);
 }
 
 void Tracker::arm_servos()
