@@ -30,9 +30,9 @@ class Format(object):
         '''using format characters from libraries/DataFlash/DataFlash.h to cast strings to basic python int/float/string types
         tries a cast, if it does not work, well, acceptable as the text logs do not match the format, e.g. MODE is expected to be int'''
         try:
-            if valueType in "fcCeEL":
+            if valueType in "fcCeELd":
                 return float(value)
-            elif valueType in "bBhHiIM":
+            elif valueType in "bBhHiIMQq":
                 return int(value)
             elif valueType in "nNZ":
                 return str(value)
@@ -482,8 +482,8 @@ class DataflashLog(object):
                 if i in self.channels["GPS"]:
                     timeLabel = i
                     break
-            firstTimeGPS = self.channels["GPS"][timeLabel].listData[0][1]
-            lastTimeGPS  = self.channels["GPS"][timeLabel].listData[-1][1]
+            firstTimeGPS = int(self.channels["GPS"][timeLabel].listData[0][1])
+            lastTimeGPS  = int(self.channels["GPS"][timeLabel].listData[-1][1])
             if timeLabel == 'TimeUS':
                 firstTimeGPS /= 1000
                 lastTimeGPS /= 1000
@@ -536,7 +536,7 @@ class DataflashLog(object):
             elif self.vehicleType in ["ArduPlane", "APM:Plane", "ArduRover", "APM:Rover", "APM:Copter"]:
                 self.modeChanges[lineNumber] = (e.Mode, e.ModeNum)
             else:
-                raise Exception("Unknown log type for MODE line {} {}".format(self.vehicleType, repr(e)))
+                raise Exception("Unknown log type for MODE line vehicletype=({}) linw=({})".format(self.vehicleType, repr(e)))
         # anything else must be the log data
         else:
             groupName = e.NAME
