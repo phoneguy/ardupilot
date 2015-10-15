@@ -31,6 +31,9 @@
 #include "Scheduler.h"
 #include "ToneAlarmDriver.h"
 #include "Util.h"
+#include "Util_RPI.h"
+#include "Heat.h"
+#include "Heat_Pwm.h"
 
 #endif // __AP_HAL_LINUX_PRIVATE_H__
 

@@ -31,7 +31,7 @@ const AP_Param::GroupInfo AP_Arming::var_info[] PROGMEM = {
     // @Param: CHECK
     // @DisplayName: Arm Checks to Peform (bitmask)
     // @Description: Checks prior to arming motor. This is a bitmask of checks that will be performed befor allowing arming. The default is no checks, allowing arming at any time. You can select whatever checks you prefer by adding together the values of each check type to set this parameter. For example, to only allow arming when you have GPS lock and no RC failsafe you would set ARMING_CHECK to 72. For most users it is recommended that you set this to 1 to enable all checks.
-    // @Values: 0:None,1:All,2:Barometer,4:Compass,8:GPS,16:INS,32:Parameters,64:RC Failsafe,128:Board voltage,256:Battery Level,512:Airspeed,1024:LoggingAvailable
+    // @Values: 0:None,1:All,2:Barometer,4:Compass,8:GPS,16:INS(INertial Sensors - accels & gyros),32:Parameters(unused),64:RC Failsafe,128:Board voltage,256:Battery Level,512:Airspeed,1024:LoggingAvailable
     // @User: Advanced
     AP_GROUPINFO("CHECK",        2,     AP_Arming,  checks_to_perform,       ARMING_CHECK_ALL),
 
@@ -44,7 +44,6 @@ AP_Arming::AP_Arming(const AP_AHRS &ahrs_ref, const AP_Baro &baro, Compass &comp
                      const enum HomeState &home_set)
     : armed(false)
    , logging_available(false)
-   , skip_gyro_cal(false)
    , arming_method(NONE)
    , ahrs(ahrs_ref)
    , barometer(baro)
@@ -130,7 +129,7 @@ bool AP_Arming::ins_checks(bool report)
             }
             return false;
         }
-        if (!skip_gyro_cal && ! ins.gyro_calibrated_ok_all()) {
+        if (!ins.gyro_calibrated_ok_all()) {
             if (report) {
                 GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, PSTR("PreArm: gyros not calibrated!"));
             }

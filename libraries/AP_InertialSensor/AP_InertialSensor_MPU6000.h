@@ -24,9 +24,10 @@
 #if MPU6000_FAST_SAMPLING
 #include <Filter/Filter.h>
 #include <Filter/LowPassFilter2p.h>
+#include <Filter/LowPassFilter.h>
 #endif
 
-#define MPU6000_SAMPLE_SIZE 12
+#define MPU6000_SAMPLE_SIZE 14
 #define MPU6000_MAX_FIFO_SAMPLES 3
 #define MAX_DATA_READ (MPU6000_MAX_FIFO_SAMPLES * MPU6000_SAMPLE_SIZE)
 
@@ -65,6 +66,9 @@ public:
                                                  AP_HAL::I2CDriver *i2c,
                                                  uint8_t addr);
     static AP_InertialSensor_Backend *detect_spi(AP_InertialSensor &_imu);
+    static AP_InertialSensor_MPU6000 &from(AP_InertialSensor_Backend &backend) {
+        return static_cast<AP_InertialSensor_MPU6000&>(backend);
+    }
 
     /* update accel and gyro state */
     bool update();
@@ -124,15 +128,19 @@ private:
 #if MPU6000_FAST_SAMPLING
     Vector3f _accel_filtered;
     Vector3f _gyro_filtered;
+    float    _temp_filtered;
 
     // Low Pass filters for gyro and accel
     LowPassFilter2pVector3f _accel_filter;
     LowPassFilter2pVector3f _gyro_filter;
+    LowPassFilter2pFloat    _temp_filter;
 #else
     // accumulation in timer - must be read with timer disabled
     // the sum of the values since last read
     Vector3l _accel_sum;
     Vector3l _gyro_sum;
+    int32_t  _temp_sum;
+
 #endif
     volatile uint16_t _sum_count;
     bool _fifo_mode;

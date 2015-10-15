@@ -714,7 +714,7 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
 
     case MSG_EKF_STATUS_REPORT:
         CHECK_PAYLOAD_SIZE(EKF_STATUS_REPORT);
-        copter.ahrs.get_NavEKF().send_status_report(chan);
+        copter.ahrs.send_ekf_status_report(chan);
         break;
 
     case MSG_FENCE_STATUS:
@@ -1310,11 +1310,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                 break;
             }
             if (is_equal(packet.param1,1.0f)) {
-                // gyro offset calibration
-                copter.ins.init_gyro();
-                // reset ahrs gyro bias
-                if (copter.ins.gyro_calibrated_ok_all()) {
-                    copter.ahrs.reset_gyro_drift();
+                if (copter.calibrate_gyros()) {
                     result = MAV_RESULT_ACCEPTED;
                 } else {
                     result = MAV_RESULT_FAILED;
@@ -1327,8 +1323,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                 result = MAV_RESULT_UNSUPPORTED;
             } else if (is_equal(packet.param5,1.0f)) {
                 // 3d accel calibration
-                float trim_roll, trim_pitch;
+                if (!copter.calibrate_gyros()) {
+                    result = MAV_RESULT_FAILED;
+                    break;
+                }
                 // this blocks
+                float trim_roll, trim_pitch;
                 AP_InertialSensor_UserInteract_MAVLink interact(this);
                 if(copter.ins.calibrate_accel(&interact, trim_roll, trim_pitch)) {
                     // reset ahrs's trim to suggested values from calibration routine
@@ -1338,6 +1338,11 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
                     result = MAV_RESULT_FAILED;
                 }
             } else if (is_equal(packet.param5,2.0f)) {
+                // calibrate gyros
+                if (!copter.calibrate_gyros()) {
+                    result = MAV_RESULT_FAILED;
+                    break;
+                }
                 // accel trim
                 float trim_roll, trim_pitch;
                 if(copter.ins.calibrate_trim(trim_roll, trim_pitch)) {
@@ -1379,6 +1384,10 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             } else {
                 result = MAV_RESULT_UNSUPPORTED;
             }
+            break;
+
+        case MAV_CMD_GET_HOME_POSITION:
+            send_home(copter.ahrs.get_home());
             break;
 
         case MAV_CMD_DO_SET_SERVO:
@@ -1520,6 +1529,33 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
     case MAVLINK_MSG_ID_COMMAND_ACK:        // MAV ID: 77
     {
         copter.command_ack_counter++;
+        break;
+    }
+
+    case MAVLINK_MSG_ID_SET_ATTITUDE_TARGET:   // MAV ID: 82
+    {
+        // decode packet
+        mavlink_set_attitude_target_t packet;
+        mavlink_msg_set_attitude_target_decode(msg, &packet);
+
+        // ensure type_mask specifies to use attitude and thrust
+        if ((packet.type_mask & ((1<<7)|(1<<6))) != 0) {
+            break;
+        }
+
+        // convert thrust to climb rate
+        packet.thrust = constrain_float(packet.thrust, 0.0f, 1.0f);
+        float climb_rate_cms = 0.0f;
+        if (is_equal(packet.thrust, 0.5f)) {
+            climb_rate_cms = 0.0f;
+        } else if (packet.thrust > 0.5f) {
+            // climb at up to WPNAV_SPEED_UP
+            climb_rate_cms = (packet.thrust - 0.5f) * 2.0f * copter.wp_nav.get_speed_up();
+        } else {
+            // descend at up to WPNAV_SPEED_DN
+            climb_rate_cms = (0.5f - packet.thrust) * 2.0f * -fabsf(copter.wp_nav.get_speed_down());
+        }
+        copter.guided_set_angle(Quaternion(packet.q[0],packet.q[1],packet.q[2],packet.q[3]), climb_rate_cms);
         break;
     }
 
@@ -1856,6 +1892,29 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         // send message to Notify
         AP_Notify::handle_led_control(msg);
         break;
+
+    case MAVLINK_MSG_ID_SET_HOME_POSITION:
+    {
+        mavlink_set_home_position_t packet;
+        mavlink_msg_set_home_position_decode(msg, &packet);
+        if((packet.latitude == 0) && (packet.longitude == 0) && (packet.altitude == 0)) {
+            copter.set_home_to_current_location_and_lock();
+        } else {
+            // sanity check location
+            if (labs(packet.latitude) > 90*10e7 || labs(packet.longitude) > 180 * 10e7) {
+                break;
+            }
+            Location new_home_loc;
+            new_home_loc.lat = packet.latitude;
+            new_home_loc.lng = packet.longitude;
+            new_home_loc.alt = packet.altitude * 100;
+            if (copter.far_from_EKF_origin(new_home_loc)) {
+                break;
+            }
+            copter.set_home_and_lock(new_home_loc);
+        }
+        break;
+    }
 
     }     // end switch
 } // end handle mavlink

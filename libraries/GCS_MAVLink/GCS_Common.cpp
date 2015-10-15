@@ -231,6 +231,19 @@ void GCS_MAVLINK::send_ahrs2(AP_AHRS &ahrs)
                                loc.lat,
                                loc.lng);
     }
+    AP_AHRS_NavEKF &_ahrs = reinterpret_cast<AP_AHRS_NavEKF&>(ahrs);
+    if (_ahrs.get_NavEKF2().enabled()) {
+        _ahrs.get_NavEKF2().getLLH(loc);
+        _ahrs.get_NavEKF2().getEulerAngles(euler);
+        mavlink_msg_ahrs3_send(chan,
+                               euler.x,
+                               euler.y,
+                               euler.z,
+                               loc.alt*1.0e-2f,
+                               loc.lat,
+                               loc.lng,
+                               0, 0, 0, 0);
+    }
 #endif
 }
 
@@ -1029,7 +1042,7 @@ void GCS_MAVLINK::send_raw_imu(const AP_InertialSensor &ins, const Compass &comp
     const Vector3f &gyro = ins.get_gyro(0);
     Vector3f mag;
     if (compass.get_count() >= 1) {
-        mag = compass.get_field(0);
+        mag = compass.get_field_milligauss(0);
     } else {
         mag.zero();
     }
@@ -1055,7 +1068,7 @@ void GCS_MAVLINK::send_raw_imu(const AP_InertialSensor &ins, const Compass &comp
     const Vector3f &accel2 = ins.get_accel(1);
     const Vector3f &gyro2 = ins.get_gyro(1);
     if (compass.get_count() >= 2) {
-        mag = compass.get_field(1);
+        mag = compass.get_field_milligauss(1);
     } else {
         mag.zero();
     }
@@ -1081,7 +1094,7 @@ void GCS_MAVLINK::send_raw_imu(const AP_InertialSensor &ins, const Compass &comp
     const Vector3f &accel3 = ins.get_accel(2);
     const Vector3f &gyro3 = ins.get_gyro(2);
     if (compass.get_count() >= 3) {
-        mag = compass.get_field(2);
+        mag = compass.get_field_milligauss(2);
     } else {
         mag.zero();
     }
@@ -1370,4 +1383,39 @@ void GCS_MAVLINK::send_vibration(const AP_InertialSensor &ins) const
         ins.get_accel_clip_count(1),
         ins.get_accel_clip_count(2));
 #endif
+}
+
+void GCS_MAVLINK::send_home(const Location &home) const
+{
+    if (comm_get_txspace(chan) >= MAVLINK_NUM_NON_PAYLOAD_BYTES + MAVLINK_MSG_ID_HOME_POSITION_LEN) {
+        const float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+        mavlink_msg_home_position_send(
+            chan,
+            home.lat,
+            home.lng,
+            home.alt / 100,
+            0.0f, 0.0f, 0.0f,
+            q,
+            0.0f, 0.0f, 0.0f);
+    }
+}
+
+void GCS_MAVLINK::send_home_all(const Location &home)
+{
+    const float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+    for (uint8_t i=0; i<MAVLINK_COMM_NUM_BUFFERS; i++) {
+        if ((1U<<i) & mavlink_active) {
+            mavlink_channel_t chan = (mavlink_channel_t)(MAVLINK_COMM_0+i);
+            if (comm_get_txspace(chan) >= MAVLINK_NUM_NON_PAYLOAD_BYTES + MAVLINK_MSG_ID_HOME_POSITION_LEN) {
+                mavlink_msg_home_position_send(
+                    chan,
+                    home.lat,
+                    home.lng,
+                    home.alt / 100,
+                    0.0f, 0.0f, 0.0f,
+                    q,
+                    0.0f, 0.0f, 0.0f);
+            }
+        }
+    }
 }

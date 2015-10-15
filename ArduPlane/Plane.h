@@ -3,8 +3,8 @@
 #ifndef _PLANE_H
 #define _PLANE_H
 
-#define THISFIRMWARE "ArduPlane V3.4.0beta2"
-#define FIRMWARE_VERSION 3,4,0,FIRMWARE_VERSION_TYPE_BETA+1
+#define THISFIRMWARE "ArduPlane V3.4.1dev"
+#define FIRMWARE_VERSION 3,4,1,FIRMWARE_VERSION_TYPE_DEV
 
 /*
    Lead developer: Andrew Tridgell
@@ -58,6 +58,7 @@
 #include <AP_Camera/AP_Camera.h>          // Photo or video camera
 #include <AP_Airspeed/AP_Airspeed.h>
 #include <AP_Terrain/AP_Terrain.h>
+#include <AP_RPM/AP_RPM.h>
 
 #include <APM_OBC/APM_OBC.h>
 #include <APM_Control/APM_Control.h>
@@ -79,6 +80,7 @@
 #include <AP_SpdHgtControl/AP_SpdHgtControl.h>
 #include <AP_TECS/AP_TECS.h>
 #include <AP_NavEKF/AP_NavEKF.h>
+#include <AP_NavEKF2/AP_NavEKF2.h>
 #include <AP_Mission/AP_Mission.h>     // Mission command library
 
 #include <AP_Notify/AP_Notify.h>      // Notify library
@@ -205,10 +207,13 @@ private:
     } rangefinder_state;
 #endif
 
+    AP_RPM rpm_sensor;
+    
 // Inertial Navigation EKF
 #if AP_AHRS_NAVEKF_AVAILABLE
     NavEKF EKF{&ahrs, barometer, rangefinder};
-    AP_AHRS_NavEKF ahrs {ins, barometer, gps, rangefinder, EKF};
+    NavEKF2 EKF2{&ahrs, barometer, rangefinder};
+    AP_AHRS_NavEKF ahrs {ins, barometer, gps, rangefinder, EKF, EKF2};
 #else
     AP_AHRS_DCM ahrs {ins, barometer, gps};
 #endif
@@ -702,6 +707,7 @@ private:
     void send_hwstatus(mavlink_channel_t chan);
     void send_wind(mavlink_channel_t chan);
     void send_pid_tuning(mavlink_channel_t chan);
+    void send_rpm(mavlink_channel_t chan);
     void send_rangefinder(mavlink_channel_t chan);
     void send_current_waypoint(mavlink_channel_t chan);
     void send_statustext(mavlink_channel_t chan);
@@ -844,6 +850,7 @@ private:
     void zero_airspeed(bool in_startup);
     void read_battery(void);
     void read_receiver_rssi(void);
+    void rpm_update(void);
     void report_radio();
     void report_ins();
     void report_compass();
