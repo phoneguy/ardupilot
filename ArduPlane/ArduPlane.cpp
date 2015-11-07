@@ -854,8 +854,15 @@ void Plane::update_flight_stage(void)
                     set_flight_stage(AP_SpdHgtControl::FLIGHT_LAND_ABORT);
                 } else if (auto_state.land_complete == true) {
                     set_flight_stage(AP_SpdHgtControl::FLIGHT_LAND_FINAL);
-                } else {
-                    set_flight_stage(AP_SpdHgtControl::FLIGHT_LAND_APPROACH);
+                } else if (flight_stage != AP_SpdHgtControl::FLIGHT_LAND_APPROACH) {
+                    float path_progress = location_path_proportion(current_loc, prev_WP_loc, next_WP_loc);
+                    bool lined_up = abs(nav_controller->bearing_error_cd()) < 1000;
+                    bool below_prev_WP = current_loc.alt < prev_WP_loc.alt;
+                    if ((path_progress > 0.15f && lined_up && below_prev_WP) || path_progress > 0.5f) {
+                        set_flight_stage(AP_SpdHgtControl::FLIGHT_LAND_APPROACH);
+                    } else {
+                        set_flight_stage(AP_SpdHgtControl::FLIGHT_NORMAL);                        
+                    }
                 }
 
             } else {
@@ -910,19 +917,4 @@ void Plane::update_optical_flow(void)
 }
 #endif
 
-/*
-  compatibility with old pde style build
- */
-void setup(void);
-void loop(void);
-
-void setup(void)
-{
-    plane.setup();
-}
-void loop(void)
-{
-    plane.loop();
-}
-
-AP_HAL_MAIN();
+AP_HAL_MAIN_CALLBACKS(&plane);
