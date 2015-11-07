@@ -61,9 +61,9 @@ void NavEKF2_core::getFlowDebug(float &varFlow, float &gndOffset, float &flowInn
 bool NavEKF2_core::getHeightControlLimit(float &height) const
 {
     // only ask for limiting if we are doing optical flow navigation
-    if (frontend._fusionModeGPS == 3) {
+    if (frontend->_fusionModeGPS == 3) {
         // If are doing optical flow nav, ensure the height above ground is within range finder limits after accounting for vehicle tilt and control errors
-        height = max(float(_rng.max_distance_cm()) * 0.007f - 1.0f, 1.0f);
+        height = max(float(frontend->_rng.max_distance_cm()) * 0.007f - 1.0f, 1.0f);
         return true;
     } else {
         return false;
@@ -122,10 +122,26 @@ void NavEKF2_core::getQuaternion(Quaternion& ret) const
 
 // return the amount of yaw angle change due to the last yaw angle reset in radians
 // returns the time of the last yaw angle reset or 0 if no reset has ever occurred
-uint32_t NavEKF2_core::getLastYawResetAngle(float &yawAng)
+uint32_t NavEKF2_core::getLastYawResetAngle(float &yawAng) const
 {
     yawAng = yawResetAngle;
     return lastYawReset_ms;
+}
+
+// return the amount of NE position change due to the last position reset in metres
+// returns the time of the last reset or 0 if no reset has ever occurred
+uint32_t NavEKF2_core::getLastPosNorthEastReset(Vector2f &pos) const
+{
+    pos = posResetNE;
+    return lastPosReset_ms;
+}
+
+// return the amount of NE velocity change due to the last velocity reset in metres/sec
+// returns the time of the last reset or 0 if no reset has ever occurred
+uint32_t NavEKF2_core::getLastVelNorthEastReset(Vector2f &vel) const
+{
+    vel = velResetNE;
+    return lastVelReset_ms;
 }
 
 // return the NED wind speed estimates in m/s (positive is air moving in the direction of the axis)
@@ -271,7 +287,7 @@ void NavEKF2_core::getEkfControlLimits(float &ekfGndSpdLimit, float &ekfNavVelGa
 {
     if (PV_AidingMode == AID_RELATIVE) {
         // allow 1.0 rad/sec margin for angular motion
-        ekfGndSpdLimit = max((frontend._maxFlowRate - 1.0f), 0.0f) * max((terrainState - stateStruct.position[2]), rngOnGnd);
+        ekfGndSpdLimit = max((frontend->_maxFlowRate - 1.0f), 0.0f) * max((terrainState - stateStruct.position[2]), rngOnGnd);
         // use standard gains up to 5.0 metres height and reduce above that
         ekfNavVelGainScaler = 4.0f / max((terrainState - stateStruct.position[2]),4.0f);
     } else {
@@ -321,17 +337,18 @@ void  NavEKF2_core::getInnovations(Vector3f &velInnov, Vector3f &posInnov, Vecto
 
 // return the innovation consistency test ratios for the velocity, position, magnetometer and true airspeed measurements
 // this indicates the amount of margin available when tuning the various error traps
-// also return the current offsets applied to the GPS position measurements
+// also return the delta in position due to the last position reset
 void  NavEKF2_core::getVariances(float &velVar, float &posVar, float &hgtVar, Vector3f &magVar, float &tasVar, Vector2f &offset) const
 {
     velVar   = sqrtf(velTestRatio);
     posVar   = sqrtf(posTestRatio);
     hgtVar   = sqrtf(hgtTestRatio);
-    magVar.x = sqrtf(magTestRatio.x);
-    magVar.y = sqrtf(magTestRatio.y);
-    magVar.z = sqrtf(magTestRatio.z);
+    // If we are using simple compass yaw fusion, populate all three components with the yaw test ratio to provide an equivalent output
+    magVar.x = sqrtf(max(magTestRatio.x,yawTestRatio));
+    magVar.y = sqrtf(max(magTestRatio.y,yawTestRatio));
+    magVar.z = sqrtf(max(magTestRatio.z,yawTestRatio));
     tasVar   = sqrtf(tasTestRatio);
-    offset   = gpsPosGlitchOffsetNE;
+    offset   = posResetNE;
 }
 
 
@@ -395,7 +412,7 @@ void  NavEKF2_core::getFilterStatus(nav_filter_status &status) const
     bool doingNormalGpsNav = !posTimeout && (PV_AidingMode == AID_ABSOLUTE);
     bool someVertRefData = (!velTimeout && useGpsVertVel) || !hgtTimeout;
     bool someHorizRefData = !(velTimeout && posTimeout && tasTimeout) || doingFlowNav;
-    bool optFlowNavPossible = flowDataValid && (frontend._fusionModeGPS == 3);
+    bool optFlowNavPossible = flowDataValid && (frontend->_fusionModeGPS == 3);
     bool gpsNavPossible = !gpsNotAvailable && (PV_AidingMode == AID_ABSOLUTE) && gpsGoodToAlign;
     bool filterHealthy = healthy() && tiltAlignComplete && yawAlignComplete;
 
@@ -487,5 +504,16 @@ void NavEKF2_core::send_status_report(mavlink_channel_t chan)
     mavlink_msg_ekf_status_report_send(chan, flags, velVar, posVar, hgtVar, magVar.length(), tasVar);
 
 }
+
+// report the reason for why the backend is refusing to initialise
+const char *NavEKF2_core::prearm_failure_reason(void) const
+{
+    if (imuSampleTime_ms - lastGpsVelFail_ms > 10000) {
+        // we are not failing
+        return nullptr;
+    }
+    return prearm_fail_string;
+}
+
 
 #endif // HAL_CPU_CLASS

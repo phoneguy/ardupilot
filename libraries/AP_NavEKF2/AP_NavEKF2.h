@@ -225,12 +225,25 @@ public:
 
     // return the amount of yaw angle change due to the last yaw angle reset in radians
     // returns the time of the last yaw angle reset or 0 if no reset has ever occurred
-    uint32_t getLastYawResetAngle(float &yawAng);
+    uint32_t getLastYawResetAngle(float &yawAng) const;
+
+    // return the amount of NE position change due to the last position reset in metres
+    // returns the time of the last reset or 0 if no reset has ever occurred
+    uint32_t getLastPosNorthEastReset(Vector2f &pos) const;
+
+    // return the amount of NE velocity change due to the last velocity reset in metres/sec
+    // returns the time of the last reset or 0 if no reset has ever occurred
+    uint32_t getLastVelNorthEastReset(Vector2f &vel) const;
+
+    // report any reason for why the backend is refusing to initialise
+    const char *prearm_failure_reason(void) const;
 
     // allow the enable flag to be set by Replay
     void set_enable(bool enable) { _enable.set(enable); }
     
 private:
+    uint8_t num_cores; // number of allocated cores
+    uint8_t primary;   // current primary core
     NavEKF2_core *core = nullptr;
     const AP_AHRS *_ahrs;
     AP_Baro &_baro;
@@ -270,6 +283,7 @@ private:
     AP_Float _gyroScaleProcessNoise;// gyro scale factor state process noise : 1/s
     AP_Float _rngNoise;             // Range finder noise : m
     AP_Int8 _gpsCheck;              // Bitmask controlling which preflight GPS checks are bypassed
+    AP_Int8 _imuMask;               // Bitmask of IMUs to instantiate EKF2 for
 
     // Tuning parameters
     const float gpsNEVelVarAccScale;    // Scale factor applied to NE velocity measurement variance due to manoeuvre acceleration

@@ -20,17 +20,13 @@ extern const AP_HAL::HAL& hal;
 #define STARTUP_WIND_SPEED 3.0f
 
 // initial imu bias uncertainty (deg/sec)
-#define INIT_ACCEL_BIAS_UNCERTAINTY 0.3f
+#define INIT_ACCEL_BIAS_UNCERTAINTY 0.5f
 
 // maximum allowed gyro bias (rad/sec)
 #define GYRO_BIAS_LIMIT 0.349066f
 
 // constructor
-NavEKF2_core::NavEKF2_core(NavEKF2 &_frontend, const AP_AHRS *ahrs, AP_Baro &baro, const RangeFinder &rng) :
-    frontend(_frontend),
-    _ahrs(ahrs),
-    _baro(baro),
-    _rng(rng),
+NavEKF2_core::NavEKF2_core(void) :
     stateStruct(*reinterpret_cast<struct state_elements *>(&statesArray)),
 
     //variables
@@ -57,6 +53,15 @@ NavEKF2_core::NavEKF2_core(NavEKF2 &_frontend, const AP_AHRS *ahrs, AP_Baro &bar
     _perf_test[8] = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EK2_Test8");
     _perf_test[9] = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EK2_Test9");
 }
+
+// setup this core backend
+void NavEKF2_core::setup_core(NavEKF2 *_frontend, uint8_t _imu_index)
+{
+    frontend = _frontend;
+    imu_index = _imu_index;
+    _ahrs = frontend->_ahrs;
+}
+    
 
 /********************************************************
 *                   INIT FUNCTIONS                      *
@@ -91,6 +96,8 @@ void NavEKF2_core::InitialiseVariables()
     timeTasReceived_ms = 0;
     magYawResetTimer_ms = imuSampleTime_ms;
     lastPreAlignGpsCheckTime_ms = imuSampleTime_ms;
+    lastPosReset_ms = 0;
+    lastVelReset_ms = 0;
 
     // initialise other variables
     gpsNoiseScaler = 1.0f;
@@ -100,13 +107,11 @@ void NavEKF2_core::InitialiseVariables()
     badMag = false;
     badIMUdata = false;
     firstMagYawInit = false;
-    secondMagYawInit = false;
     dtIMUavg = 0.0025f;
     dt = 0;
     velDotNEDfilt.zero();
     summedDelAng.zero();
     summedDelVel.zero();
-    gpsPosGlitchOffsetNE.zero();
     lastKnownPositionNE.zero();
     prevTnb.zero();
     memset(&P[0][0], 0, sizeof(P));
@@ -127,7 +132,6 @@ void NavEKF2_core::InitialiseVariables()
     PV_AidingMode = AID_NONE;
     posTimeout = true;
     velTimeout = true;
-    gpsVelGlitchOffset.zero();
     isAiding = false;
     prevIsAiding = false;
     memset(&faultStatus, 0, sizeof(faultStatus));
@@ -150,8 +154,6 @@ void NavEKF2_core::InitialiseVariables()
     expectGndEffectTouchdown = false;
     gpsSpdAccuracy = 0.0f;
     baroHgtOffset = 0.0f;
-    highYawRate = false;
-    yawRateFilt = 0.0f;
     yawResetAngle = 0.0f;
     lastYawReset_ms = 0;
     tiltErrFilt = 1.0f;
@@ -197,6 +199,8 @@ void NavEKF2_core::InitialiseVariables()
     airSpdFusionDelayed = false;
     sideSlipFusionDelayed = false;
     magFuseTiltInhibit = false;
+    posResetNE.zero();
+    velResetNE.zero();
 }
 
 // Initialise the states from accelerometer and magnetometer data (if present)
@@ -221,7 +225,7 @@ bool NavEKF2_core::InitialiseFilterBootstrap(void)
     Vector3f initAccVec;
 
     // TODO we should average accel readings over several cycles
-    initAccVec = _ahrs->get_ins().get_accel();
+    initAccVec = _ahrs->get_ins().get_accel(imu_index);
 
     // read the magnetometer data
     readMagData();
@@ -277,7 +281,7 @@ bool NavEKF2_core::InitialiseFilterBootstrap(void)
     // set to true now that states have be initialised
     statesInitialised = true;
 
-    hal.console->printf("EKF2 initialised\n");
+    hal.console->printf("EKF2 initialised on IMU %u\n", (unsigned)imu_index);
 
     return true;
 }
@@ -304,7 +308,7 @@ void NavEKF2_core::CovarianceInit()
     // positions
     P[6][6]   = sq(15.0f);
     P[7][7]   = P[6][6];
-    P[8][8]   = sq(frontend._baroAltNoise);
+    P[8][8]   = sq(frontend->_baroAltNoise);
     // gyro delta angle biases
     P[9][9] = sq(radians(InitialGyroBiasUncertainty() * dtIMUavg));
     P[10][10] = P[9][9];
@@ -376,7 +380,7 @@ void NavEKF2_core::UpdateFilter()
 
     // perform a covariance prediction if the total delta angle has exceeded the limit
     // or the time limit will be exceeded at the next IMU update
-    if (((dt >= (frontend.covTimeStepMax - dtIMUavg)) || (summedDelAng.length() > frontend.covDelAngMax))) {
+    if (((dt >= (frontend->covTimeStepMax - dtIMUavg)) || (summedDelAng.length() > frontend->covDelAngMax))) {
         CovariancePrediction();
     } else {
         covPredStep = false;
@@ -696,12 +700,12 @@ void NavEKF2_core::CovariancePrediction()
 
     // use filtered height rate to increase wind process noise when climbing or descending
     // this allows for wind gradient effects.
-    windVelSigma  = dt * constrain_float(frontend._windVelProcessNoise, 0.01f, 1.0f) * (1.0f + constrain_float(frontend._wndVarHgtRateScale, 0.0f, 1.0f) * fabsf(hgtRate));
-    dAngBiasSigma = dt * constrain_float(frontend._gyroBiasProcessNoise, 0.0f, 1e-4f);
-    dVelBiasSigma = dt * constrain_float(frontend._accelBiasProcessNoise, 1e-6f, 1e-2f);
-    dAngScaleSigma = dt * constrain_float(frontend._gyroScaleProcessNoise,1e-6f,1e-2f);
-    magEarthSigma = dt * constrain_float(frontend._magProcessNoise, 1e-4f, 1e-1f);
-    magBodySigma  = dt * constrain_float(frontend._magProcessNoise, 1e-4f, 1e-1f);
+    windVelSigma  = dt * constrain_float(frontend->_windVelProcessNoise, 0.01f, 1.0f) * (1.0f + constrain_float(frontend->_wndVarHgtRateScale, 0.0f, 1.0f) * fabsf(hgtRate));
+    dAngBiasSigma = dt * constrain_float(frontend->_gyroBiasProcessNoise, 0.0f, 1e-4f);
+    dVelBiasSigma = dt * constrain_float(frontend->_accelBiasProcessNoise, 1e-6f, 1e-2f);
+    dAngScaleSigma = dt * constrain_float(frontend->_gyroScaleProcessNoise,1e-6f,1e-2f);
+    magEarthSigma = dt * constrain_float(frontend->_magProcessNoise, 1e-4f, 1e-1f);
+    magBodySigma  = dt * constrain_float(frontend->_magProcessNoise, 1e-4f, 1e-1f);
     for (uint8_t i= 0; i<=8;  i++) processNoise[i] = 0.0f;
     for (uint8_t i=9; i<=11; i++) processNoise[i] = dAngBiasSigma;
     for (uint8_t i=12; i<=14; i++) processNoise[i] = dAngScaleSigma;
@@ -735,15 +739,10 @@ void NavEKF2_core::CovariancePrediction()
     day_s = stateStruct.gyro_scale.y;
     daz_s = stateStruct.gyro_scale.z;
     dvz_b = stateStruct.accel_zbias;
-    float _gyrNoise = constrain_float(frontend._gyrNoise, 1e-3f, 5e-2f);
-    daxNoise = dt*_gyrNoise;
-    dayNoise = dt*_gyrNoise;
-    // Account for 3% scale factor error on Z angular rate. This reduces chance of continuous fast rotations causing loss of yaw reference.
-    dazNoise = dt*(pythagorous2(_gyrNoise,0.03f*yawRateFilt));
-    float _accNoise = constrain_float(frontend._accNoise, 5e-2f, 1.0f);
-    dvxNoise = dt*_accNoise;
-    dvyNoise = dt*_accNoise;
-    dvzNoise = dt*_accNoise;
+    float _gyrNoise = constrain_float(frontend->_gyrNoise, 1e-3f, 5e-2f);
+    daxNoise = dayNoise = dazNoise = dt*_gyrNoise;
+    float _accNoise = constrain_float(frontend->_accNoise, 5e-2f, 1.0f);
+    dvxNoise = dvyNoise = dvzNoise = dt*_accNoise;
 
     // calculate the predicted covariance due to inertial sensor error propagation
     // we calculate the upper diagonal and copy to take advantage of symmetry
@@ -1226,6 +1225,17 @@ void NavEKF2_core::StoreQuatReset()
         storedOutput[i].quat = outputDataNew.quat;
     }
     outputDataDelayed.quat = outputDataNew.quat;
+}
+
+// Rotate the stored output quaternion history through a quaternion rotation
+void NavEKF2_core::StoreQuatRotate(Quaternion deltaQuat)
+{
+    outputDataNew.quat = outputDataNew.quat*deltaQuat;
+    // write current measurement to entire table
+    for (uint8_t i=0; i<IMU_BUFFER_LENGTH; i++) {
+        storedOutput[i].quat = storedOutput[i].quat*deltaQuat;
+    }
+    outputDataDelayed.quat = outputDataDelayed.quat*deltaQuat;
 }
 
 // recall output data from the FIFO

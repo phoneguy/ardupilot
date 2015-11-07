@@ -101,7 +101,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     uint8_t data;
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_CHIP_ID, &data);
     if (data != BMA180_CHIPID)
-        hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 ACC sensor"));
+        hal.scheduler->panic("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 ACC sensor");
 
     // RESET chip
 //    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RESET, 0xb6);
@@ -137,7 +137,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     // Expect to read the same as the Gyro I2C adress:
     hal.i2c->readRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_WHO_AM_I, &data);
     if (data != ITG3200_GYRO_ADDRESS)
-        hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor"));
+        hal.scheduler->panic("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor");
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_PWR_MGM, 0x00);
     hal.scheduler->delay(1);
 

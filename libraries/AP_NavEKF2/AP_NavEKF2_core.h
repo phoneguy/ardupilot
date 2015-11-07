@@ -62,8 +62,11 @@ class NavEKF2_core
 {
 public:
     // Constructor
-    NavEKF2_core(NavEKF2 &frontend, const AP_AHRS *ahrs, AP_Baro &baro, const RangeFinder &rng);
+    NavEKF2_core(void);
 
+    // setup this core backend
+    void setup_core(NavEKF2 *_frontend, uint8_t _imu_index);
+    
     // Initialise the states from accelerometer and magnetometer data (if present)
     // This method can only be used when the vehicle is static
     bool InitialiseFilterBootstrap(void);
@@ -246,11 +249,23 @@ public:
 
     // return the amount of yaw angle change due to the last yaw angle reset in radians
     // returns the time of the last yaw angle reset or 0 if no reset has ever occurred
-    uint32_t getLastYawResetAngle(float &yawAng);
+    uint32_t getLastYawResetAngle(float &yawAng) const;
+
+    // return the amount of NE position change due to the last position reset in metres
+    // returns the time of the last reset or 0 if no reset has ever occurred
+    uint32_t getLastPosNorthEastReset(Vector2f &pos) const;
+
+    // return the amount of NE velocity change due to the last velocity reset in metres/sec
+    // returns the time of the last reset or 0 if no reset has ever occurred
+    uint32_t getLastVelNorthEastReset(Vector2f &vel) const;
+
+    // report any reason for why the backend is refusing to initialise
+    const char *prearm_failure_reason(void) const;
 
 private:
     // Reference to the global EKF frontend for parameters
-    NavEKF2 &frontend;
+    NavEKF2 *frontend;
+    uint8_t imu_index;
 
     typedef float ftype;
 #if defined(MATH_CHECK_INDEXES) && (MATH_CHECK_INDEXES == 1)
@@ -303,8 +318,6 @@ private:
 #endif
 
     const AP_AHRS *_ahrs;
-    AP_Baro &_baro;
-    const RangeFinder &_rng;
 
     // the states are available in two forms, either as a Vector31, or
     // broken down as individual elements. Both are equivalent (same
@@ -420,6 +433,9 @@ private:
     // Reset the stored output quaternion history to current EKF state
     void StoreQuatReset(void);
 
+    // Rotate the stored output quaternion history through a quaternion rotation
+    void StoreQuatRotate(Quaternion deltaQuat);
+
     // recall output data from the FIFO
     void RecallOutput();
 
@@ -522,10 +538,6 @@ private:
 
     // return true if the vehicle code has requested the filter to be ready for flight
     bool readyToUseGPS(void) const;
-
-    // decay GPS horizontal position offset to close to zero at a rate of 1 m/s
-    // this allows large GPS position jumps to be accomodated gradually
-    void decayGpsOffset(void);
 
     // Check for filter divergence
     void checkDivergence(void);
@@ -700,7 +712,6 @@ private:
     Vector8 SQ;                     // intermediate variables used to calculate predicted covariance matrix
     Vector23 SPP;                   // intermediate variables used to calculate predicted covariance matrix
     bool yawAligned;                // true when the yaw angle has been aligned
-    Vector2f gpsPosGlitchOffsetNE;  // offset applied to GPS data in the NE direction to compensate for rapid changes in GPS solution
     Vector2f lastKnownPositionNE;   // last known position
     uint32_t lastDecayTime_ms;      // time of last decay of GPS position offset
     float velTestRatio;             // sum of squares of GPS velocity innovation divided by fail threshold
@@ -712,7 +723,6 @@ private:
     bool inhibitMagStates;          // true when magnetic field states and covariances are to remain constant
     bool firstMagYawInit;           // true when the first post takeoff initialisation of earth field and yaw angle has been performed
     bool secondMagYawInit;          // true when the second post takeoff initialisation of earth field and yaw angle has been performed
-    Vector2f gpsVelGlitchOffset;    // Offset applied to the GPS velocity when the gltch radius is being  decayed back to zero
     bool gpsNotAvailable;           // bool true when valid GPS data is not available
     bool isAiding;                  // true when the filter is fusing position, velocity or flow measurements
     bool prevIsAiding;              // isAiding from previous frame
@@ -723,8 +733,6 @@ private:
     Vector3f lastMagOffsets;        // magnetometer offsets returned by compass object from previous update
     uint32_t lastGpsAidBadTime_ms;  // time in msec gps aiding was last detected to be bad
     float posDownAtTakeoff;         // flight vehicle vertical position at arming used as a reference point
-    bool highYawRate;               // true when the vehicle is doing rapid yaw rotation where gyro scale factor errors could cause loss of heading reference
-    float yawRateFilt;              // filtered yaw rate used to determine when the vehicle is doing rapid yaw rotation where gyro scel factor errors could cause loss of heading reference
     bool useGpsVertVel;             // true if GPS vertical velocity should be used
     float yawResetAngle;            // Change in yaw angle due to last in-flight yaw reset in radians. A positive value means the yaw angle has increased.
     uint32_t lastYawReset_ms;       // System time at which the last yaw reset occurred. Returned by getLastYawResetAngle
@@ -767,6 +775,12 @@ private:
     bool sideSlipFusionDelayed;     // true when the sideslip fusion has been delayed
     bool magFuseTiltInhibit;        // true when the 3-axis magnetoemter fusion is prevented from changing tilt angle
     uint32_t magFuseTiltInhibit_ms; // time in msec that the condition indicated by magFuseTiltInhibit was commenced
+    Vector2f posResetNE;            // Change in North/East position due to last in-flight reset in metres. Returned by getLastPosNorthEastReset
+    uint32_t lastPosReset_ms;       // System time at which the last position reset occurred. Returned by getLastPosNorthEastReset
+    Vector2f velResetNE;            // Change in North/East velocity due to last in-flight reset in metres/sec. Returned by getLastVelNorthEastReset
+    uint32_t lastVelReset_ms;       // System time at which the last velocity reset occurred. Returned by getLastVelNorthEastReset
+    float yawTestRatio;             // square of magnetometer yaw angle innovation divided by fail threshold
+    Quaternion prevQuatMagReset;    // Quaternion from the last time the magnetic field state reset condition test was performed
 
     // variables used to calulate a vertical velocity that is kinematically consistent with the verical position
     float posDownDerivative;        // Rate of chage of vertical position (dPosD/dt) in m/s. This is the first time derivative of PosD.

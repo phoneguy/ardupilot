@@ -1,21 +1,20 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#include <AP_HAL/AP_HAL.h>
-#include "DataFlash.h"
 #include <stdlib.h>
-#include <AP_Param/AP_Param.h>
-#include <AP_Math/AP_Math.h>
-#include <AP_Baro/AP_Baro.h>
+
 #include <AP_AHRS/AP_AHRS.h>
+#include <AP_Baro/AP_Baro.h>
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <AP_Compass/AP_Compass.h>
+#include <AP_HAL/AP_HAL.h>
+#include <AP_Math/AP_Math.h>
+#include <AP_Param/AP_Param.h>
+#include <AP_Progmem/AP_Progmem.h>
 
+#include "DataFlash.h"
 #include "DataFlash_SITL.h"
 #include "DataFlash_File.h"
 #include "DataFlash_Empty.h"
-#include "DataFlash_APM1.h"
-#include "DataFlash_APM2.h"
-
 #include "DFMessageWriter.h"
 
 extern const AP_HAL::HAL& hal;
@@ -26,18 +25,14 @@ void DataFlash_Class::Init(const struct LogStructure *structure, uint8_t num_typ
     _structures = structure;
 
     // DataFlash
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM1
-    backend = new DataFlash_APM1(*this);
-#elif CONFIG_HAL_BOARD == HAL_BOARD_APM2
-    backend = new DataFlash_APM2(*this);
-#elif defined(HAL_BOARD_LOG_DIRECTORY)
+#if defined(HAL_BOARD_LOG_DIRECTORY)
     backend = new DataFlash_File(*this, HAL_BOARD_LOG_DIRECTORY);
 #else
     // no dataflash driver
     backend = new DataFlash_Empty(*this);
 #endif
     if (backend == NULL) {
-        hal.scheduler->panic(PSTR("Unable to open dataflash"));
+        hal.scheduler->panic("Unable to open dataflash");
     }
     backend->Init(structure, num_types);
 }
@@ -293,9 +288,8 @@ uint16_t DataFlash_Block::find_last_page_of_log(uint16_t log_number)
     return -1;
 }
 
-#define PGM_UINT8(addr) pgm_read_byte((const prog_char *)addr)
+#define PGM_UINT8(addr) pgm_read_byte((const char *)addr)
 
-#ifndef DATAFLASH_NO_CLI
 /*
   read and print a log entry using the format strings from the given structure
   - this really should in in the frontend, not the backend
@@ -311,7 +305,7 @@ void DataFlash_Backend::_print_log_entry(uint8_t msg_type,
         }
     }
     if (i == _num_types) {
-        port->printf_P(PSTR("UNKN, %u\n"), (unsigned)msg_type);
+        port->printf("UNKN, %u\n", (unsigned)msg_type);
         return;
     }
     uint8_t msg_len = PGM_UINT8(&_structures[i].msg_len) - 3;
@@ -319,66 +313,66 @@ void DataFlash_Backend::_print_log_entry(uint8_t msg_type,
     if (!ReadBlock(pkt, msg_len)) {
         return;
     }
-    port->printf_P(PSTR("%S, "), _structures[i].name);
+    port->printf("%s, ", _structures[i].name);
     for (uint8_t ofs=0, fmt_ofs=0; ofs<msg_len; fmt_ofs++) {
         char fmt = PGM_UINT8(&_structures[i].format[fmt_ofs]);
         switch (fmt) {
         case 'b': {
-            port->printf_P(PSTR("%d"), (int)pkt[ofs]);
+            port->printf("%d", (int)pkt[ofs]);
             ofs += 1;
             break;
         }
         case 'B': {
-            port->printf_P(PSTR("%u"), (unsigned)pkt[ofs]);
+            port->printf("%u", (unsigned)pkt[ofs]);
             ofs += 1;
             break;
         }
         case 'h': {
             int16_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%d"), (int)v);
+            port->printf("%d", (int)v);
             ofs += sizeof(v);
             break;
         }
         case 'H': {
             uint16_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%u"), (unsigned)v);
+            port->printf("%u", (unsigned)v);
             ofs += sizeof(v);
             break;
         }
         case 'i': {
             int32_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%ld"), (long)v);
+            port->printf("%ld", (long)v);
             ofs += sizeof(v);
             break;
         }
         case 'I': {
             uint32_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%lu"), (unsigned long)v);
+            port->printf("%lu", (unsigned long)v);
             ofs += sizeof(v);
             break;
         }
         case 'q': {
             int64_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%lld"), (long long)v);
+            port->printf("%lld", (long long)v);
             ofs += sizeof(v);
             break;
         }
         case 'Q': {
             uint64_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%llu"), (unsigned long long)v);
+            port->printf("%llu", (unsigned long long)v);
             ofs += sizeof(v);
             break;
         }
         case 'f': {
             float v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%f"), (double)v);
+            port->printf("%f", (double)v);
             ofs += sizeof(v);
             break;
         }
@@ -388,35 +382,35 @@ void DataFlash_Backend::_print_log_entry(uint8_t msg_type,
             // note that %f here *really* means a single-precision
             // float, so we lose precision printing this double out
             // dtoa_engine needed....
-            port->printf_P(PSTR("%f"), (double)v);
+            port->printf("%f", (double)v);
             ofs += sizeof(v);
             break;
         }
         case 'c': {
             int16_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%.2f"), (double)(0.01f*v));
+            port->printf("%.2f", (double)(0.01f*v));
             ofs += sizeof(v);
             break;
         }
         case 'C': {
             uint16_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%.2f"), (double)(0.01f*v));
+            port->printf("%.2f", (double)(0.01f*v));
             ofs += sizeof(v);
             break;
         }
         case 'e': {
             int32_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%.2f"), (double)(0.01f*v));
+            port->printf("%.2f", (double)(0.01f*v));
             ofs += sizeof(v);
             break;
         }
         case 'E': {
             uint32_t v;
             memcpy(&v, &pkt[ofs], sizeof(v));
-            port->printf_P(PSTR("%.2f"), (double)(0.01f*v));
+            port->printf("%.2f", (double)(0.01f*v));
             ofs += sizeof(v);
             break;
         }
@@ -431,7 +425,7 @@ void DataFlash_Backend::_print_log_entry(uint8_t msg_type,
             char v[5];
             memcpy(&v, &pkt[ofs], sizeof(v));
             v[sizeof(v)-1] = 0;
-            port->printf_P(PSTR("%s"), v);
+            port->printf("%s", v);
             ofs += sizeof(v)-1;
             break;
         }
@@ -439,7 +433,7 @@ void DataFlash_Backend::_print_log_entry(uint8_t msg_type,
             char v[17];
             memcpy(&v, &pkt[ofs], sizeof(v));
             v[sizeof(v)-1] = 0;
-            port->printf_P(PSTR("%s"), v);
+            port->printf("%s", v);
             ofs += sizeof(v)-1;
             break;
         }
@@ -447,7 +441,7 @@ void DataFlash_Backend::_print_log_entry(uint8_t msg_type,
             char v[65];
             memcpy(&v, &pkt[ofs], sizeof(v));
             v[sizeof(v)-1] = 0;
-            port->printf_P(PSTR("%s"), v);
+            port->printf("%s", v);
             ofs += sizeof(v)-1;
             break;
         }
@@ -461,7 +455,7 @@ void DataFlash_Backend::_print_log_entry(uint8_t msg_type,
             break;
         }
         if (ofs < msg_len) {
-            port->printf_P(PSTR(", "));
+            port->printf(", ");
         }
     }
     port->println();
@@ -477,7 +471,7 @@ void DataFlash_Block::_print_log_formats(AP_HAL::BetterStream *port)
 {
     for (uint8_t i=0; i<_num_types; i++) {
         const struct LogStructure *s = &_structures[i];
-        port->printf_P(PSTR("FMT, %u, %u, %S, %S, %S\n"),
+        port->printf("FMT, %u, %u, %s, %s, %s\n",
                        (unsigned)PGM_UINT8(&s->msg_type),
                        (unsigned)PGM_UINT8(&s->msg_len),
                        s->name, s->format, s->labels);
@@ -551,9 +545,9 @@ void DataFlash_Block::DumpPageInfo(AP_HAL::BetterStream *port)
 {
     for (uint16_t count=1; count<=df_NumPages; count++) {
         StartRead(count);
-        port->printf_P(PSTR("DF page, log file #, log page: %u,\t"), (unsigned)count);
-        port->printf_P(PSTR("%u,\t"), (unsigned)GetFileNumber());
-        port->printf_P(PSTR("%u\n"), (unsigned)GetFilePage());
+        port->printf("DF page, log file #, log page: %u,\t", (unsigned)count);
+        port->printf("%u,\t", (unsigned)GetFileNumber());
+        port->printf("%u\n", (unsigned)GetFilePage());
     }
 }
 
@@ -563,14 +557,14 @@ void DataFlash_Block::DumpPageInfo(AP_HAL::BetterStream *port)
 void DataFlash_Block::ShowDeviceInfo(AP_HAL::BetterStream *port)
 {
     if (!CardInserted()) {
-        port->println_P(PSTR("No dataflash inserted"));
+        port->println("No dataflash inserted");
         return;
     }
     ReadManufacturerID();
-    port->printf_P(PSTR("Manufacturer: 0x%02x   Device: 0x%04x\n"),
+    port->printf("Manufacturer: 0x%02x   Device: 0x%04x\n",
                     (unsigned)df_manufacturer,
                     (unsigned)df_device);
-    port->printf_P(PSTR("NumPages: %u  PageSize: %u\n"),
+    port->printf("NumPages: %u  PageSize: %u\n",
                    (unsigned)df_NumPages+1,
                    (unsigned)df_PageSize);
 }
@@ -586,16 +580,16 @@ void DataFlash_Block::ListAvailableLogs(AP_HAL::BetterStream *port)
     uint16_t log_end = 0;
 
     if (num_logs == 0) {
-        port->printf_P(PSTR("\nNo logs\n\n"));
+        port->printf("\nNo logs\n\n");
         return;
     }
-    port->printf_P(PSTR("\n%u logs\n"), (unsigned)num_logs);
+    port->printf("\n%u logs\n", (unsigned)num_logs);
 
     for (uint16_t i=num_logs; i>=1; i--) {
         uint16_t last_log_start = log_start, last_log_end = log_end;
         uint16_t temp = last_log_num - i + 1;
         get_log_boundaries(temp, log_start, log_end);
-        port->printf_P(PSTR("Log %u,    start %u,   end %u\n"),
+        port->printf("Log %u,    start %u,   end %u\n",
                        (unsigned)temp,
                        (unsigned)log_start,
                        (unsigned)log_end);
@@ -606,7 +600,6 @@ void DataFlash_Block::ListAvailableLogs(AP_HAL::BetterStream *port)
     }
     port->println();
 }
-#endif // DATAFLASH_NO_CLI
 
 // This function starts a new log file in the DataFlash, and writes
 // the format of supported messages in the log
@@ -646,9 +639,9 @@ void DataFlash_Backend::Log_Fill_Format(const struct LogStructure *s, struct log
     pkt.msgid = LOG_FORMAT_MSG;
     pkt.type = PGM_UINT8(&s->msg_type);
     pkt.length = PGM_UINT8(&s->msg_len);
-    strncpy_P(pkt.name, s->name, sizeof(pkt.name));
-    strncpy_P(pkt.format, s->format, sizeof(pkt.format));
-    strncpy_P(pkt.labels, s->labels, sizeof(pkt.labels));
+    strncpy(pkt.name, s->name, sizeof(pkt.name));
+    strncpy(pkt.format, s->format, sizeof(pkt.format));
+    strncpy(pkt.labels, s->labels, sizeof(pkt.labels));
 }
 
 /*
@@ -1014,12 +1007,12 @@ void DataFlash_Class::Log_Write_Vibration(const AP_InertialSensor &ins)
     WriteBlock(&pkt, sizeof(pkt));
 }
 
-void DataFlash_Class::Log_Write_SysInfo(const prog_char_t *firmware_string)
+void DataFlash_Class::Log_Write_SysInfo(const char *firmware_string)
 {
-    Log_Write_Message_P(firmware_string);
+    Log_Write_Message(firmware_string);
 
 #if defined(PX4_GIT_VERSION) && defined(NUTTX_GIT_VERSION)
-    Log_Write_Message_P(PSTR("PX4: " PX4_GIT_VERSION " NuttX: " NUTTX_GIT_VERSION));
+    Log_Write_Message("PX4: " PX4_GIT_VERSION " NuttX: " NUTTX_GIT_VERSION);
 #endif
 
     // write system identifier as well if available
@@ -1060,19 +1053,6 @@ bool DataFlash_Class::Log_Write_Message(const char *message)
     return WriteCriticalBlock(&pkt, sizeof(pkt));
 }
 
-// Write a text message to the log
-bool DataFlash_Class::Log_Write_Message_P(const prog_char_t *message)
-{
-    struct log_Message pkt = {
-        LOG_PACKET_HEADER_INIT(LOG_MESSAGE_MSG),
-        time_us : hal.scheduler->micros64(),
-        msg  : {}
-    };
-    strncpy_P(pkt.msg, message, sizeof(pkt.msg));
-    return WriteCriticalBlock(&pkt, sizeof(pkt));
-}
-
-// Write a POWR packet
 void DataFlash_Class::Log_Write_Power(void)
 {
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4

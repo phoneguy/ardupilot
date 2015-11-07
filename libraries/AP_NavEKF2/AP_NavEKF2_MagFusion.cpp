@@ -20,26 +20,31 @@ extern const AP_HAL::HAL& hal;
 // Control reset of yaw and magnetic field states
 void NavEKF2_core::controlMagYawReset()
 {
+    // Use a quaternion division to calcualte the delta quaternion between the rotation at the current and last time
+    Quaternion deltaQuat = stateStruct.quat / prevQuatMagReset;
+    prevQuatMagReset = stateStruct.quat;
+    // convert the quaternion to a rotation vector and find its length
+    Vector3f deltaRotVec;
+    deltaQuat.to_axis_angle(deltaRotVec);
+    float deltaRot = deltaRotVec.length();
+
     // Monitor the gain in height and reset the magnetic field states and heading when initial altitude has been gained
     // This is done to prevent magnetic field distoration from steel roofs and adjacent structures causing bad earth field and initial yaw values
-    if (inFlight && !firstMagYawInit && (stateStruct.position.z  - posDownAtTakeoff) < -1.5f) {
-           // Do the first in-air yaw and earth mag field initialisation when the vehicle has gained 1.5m of altitude after commencement of flight
-           Vector3f eulerAngles;
-           stateStruct.quat.to_euler(eulerAngles.x, eulerAngles.y, eulerAngles.z);
-           stateStruct.quat = calcQuatAndFieldStates(eulerAngles.x, eulerAngles.y);
-           StoreQuatReset();
-           firstMagYawInit = true;
-           magFuseTiltInhibit_ms =  imuSampleTime_ms;
-       } else if (inFlight && !secondMagYawInit && (stateStruct.position.z - posDownAtTakeoff) < -5.0f) {
-           // Do the second and final yaw and earth mag field initialisation when the vehicle has gained 5.0m of altitude after commencement of flight
-           // This second and final correction is needed for flight from large metal structures where the magnetic field distortion can extend up to 5m
-           Vector3f eulerAngles;
-           stateStruct.quat.to_euler(eulerAngles.x, eulerAngles.y, eulerAngles.z);
-           stateStruct.quat = calcQuatAndFieldStates(eulerAngles.x, eulerAngles.y);
-           StoreQuatReset();
-           secondMagYawInit = true;
-           magFuseTiltInhibit_ms =  imuSampleTime_ms;
-       }
+    // Delay if rotated too far since the last check as rapid rotations will produce errors in the magnetic field states
+    if (inFlight && !firstMagYawInit && (stateStruct.position.z  - posDownAtTakeoff) < -5.0f && deltaRot < 0.1745f) {
+        firstMagYawInit = true;
+        // reset the timer used to prevent magnetometer fusion from affecting attitude until initial field learning is complete
+        magFuseTiltInhibit_ms =  imuSampleTime_ms;
+        // Update the yaw  angle and earth field states using the magnetic field measurements
+        Quaternion tempQuat;
+        Vector3f eulerAngles;
+        stateStruct.quat.to_euler(eulerAngles.x, eulerAngles.y, eulerAngles.z);
+        tempQuat = stateStruct.quat;
+        stateStruct.quat = calcQuatAndFieldStates(eulerAngles.x, eulerAngles.y);
+        // calculate the change in the quaternion state and apply it to the ouput history buffer
+        tempQuat = stateStruct.quat/tempQuat;
+        StoreQuatRotate(tempQuat);
+    }
 
     // perform a yaw alignment check against GPS if exiting on-ground mode for fly forward type vehicle (plane)
     // this is done to protect against unrecoverable heading alignment errors due to compass faults
@@ -131,23 +136,29 @@ void NavEKF2_core::SelectMagFusion()
     if (magHealth) {
         magTimeout = false;
         lastHealthyMagTime_ms = imuSampleTime_ms;
-    } else if ((imuSampleTime_ms - lastHealthyMagTime_ms) > frontend.magFailTimeLimit_ms && use_compass()) {
+    } else if ((imuSampleTime_ms - lastHealthyMagTime_ms) > frontend->magFailTimeLimit_ms && use_compass()) {
         magTimeout = true;
     }
 
-    bool temp = RecallMag();
+    // check for availability of magnetometer data to fuse
+    bool newMagDataAvailable = RecallMag();
+
+    if (newMagDataAvailable) {
+        // Control reset of yaw and magnetic field states
+        controlMagYawReset();
+    }
 
     // determine if conditions are right to start a new fusion cycle
     // wait until the EKF time horizon catches up with the measurement
-    bool dataReady = (temp && statesInitialised && use_compass() && yawAlignComplete);
+    bool dataReady = (newMagDataAvailable && statesInitialised && use_compass() && yawAlignComplete);
     if (dataReady) {
         // ensure that the covariance prediction is up to date before fusing data
         if (!covPredStep) CovariancePrediction();
         // If we haven't performed the first airborne magnetic field update or have inhibited magnetic field learning, then we use the simple method of declination to maintain heading
         if(inhibitMagStates) {
             fuseCompass();
-            magHealth = true;
-            magTimeout = false;
+            // zero the test ratio output from the inactive 3-axis magneteometer fusion
+            magTestRatio.zero();
         } else {
             // if we are not doing aiding with earth relative observations (eg GPS) then the declination is
             // maintained by fusing declination as a synthesised observation
@@ -160,6 +171,8 @@ void NavEKF2_core::SelectMagFusion()
                 FuseMagnetometer();
                 hal.util->perf_end(_perf_test[0]);
             }
+            // zero the test ratio output from the inactive simple magnetometer yaw fusion
+            yawTestRatio = 0.0f;
         }
     }
 
@@ -236,8 +249,8 @@ void NavEKF2_core::FuseMagnetometer()
         MagPred[1] = DCM[1][0]*magN + DCM[1][1]*magE  + DCM[1][2]*magD + magYbias;
         MagPred[2] = DCM[2][0]*magN + DCM[2][1]*magE  + DCM[2][2]*magD + magZbias;
 
-        // scale magnetometer observation error with total angular rate
-        R_MAG = sq(constrain_float(frontend._magNoise, 0.01f, 0.5f)) + sq(frontend.magVarRateScale*imuDataDelayed.delAng.length() / dtIMUavg);
+        // scale magnetometer observation error with total angular rate to allow for timing errors
+        R_MAG = sq(constrain_float(frontend->_magNoise, 0.01f, 0.5f)) + sq(frontend->magVarRateScale*imuDataDelayed.delAng.length() / dtIMUavg);
 
         // calculate observation jacobians
         SH_MAG[0] = sq(q0) - sq(q1) + sq(q2) - sq(q3);
@@ -474,7 +487,7 @@ void NavEKF2_core::FuseMagnetometer()
     // calculate the measurement innovation
     innovMag[obsIndex] = MagPred[obsIndex] - magDataDelayed.mag[obsIndex];
     // calculate the innovation test ratio
-    magTestRatio[obsIndex] = sq(innovMag[obsIndex]) / (sq(frontend._magInnovGate) * varInnovMag[obsIndex]);
+    magTestRatio[obsIndex] = sq(innovMag[obsIndex]) / (sq(max(frontend->_magInnovGate,1)) * varInnovMag[obsIndex]);
     // check the last values from all components and set magnetometer health accordingly
     magHealth = (magTestRatio[0] < 1.0f && magTestRatio[1] < 1.0f && magTestRatio[2] < 1.0f);
     // Don't fuse unless all componenets pass. The exception is if the bad health has timed out and we are not a fly forward vehicle
@@ -491,11 +504,6 @@ void NavEKF2_core::FuseMagnetometer()
             // If we are forced to use a bad compass in flight, we reduce the weighting by a factor of 4
             if (!magHealth && (PV_AidingMode == AID_ABSOLUTE)) {
                 Kfusion[j] *= 0.25f;
-            }
-            // If in the air and there is no other form of heading reference or we are yawing rapidly which creates larger inertial yaw errors,
-            // we strengthen the magnetometer attitude correction
-            if (motorsArmed && ((PV_AidingMode == AID_NONE) || highYawRate) && j <= 3) {
-                Kfusion[j] *= 4.0f;
             }
             statesArray[j] = statesArray[j] - Kfusion[j] * innovMag[obsIndex];
         }
@@ -632,7 +640,23 @@ void NavEKF2_core::fuseCompass()
         }
         varInnov += H_MAG[rowIndex]*PH[rowIndex];
     }
-    float varInnovInv = 1.0f / varInnov;
+    float varInnovInv;
+    if (varInnov >= R_MAG) {
+        varInnovInv = 1.0f / varInnov;
+        // All three magnetometer components are used in this measurement, so we output health status on three axes
+        faultStatus.bad_xmag = false;
+        faultStatus.bad_ymag = false;
+        faultStatus.bad_zmag = false;
+    } else {
+        // the calculation is badly conditioned, so we cannot perform fusion on this step
+        // we reset the covariance matrix and try again next measurement
+        CovarianceInit();
+        // All three magnetometer components are used in this measurement, so we output health status on three axes
+        faultStatus.bad_xmag = true;
+        faultStatus.bad_ymag = true;
+        faultStatus.bad_zmag = true;
+        return;
+    }
     for (uint8_t rowIndex=0; rowIndex<=stateIndexLim; rowIndex++) {
         Kfusion[rowIndex] = 0.0f;
         for (uint8_t colIndex=0; colIndex<=2; colIndex++) {
@@ -652,6 +676,21 @@ void NavEKF2_core::fuseCompass()
         innovation = 0.5f;
     } else if (innovation < -0.5f) {
         innovation = -0.5f;
+    }
+
+    // calculate the innovation test ratio
+    yawTestRatio = sq(innovation) / (sq(max(frontend->_magInnovGate,1)) * varInnov);
+
+    // Declare the magnetometer unhealthy if the innovation test fails
+    if (yawTestRatio > 1.0f) {
+        magHealth = false;
+        // On the ground a large innovation could be due to large initial gyro bias or magnetic interference from nearby objects
+        // If we are flying, then it is more likely due to a magnetometer fault and we should not fuse the data
+        if (inFlight) {
+            return;
+        }
+    } else {
+        magHealth = true;
     }
 
     // correct the state vector

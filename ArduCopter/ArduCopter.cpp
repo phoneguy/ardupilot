@@ -98,7 +98,7 @@
   4000 = 0.1hz
   
  */
-const AP_Scheduler::Task Copter::scheduler_tasks[] PROGMEM = {
+const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(rc_loop,                4,    130),
     SCHED_TASK(throttle_loop,          8,     75),
     SCHED_TASK(update_GPS,             8,    200),
@@ -206,7 +206,7 @@ void Copter::perf_update(void)
     if (should_log(MASK_LOG_PM))
         Log_Write_Performance();
     if (scheduler.debug()) {
-        gcs_send_text_fmt(PSTR("PERF: %u/%u %lu %lu\n"),
+        gcs_send_text_fmt(MAV_SEVERITY_WARNING, "PERF: %u/%u %lu %lu\n",
                           (unsigned)perf_info_get_num_long_running(),
                           (unsigned)perf_info_get_num_loops(),
                           (unsigned long)perf_info_get_max_time(),
