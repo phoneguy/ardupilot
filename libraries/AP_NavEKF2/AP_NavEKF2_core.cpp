@@ -55,10 +55,11 @@ NavEKF2_core::NavEKF2_core(void) :
 }
 
 // setup this core backend
-void NavEKF2_core::setup_core(NavEKF2 *_frontend, uint8_t _imu_index)
+void NavEKF2_core::setup_core(NavEKF2 *_frontend, uint8_t _imu_index, uint8_t _core_index)
 {
     frontend = _frontend;
     imu_index = _imu_index;
+    core_index = _core_index;
     _ahrs = frontend->_ahrs;
 }
     
@@ -70,6 +71,10 @@ void NavEKF2_core::setup_core(NavEKF2 *_frontend, uint8_t _imu_index)
 // Use a function call rather than a constructor to initialise variables because it enables the filter to be re-started in flight if necessary.
 void NavEKF2_core::InitialiseVariables()
 {
+    // Offset the fusion horizon if necessary to prevent frame over-runs
+    if (dtIMUavg < 0.005) {
+        fusionHorizonOffset = 2*core_index;
+    }
     // initialise time stamps
     imuSampleTime_ms = hal.scheduler->millis();
     lastHealthyMagTime_ms = imuSampleTime_ms;
@@ -191,9 +196,6 @@ void NavEKF2_core::InitialiseVariables()
     memset(&statesArray, 0, sizeof(statesArray));
     posDownDerivative = 0.0f;
     posDown = 0.0f;
-    imuNoiseFiltState0 = 0.0f;
-    imuNoiseFiltState1 = 0.0f;
-    lastImuSwitchState = IMUSWITCH_MIXED;
     posVelFusionDelayed = false;
     optFlowFusionDelayed = false;
     airSpdFusionDelayed = false;
@@ -201,6 +203,7 @@ void NavEKF2_core::InitialiseVariables()
     magFuseTiltInhibit = false;
     posResetNE.zero();
     velResetNE.zero();
+    hgtInnovFiltState = 0.0f;
 }
 
 // Initialise the states from accelerometer and magnetometer data (if present)
@@ -280,8 +283,6 @@ bool NavEKF2_core::InitialiseFilterBootstrap(void)
 
     // set to true now that states have be initialised
     statesInitialised = true;
-
-    hal.console->printf("EKF2 initialised on IMU %u\n", (unsigned)imu_index);
 
     return true;
 }
@@ -483,72 +484,6 @@ void NavEKF2_core::UpdateStrapdownEquationsNED()
 
     // limit states to protect against divergence
     ConstrainStates();
-}
-
-// Propagate PVA solution forward from the fusion time horizon to the current time horizon
-// using buffered IMU data
-void  NavEKF2_core::calcOutputStates() {
-
-    // initialise the store access at the fusion time horizon (it will be advanced later)
-    uint8_t imuStoreAccessIndex = fifoIndexDelayed;
-    imu_elements imuData;
-
-    // Counter used to ensure the while loop always exits
-    uint8_t watchdog = 0;
-
-    // initialise to the solution at the fusion time horizon
-    outputDataNew.quat = stateStruct.quat;
-    outputDataNew.velocity = stateStruct.velocity;
-    outputDataNew.position = stateStruct.position;
-
-    // Iterate through the buffered IMU data, using the strapdown equations to wind forward from the fusion time horizon to current time
-    // we stop iterating when we have reached the current imu Data
-    do {
-
-        // If the loop cannot exit, force exit
-        if (watchdog > IMU_BUFFER_LENGTH+2) {
-            return;
-        }
-        watchdog++;
-
-        // advance to the next index
-        imuStoreAccessIndex++;
-
-        // if we have got to the end of the array, return to the start
-        if (imuStoreAccessIndex >= IMU_BUFFER_LENGTH) {
-            imuStoreAccessIndex = 0;
-        }
-        imuData = storedIMU[imuStoreAccessIndex];
-
-        // remove gyro bias errors
-        Vector3f delAng = imuData.delAng - stateStruct.gyro_bias;
-
-        // remove Z accel bias error
-        Vector3f delVel = imuData.delVel;
-        delVel.z -= stateStruct.accel_zbias;
-
-        // convert the rotation vector to its equivalent quaternion
-        Quaternion deltaQuat;
-        deltaQuat.from_axis_angle_fast(delAng);
-
-        // update the quaternion states by rotating from the previous attitude through
-        // the delta angle rotation quaternion and normalise
-        outputDataNew.quat *= deltaQuat;
-        outputDataNew.quat.normalize();
-
-        // calculate the body to nav cosine matrix
-        Matrix3f Tbn_temp;
-        outputDataNew.quat.rotation_matrix(Tbn_temp);
-
-        // transform body delta velocities to delta velocities in the nav frame
-        // * and + operators have been overloaded
-        Vector3f delVelNav  = Tbn_temp*delVel;
-        delVelNav.z += GRAVITY_MSS*imuData.delVelDT;
-
-        // use a simple Euler integration
-        outputDataNew.position += outputDataNew.velocity*imuData.delVelDT;
-    }
-    while (imuStoreAccessIndex != fifoIndexNow);
 }
 
 /*

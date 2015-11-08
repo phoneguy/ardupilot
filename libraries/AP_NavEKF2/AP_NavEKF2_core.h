@@ -47,6 +47,9 @@
  * Samples*delta_time must be > max sensor delay
 */
 #if APM_BUILD_TYPE(APM_BUILD_ArduCopter)
+// Note that if using more than 2 instances of the EKF, as set by EK2_IMU_MASK, this delay should be increased by 2 samples
+// for each additional instance to allow for the need to offset the fusion time horizon for each instance to avoid simultaneous fusion
+// of measurements by each instance
 #define IMU_BUFFER_LENGTH       104 // maximum 260 msec delay at 400 Hz
 #elif APM_BUILD_TYPE(APM_BUILD_APMrover2)
 #define IMU_BUFFER_LENGTH       13 // maximum 260 msec delay at 50 Hz
@@ -65,7 +68,7 @@ public:
     NavEKF2_core(void);
 
     // setup this core backend
-    void setup_core(NavEKF2 *_frontend, uint8_t _imu_index);
+    void setup_core(NavEKF2 *_frontend, uint8_t _imu_index, uint8_t _core_index);
     
     // Initialise the states from accelerometer and magnetometer data (if present)
     // This method can only be used when the vehicle is static
@@ -76,6 +79,10 @@ public:
 
     // Check basic filter health metrics and return a consolidated health status
     bool healthy(void) const;
+
+    // Return a consolidated fault score where higher numbers are less healthy
+    // Intended to be used by the front-end to determine which is the primary EKF
+    float faultScore(void) const;
 
     // Return the last calculated NED position relative to the reference point (m).
     // If a calculated solution is not available, use the best available data and return false
@@ -266,6 +273,7 @@ private:
     // Reference to the global EKF frontend for parameters
     NavEKF2 *frontend;
     uint8_t imu_index;
+    uint8_t core_index;
 
     typedef float ftype;
 #if defined(MATH_CHECK_INDEXES) && (MATH_CHECK_INDEXES == 1)
@@ -615,10 +623,6 @@ private:
     float calcMagHeadingInnov();
 
     // Propagate PVA solution forward from the fusion time horizon to the current time horizon
-    // using buffered IMU data
-    void calcOutputStates();
-
-    // Propagate PVA solution forward from the fusion time horizon to the current time horizon
     // using a simple observer
     void calcOutputStatesFast();
 
@@ -781,6 +785,8 @@ private:
     uint32_t lastVelReset_ms;       // System time at which the last velocity reset occurred. Returned by getLastVelNorthEastReset
     float yawTestRatio;             // square of magnetometer yaw angle innovation divided by fail threshold
     Quaternion prevQuatMagReset;    // Quaternion from the last time the magnetic field state reset condition test was performed
+    uint8_t fusionHorizonOffset;    // number of IMU samples that the fusion time horizon  has been shifted forward to prevent multiple EKF instances fusing data at the same time
+    float hgtInnovFiltState;        // state used for fitering of the height innovations used for pre-flight checks
 
     // variables used to calulate a vertical velocity that is kinematically consistent with the verical position
     float posDownDerivative;        // Rate of chage of vertical position (dPosD/dt) in m/s. This is the first time derivative of PosD.
@@ -802,17 +808,6 @@ private:
     uint32_t lastInnovPassTime_ms;  // last time in msec the GPS innovations passed
     uint32_t lastInnovFailTime_ms;  // last time in msec the GPS innovations failed
     bool gpsAccuracyGood;           // true when the GPS accuracy is considered to be good enough for safe flight.
-
-    // monitoring IMU quality
-    float imuNoiseFiltState0;       // peak hold noise estimate for IMU 0
-    float imuNoiseFiltState1;       // peak hold noise estimate for IMU 1
-    Vector3f accelDiffFilt;         // filtered difference between IMU 0 and 1
-    enum ImuSwitchState {
-        IMUSWITCH_MIXED=0,          // IMU 0 & 1 are mixed
-        IMUSWITCH_IMU0,             // only IMU 0 is used
-        IMUSWITCH_IMU1              // only IMU 1 is used
-    };
-    ImuSwitchState lastImuSwitchState;  // last switch state (see imuSwitchState enum)
 
     // States used for unwrapping of compass yaw error
     float innovationIncrement;

@@ -31,14 +31,37 @@ bool NavEKF2_core::healthy(void) const
     if ((imuSampleTime_ms - ekfStartTime_ms) < 1000 ) {
         return false;
     }
-    // barometer and position innovations must be within limits when on-ground
+    // position and height innovations must be within limits when on-ground and in a static mode of operation
     float horizErrSq = sq(innovVelPos[3]) + sq(innovVelPos[4]);
-    if (onGround && (fabsf(innovVelPos[5]) > 1.0f || horizErrSq > 1.0f)) {
+    if (onGround && (PV_AidingMode == AID_NONE) && ((horizErrSq > 1.0f) || (fabsf(hgtInnovFiltState) > 1.0f))) {
         return false;
     }
 
     // all OK
     return true;
+}
+
+// Return a consolidated fault score where higher numbers are less healthy
+// Intended to be used by the front-end to determine which is the primary EKF
+float NavEKF2_core::faultScore(void) const
+{
+    float score = 0.0f;
+    // If velocity, position or height measurements are failing consistency checks, this adds to the score
+    if (velTestRatio > 1.0f) {
+        score += velTestRatio-1.0f;
+    }
+    if (posTestRatio > 1.0f) {
+        score += posTestRatio-1.0f;
+    }
+    if (hgtTestRatio > 1.0f) {
+        score += hgtTestRatio-1.0f;
+    }
+    // If the tilt error is excessive this adds to the score
+    const float tiltErrThreshold = 0.1f;
+    if (tiltAlignComplete && yawAlignComplete && tiltErrFilt > tiltErrThreshold) {
+        score += tiltErrFilt / tiltErrThreshold;
+    }
+    return score;
 }
 
 // return data for debugging optical flow fusion
