@@ -2,14 +2,16 @@
 #ifndef __AP_HAL_LINUX_UTIL_H__
 #define __AP_HAL_LINUX_UTIL_H__
 
+#include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
+
 #include "AP_HAL_Linux_Namespace.h"
 #include "ToneAlarmDriver.h"
 
-class Linux::LinuxUtil : public AP_HAL::Util {
+class Linux::Util : public AP_HAL::Util {
 public:
-    static LinuxUtil *from(AP_HAL::Util *util) {
-        return static_cast<LinuxUtil*>(util);
+    static Util *from(AP_HAL::Util *util) {
+        return static_cast<Util*>(util);
     }
 
     void init(int argc, char * const *argv);
@@ -38,9 +40,25 @@ public:
     bool is_chardev_node(const char *path);
     void set_imu_temp(float current);
 
+    uint32_t available_memory(void) override;
+
+    /*
+     * Write a string as specified by @fmt to the file in @path. Note this
+     * should not be used on hot path since it will open, write and close the
+     * file for each call.
+     */
+    int write_file(const char *path, const char *fmt, ...) FORMAT(3, 4);
+
+    /*
+     * Read a string as specified by @fmt from the file in @path. Note this
+     * should not be used on hot path since it will open, read and close the
+     * file for each call.
+     */
+    int read_file(const char *path, const char *fmt, ...) FMT_SCANF(3, 4);
+
 private:
     static Linux::ToneAlarm _toneAlarm;
-    Linux::LinuxHeat *_heat;
+    Linux::Heat *_heat;
     int saved_argc;
     char* const *saved_argv;
     const char* custom_log_directory = NULL;

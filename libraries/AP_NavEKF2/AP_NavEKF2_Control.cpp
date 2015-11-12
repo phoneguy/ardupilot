@@ -4,11 +4,6 @@
 
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_150
 
-/*
-  optionally turn down optimisation for debugging
- */
-// #pragma GCC optimize("O0")
-
 #include "AP_NavEKF2.h"
 #include "AP_NavEKF2_core.h"
 #include <AP_AHRS/AP_AHRS.h>
@@ -41,9 +36,6 @@ void NavEKF2_core::controlFilterModes()
     // Used during initial bootstrap alignment of the filter
     checkAttitudeAlignmentStatus();
 
-    // Control reset of yaw and magnetic field states
-    controlMagYawReset();
-
     // Set the type of inertial navigation aiding used
     setAidingMode();
 
@@ -64,13 +56,25 @@ void NavEKF2_core::setWindMagStateLearningMode()
     }
 
     // Determine if learning of magnetic field states has been requested by the user
-    bool magCalRequested = ((frontend._magCal == 0) && !onGround) || ((frontend._magCal == 1) && manoeuvring)  || (frontend._magCal == 3);
+    bool magCalRequested =
+            ((frontend->_magCal == 0) && inFlight) || // when flying
+            ((frontend->_magCal == 1) && manoeuvring)  || // when manoeuvring
+            ((frontend->_magCal == 3) && firstMagYawInit) || // when initial in-air yaw and field reset has completed
+            (frontend->_magCal == 4); // all the time
 
-    // Deny mag calibration request if we aren't using the compass, are in the pre-arm constant position mode or it has been inhibited by the user
-    bool magCalDenied = !use_compass() || (PV_AidingMode == AID_NONE) || (frontend._magCal == 2);
+    // Deny mag calibration request if we aren't using the compass, it has been inhibited by the user,
+    // we do not have an absolute position reference or are on the ground (unless explicitly requested by the user)
+    // If we do nto have absolute position (eg GPS) then the earth field states cannot be learned
+    bool magCalDenied = !use_compass() || (frontend->_magCal == 2) || (PV_AidingMode == AID_NONE) || (onGround && frontend->_magCal != 4);
 
     // Inhibit the magnetic field calibration if not requested or denied
     inhibitMagStates = (!magCalRequested || magCalDenied);
+
+    // If on ground we clear the flag indicating that the magnetic field in-flight initialisation has been completed
+    // because we want it re-done for each takeoff
+    if (onGround) {
+        firstMagYawInit = false;
+    }
 
     // Adjust the indexing limits used to address the covariance, states and other EKF arrays to avoid unnecessary operations
     // if we are not using those states
@@ -92,9 +96,9 @@ void NavEKF2_core::setAidingMode()
     // Don't allow filter to start position or velocity aiding until the tilt and yaw alignment is complete
     bool filterIsStable = tiltAlignComplete && yawAlignComplete;
     // If GPS useage has been prohiited then we use flow aiding provided optical flow data is present
-    bool useFlowAiding = (frontend._fusionModeGPS == 3) && optFlowDataPresent();
+    bool useFlowAiding = (frontend->_fusionModeGPS == 3) && optFlowDataPresent();
     // Start aiding if we have a source of aiding data and the filter attitude algnment is complete
-    // Latch to on. Aiding can be turned off by setting both
+    // Latch to on
     isAiding = ((readyToUseGPS() || useFlowAiding) && filterIsStable) || isAiding;
 
     // check to see if we are starting or stopping aiding and set states and modes as required
@@ -102,8 +106,6 @@ void NavEKF2_core::setAidingMode()
         // We have transitioned either into or out of aiding
         // zero stored velocities used to do dead-reckoning
         heldVelNE.zero();
-        // reset the flag that indicates takeoff for use by optical flow navigation
-        takeOffDetected = false;
         // set various  useage modes based on the condition when we start aiding. These are then held until aiding is stopped.
         if (!isAiding) {
             // We have ceased aiding
@@ -119,9 +121,9 @@ void NavEKF2_core::setAidingMode()
             meaHgtAtTakeOff = baroDataDelayed.hgt;
             // reset the vertical position state to faster recover from baro errors experienced during touchdown
             stateStruct.position.z = -meaHgtAtTakeOff;
-        } else if (frontend._fusionModeGPS == 3) {
+        } else if (frontend->_fusionModeGPS == 3) {
             // We have commenced aiding, but GPS useage has been prohibited so use optical flow only
-            hal.console->printf("EKF is using optical flow\n");
+            hal.console->printf("EKF2 IMU%u is using optical flow\n",(unsigned)imu_index);
             PV_AidingMode = AID_RELATIVE; // we have optical flow data and can estimate all vehicle states
             posTimeout = true;
             velTimeout = true;
@@ -131,7 +133,7 @@ void NavEKF2_core::setAidingMode()
             prevFlowFuseTime_ms = imuSampleTime_ms;
         } else {
             // We have commenced aiding and GPS useage is allowed
-            hal.console->printf("EKF is using GPS\n");
+            hal.console->printf("EKF2 IMU%u is using GPS\n",(unsigned)imu_index);
             PV_AidingMode = AID_ABSOLUTE; // we have GPS data and can estimate all vehicle states
             posTimeout = false;
             velTimeout = false;
@@ -162,22 +164,22 @@ void NavEKF2_core::setAidingMode()
 void NavEKF2_core::checkAttitudeAlignmentStatus()
 {
     // Check for tilt convergence - used during initial alignment
-    float alpha = 1.0f*dtIMUavg;
+    float alpha = 1.0f*imuDataDelayed.delAngDT;
     float temp=tiltErrVec.length();
     tiltErrFilt = alpha*temp + (1.0f-alpha)*tiltErrFilt;
     if (tiltErrFilt < 0.005f && !tiltAlignComplete) {
         tiltAlignComplete = true;
-        hal.console->printf("EKF tilt alignment complete\n");
+        hal.console->printf("EKF2 IMU%u tilt alignment complete\n",(unsigned)imu_index);
     }
 
     // Once tilt has converged, align yaw using magnetic field measurements
     if (tiltAlignComplete && !yawAlignComplete) {
         Vector3f eulerAngles;
-        getEulerAngles(eulerAngles);
+        stateStruct.quat.to_euler(eulerAngles.x, eulerAngles.y, eulerAngles.z);
         stateStruct.quat = calcQuatAndFieldStates(eulerAngles.x, eulerAngles.y);
         StoreQuatReset();
         yawAlignComplete = true;
-        hal.console->printf("EKF yaw alignment complete\n");
+        hal.console->printf("EKF2 IMU%u yaw alignment complete\n",(unsigned)imu_index);
     }
 }
 
@@ -203,13 +205,13 @@ bool NavEKF2_core::optFlowDataPresent(void) const
 // return true if the filter to be ready to use gps
 bool NavEKF2_core::readyToUseGPS(void) const
 {
-    return validOrigin && tiltAlignComplete && yawAlignComplete && gpsQualGood;
+    return validOrigin && tiltAlignComplete && yawAlignComplete && gpsGoodToAlign && (frontend->_fusionModeGPS != 3);
 }
 
 // return true if we should use the compass
 bool NavEKF2_core::use_compass(void) const
 {
-    return _ahrs->get_compass() && _ahrs->get_compass()->use_for_yaw();
+    return _ahrs->get_compass() && _ahrs->get_compass()->use_for_yaw(magSelectIndex);
 }
 
 /*
@@ -242,7 +244,7 @@ void NavEKF2_core::setOrigin()
     // define Earth rotation vector in the NED navigation frame at the origin
     calcEarthRateNED(earthRateNED, _ahrs->get_home().lat);
     validOrigin = true;
-    hal.console->printf("EKF Origin Set\n");
+    hal.console->printf("EKF2 IMU%u Origin Set\n",(unsigned)imu_index);
 }
 
 // Commands the EKF to not use GPS.
@@ -257,7 +259,7 @@ uint8_t NavEKF2_core::setInhibitGPS(void)
         return 0;
     }
     if (optFlowDataPresent()) {
-        frontend._fusionModeGPS = 3;
+        frontend->_fusionModeGPS = 3;
 //#error writing to a tuning parameter
         return 2;
     } else {

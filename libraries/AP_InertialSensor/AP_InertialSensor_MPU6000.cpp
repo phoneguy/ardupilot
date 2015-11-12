@@ -10,14 +10,14 @@ extern const AP_HAL::HAL& hal;
 // MPU6000 accelerometer scaling
 #define MPU6000_ACCEL_SCALE_1G    (GRAVITY_MSS / 4096.0f)
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM2
-#define MPU6000_DRDY_PIN 70
-#elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
+#if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 #include <AP_HAL_Linux/GPIO.h>
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBOARD || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF
 #define MPU6000_DRDY_PIN BBB_P8_14
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RASPILOT
 #define MPU6000_DRDY_PIN RPI_GPIO_24
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
+#define MPU6000_DRDY_PIN MINNOW_GPIO_I2S_CLK
 #endif
 #endif
 
@@ -306,7 +306,7 @@ AP_HAL::Semaphore* AP_MPU6000_BusDriver_SPI::get_semaphore()
     return _spi->get_semaphore();
 }
 
-bool AP_MPU6000_BusDriver_SPI::has_auxiliar_bus()
+bool AP_MPU6000_BusDriver_SPI::has_auxiliary_bus()
 {
     return true;
 }
@@ -370,7 +370,7 @@ void AP_MPU6000_BusDriver_I2C::read_data_transaction(uint8_t *samples,
 
     ret = _i2c->readRegisters(_addr, MPUREG_FIFO_COUNTH, 2, _rx);
     if(ret != 0) {
-        hal.console->printf_P(PSTR("MPU6000: error in i2c read\n"));
+        hal.console->printf("MPU6000: error in i2c read\n");
         n_samples = 0;
         return;
     }
@@ -380,7 +380,7 @@ void AP_MPU6000_BusDriver_I2C::read_data_transaction(uint8_t *samples,
     n_samples = bytes_read / MPU6000_SAMPLE_SIZE;
 
     if(n_samples > 3) {
-        hal.console->printf_P(PSTR("bytes_read = %d, n_samples %d > 3, dropping samples\n"),
+        hal.console->printf("bytes_read = %d, n_samples %d > 3, dropping samples\n",
                                    bytes_read, n_samples);
 
         /* Too many samples, do a FIFO RESET */
@@ -399,7 +399,7 @@ void AP_MPU6000_BusDriver_I2C::read_data_transaction(uint8_t *samples,
     }
 
     if(ret != 0) {
-        hal.console->printf_P(PSTR("MPU6000: error in i2c read %d bytes\n"),
+        hal.console->printf("MPU6000: error in i2c read %d bytes\n",
                                    n_samples * MPU6000_SAMPLE_SIZE);
         n_samples = 0;
         return;
@@ -415,7 +415,7 @@ AP_HAL::Semaphore* AP_MPU6000_BusDriver_I2C::get_semaphore()
     return _i2c->get_semaphore();
 }
 
-bool AP_MPU6000_BusDriver_I2C::has_auxiliar_bus()
+bool AP_MPU6000_BusDriver_I2C::has_auxiliary_bus()
 {
     return false;
 }
@@ -441,15 +441,9 @@ AP_InertialSensor_MPU6000::AP_InertialSensor_MPU6000(AP_InertialSensor &imu, AP_
     _bus_sem(NULL),
     _last_accel_filter_hz(-1),
     _last_gyro_filter_hz(-1),
-#if MPU6000_FAST_SAMPLING
     _accel_filter(1000, 15),
     _gyro_filter(1000, 15),
     _temp_filter(1000, 1),
-#else
-    _sample_count(0),
-    _accel_sum(),
-    _gyro_sum(),
-#endif
     _sum_count(0),
     _samples(NULL)
 {
@@ -459,7 +453,7 @@ AP_InertialSensor_MPU6000::AP_InertialSensor_MPU6000(AP_InertialSensor &imu, AP_
 AP_InertialSensor_MPU6000::~AP_InertialSensor_MPU6000()
 {
     delete _bus;
-    delete _auxiliar_bus;
+    delete _auxiliary_bus;
     delete _samples;
 }
 
@@ -532,7 +526,7 @@ void AP_InertialSensor_MPU6000::start()
     hal.scheduler->suspend_timer_procs();
 
     if (!_bus_sem->take(100)) {
-        hal.scheduler->panic(PSTR("MPU6000: Unable to get semaphore"));
+        hal.scheduler->panic("MPU6000: Unable to get semaphore");
     }
 
     // initially run the bus at low speed
@@ -548,31 +542,8 @@ void AP_InertialSensor_MPU6000::start()
     _samples = new uint8_t[max_samples * MPU6000_SAMPLE_SIZE];
     hal.scheduler->delay(1);
 
-#if MPU6000_FAST_SAMPLING
     _sample_count = 1;
-#else
-    // sample rate and filtering
-    // to minimise the effects of aliasing we choose a filter
-    // that is less than half of the sample rate
-    switch (_imu.get_sample_rate()) {
-    case AP_InertialSensor::RATE_50HZ:
-        // this is used for plane and rover, where noise resistance is
-        // more important than update rate. Tests on an aerobatic plane
-        // show that 10Hz is fine, and makes it very noise resistant
-        _sample_count = 4;
-        break;
-    case AP_InertialSensor::RATE_100HZ:
-        _sample_count = 2;
-        break;
-    case AP_InertialSensor::RATE_200HZ:
-        _sample_count = 1;
-        break;
-    default:
-        return;
-    }
-#endif
 
-#if MPU6000_FAST_SAMPLING
     // disable sensor filtering
     _set_filter_register(256);
 
@@ -582,13 +553,7 @@ void AP_InertialSensor_MPU6000::start()
     // So we have to set it to 7 to have a 1kHz sampling
     // rate on the gyro
     _register_write(MPUREG_SMPLRT_DIV, 7);
-#else
-    _set_filter_register(_accel_filter_cutoff());
 
-    // set sample rate to 200Hz, and use _sample_divider to give
-    // the requested rate to the application
-    _register_write(MPUREG_SMPLRT_DIV, MPUREG_SMPLRT_200HZ);
-#endif
     hal.scheduler->delay(1);
 
     _register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_2000DPS);  // Gyro scale 2000º/s
@@ -628,7 +593,8 @@ void AP_InertialSensor_MPU6000::start()
     _gyro_instance = _imu.register_gyro();
     _accel_instance = _imu.register_accel();
 
-    _set_accel_sample_rate(_accel_instance, 1000);
+    _set_accel_raw_sample_rate(_accel_instance, 1000);
+    _set_gyro_raw_sample_rate(_gyro_instance, 1000);
 
     hal.scheduler->resume_timer_procs();
 
@@ -642,33 +608,16 @@ void AP_InertialSensor_MPU6000::start()
  */
 bool AP_InertialSensor_MPU6000::update( void )
 {    
-#if !MPU6000_FAST_SAMPLING
-    if (_sum_count < _sample_count) {
-        // we don't have enough samples yet
-        return false;
-    }
-#endif
-
     // we have a full set of samples
     uint16_t num_samples;
     Vector3f accel, gyro;
     float temp;
 
     hal.scheduler->suspend_timer_procs();
-#if MPU6000_FAST_SAMPLING
     gyro = _gyro_filtered;
     accel = _accel_filtered;
     temp = _temp_filtered;
     num_samples = 1;
-#else
-    gyro(_gyro_sum.x, _gyro_sum.y, _gyro_sum.z);
-    accel(_accel_sum.x, _accel_sum.y, _accel_sum.z);
-    temp = _temp_sum;
-    num_samples = _sum_count;
-    _accel_sum.zero();
-    _gyro_sum.zero();
-    _temp_sum = 0;
-#endif
     _sum_count = 0;
     hal.scheduler->resume_timer_procs();
 
@@ -682,7 +631,6 @@ bool AP_InertialSensor_MPU6000::update( void )
     /* give the temperature to the control loop in order to keep it constant*/
     hal.util->set_imu_temp(temp);
 
-#if MPU6000_FAST_SAMPLING
     if (_last_accel_filter_hz != _accel_filter_cutoff()) {
         _accel_filter.set_cutoff_frequency(1000, _accel_filter_cutoff());
         _last_accel_filter_hz = _accel_filter_cutoff();
@@ -692,30 +640,19 @@ bool AP_InertialSensor_MPU6000::update( void )
         _gyro_filter.set_cutoff_frequency(1000, _gyro_filter_cutoff());
         _last_gyro_filter_hz = _gyro_filter_cutoff();
     }
-#else
-    if (_last_accel_filter_hz != _accel_filter_cutoff()) {
-        if (_bus_sem->take(10)) {
-            _bus->set_bus_speed(AP_HAL::SPIDeviceDriver::SPI_SPEED_LOW);
-            _set_filter_register(_accel_filter_cutoff());
-            _bus->set_bus_speed(AP_HAL::SPIDeviceDriver::SPI_SPEED_HIGH);
-            _bus_sem->give();
-            _last_accel_filter_hz = _accel_filter_cutoff();
-        }
-    }
-#endif
 
     return true;
 }
 
-AuxiliaryBus *AP_InertialSensor_MPU6000::get_auxiliar_bus()
+AuxiliaryBus *AP_InertialSensor_MPU6000::get_auxiliary_bus()
 {
-    if (_auxiliar_bus)
-        return _auxiliar_bus;
+    if (_auxiliary_bus)
+        return _auxiliary_bus;
 
-    if (_bus->has_auxiliar_bus())
-        _auxiliar_bus = new AP_MPU6000_AuxiliaryBus(*this);
+    if (_bus->has_auxiliary_bus())
+        _auxiliary_bus = new AP_MPU6000_AuxiliaryBus(*this);
 
-    return _auxiliar_bus;
+    return _auxiliary_bus;
 }
 
 /*================ HARDWARE FUNCTIONS ==================== */
@@ -776,32 +713,21 @@ void AP_InertialSensor_MPU6000::_accumulate(uint8_t *samples, uint8_t n_samples)
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
         accel.rotate(ROTATION_YAW_270);
         gyro.rotate(ROTATION_YAW_270);
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
+        accel.rotate(ROTATION_YAW_90);
+        gyro.rotate(ROTATION_YAW_90);
 #endif
 
         _rotate_and_correct_accel(_accel_instance, accel);
         _rotate_and_correct_gyro(_gyro_instance, gyro);
 
         _notify_new_accel_raw_sample(_accel_instance, accel);
+        _notify_new_gyro_raw_sample(_gyro_instance, gyro);
 
-#if MPU6000_FAST_SAMPLING
         _accel_filtered = _accel_filter.apply(accel);
         _gyro_filtered = _gyro_filter.apply(gyro);
         _temp_filtered = _temp_filter.apply(temp);
-#else
-        _accel_sum += accel;
-        _gyro_sum += gyro;
-        _temp_sum += temp;
-#endif
         _sum_count++;
-
-#if !MPU6000_FAST_SAMPLING
-        if (_sum_count == 0) {
-        // rollover - v unlikely
-            _accel_sum.zero();
-            _gyro_sum.zero();
-            _temp_sum = 0;
-        }
-#endif
     }
 }
 
@@ -841,10 +767,10 @@ void AP_InertialSensor_MPU6000::_register_write_check(uint8_t reg, uint8_t val)
     _register_write(reg, val);
     readed = _register_read(reg);
     if (readed != val){
-        hal.console->printf_P(PSTR("Values doesn't match; written: %02x; read: %02x "), val, readed);
+        hal.console->printf("Values doesn't match; written: %02x; read: %02x ", val, readed);
     }
 #if MPU6000_DEBUG
-    hal.console->printf_P(PSTR("Values written: %02x; readed: %02x "), val, readed);
+    hal.console->printf("Values written: %02x; readed: %02x ", val, readed);
 #endif
 }
 
@@ -877,10 +803,10 @@ void AP_InertialSensor_MPU6000::_set_filter_register(uint16_t filter_hz)
 bool AP_InertialSensor_MPU6000::_hardware_init(void)
 {
     if (!_bus_sem->take(100)) {
-        hal.scheduler->panic(PSTR("MPU6000: Unable to get semaphore"));
+        hal.scheduler->panic("MPU6000: Unable to get semaphore");
     }
 
-    // initially run the bus at low speed (500kHz on APM2)
+    // initially run the bus at low speed
     _bus->set_bus_speed(AP_HAL::SPIDeviceDriver::SPI_SPEED_LOW);
 
     // Chip reset
@@ -922,7 +848,7 @@ bool AP_InertialSensor_MPU6000::_hardware_init(void)
 #endif
     }
     if (tries == 5) {
-        hal.console->println_P(PSTR("Failed to boot MPU6000 5 times"));
+        hal.console->println("Failed to boot MPU6000 5 times");
         goto fail_tries;
     }
 
@@ -941,11 +867,11 @@ fail_tries:
 // dump all config registers - used for debug
 void AP_InertialSensor_MPU6000::_dump_registers(void)
 {
-    hal.console->println_P(PSTR("MPU6000 registers"));
+    hal.console->println("MPU6000 registers");
     if (_bus_sem->take(100)) {
         for (uint8_t reg=MPUREG_PRODUCT_ID; reg<=108; reg++) {
             uint8_t v = _register_read(reg);
-            hal.console->printf_P(PSTR("%02x:%02x "), (unsigned)reg, (unsigned)v);
+            hal.console->printf("%02x:%02x ", (unsigned)reg, (unsigned)v);
             if ((reg - (MPUREG_PRODUCT_ID-1)) % 16 == 0) {
                 hal.console->println();
             }
@@ -995,7 +921,7 @@ int AP_MPU6000_AuxiliaryBusSlave::passthrough_read(uint8_t reg, uint8_t *buf,
     assert(buf);
 
     if (_registered) {
-        hal.console->println_P(PSTR("Error: can't passthrough when slave is already configured"));
+        hal.console->println("Error: can't passthrough when slave is already configured");
         return -1;
     }
 
@@ -1018,7 +944,7 @@ int AP_MPU6000_AuxiliaryBusSlave::passthrough_read(uint8_t reg, uint8_t *buf,
 int AP_MPU6000_AuxiliaryBusSlave::passthrough_write(uint8_t reg, uint8_t val)
 {
     if (_registered) {
-        hal.console->println_P(PSTR("Error: can't passthrough when slave is already configured"));
+        hal.console->println("Error: can't passthrough when slave is already configured");
         return -1;
     }
 
@@ -1040,7 +966,7 @@ int AP_MPU6000_AuxiliaryBusSlave::passthrough_write(uint8_t reg, uint8_t val)
 int AP_MPU6000_AuxiliaryBusSlave::read(uint8_t *buf)
 {
     if (!_registered) {
-        hal.console->println_P(PSTR("Error: can't read before configuring slave"));
+        hal.console->println("Error: can't read before configuring slave");
         return -1;
     }
 
