@@ -112,9 +112,8 @@ void NavEKF2_core::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRa
         flowValidMeaTime_ms = imuSampleTime_ms;
         // estimate sample time of the measurement
         ofDataNew.time_ms = imuSampleTime_ms - frontend->_flowDelay_ms - frontend->flowTimeDeltaAvg_ms/2;
-        // Assign measurement to nearest fusion interval so that multiple measurements can be fused on the same frame
-        // This allows us to perform the covariance prediction over longer time steps which reduces numerical precision errors
-        ofDataNew.time_ms = roundToNearest(ofDataNew.time_ms, frontend->fusionTimeStep_ms);
+        // Correct for the average intersampling delay due to the filter updaterate
+        ofDataNew.time_ms -= localFilterTimeStep_ms/2;
         // Prevent time delay exceeding age of oldest IMU data in the buffer
         ofDataNew.time_ms = max(ofDataNew.time_ms,imuDataDelayed.time_ms);
         // Save data to buffer
@@ -175,11 +174,11 @@ bool NavEKF2_core::RecallOF()
 bool NavEKF2_core::getMagOffsets(Vector3f &magOffsets) const
 {
     // compass offsets are valid if we have finalised magnetic field initialisation and magnetic field learning is not prohibited and primary compass is valid
-    if (firstMagYawInit && (frontend->_magCal != 2) && _ahrs->get_compass()->healthy(0)) {
-        magOffsets = _ahrs->get_compass()->get_offsets(0) - stateStruct.body_magfield*1000.0f;
+    if (firstMagYawInit && (frontend->_magCal != 2) && _ahrs->get_compass()->healthy(magSelectIndex)) {
+        magOffsets = _ahrs->get_compass()->get_offsets(magSelectIndex) - stateStruct.body_magfield*1000.0f;
         return true;
     } else {
-        magOffsets = _ahrs->get_compass()->get_offsets(0);
+        magOffsets = _ahrs->get_compass()->get_offsets(magSelectIndex);
         return false;
     }
 }
@@ -190,34 +189,48 @@ void NavEKF2_core::readMagData()
     // do not accept new compass data faster than 14Hz (nominal rate is 10Hz) to prevent high processor loading
     // because magnetometer fusion is an expensive step and we could overflow the FIFO buffer
     if (use_compass() && _ahrs->get_compass()->last_update_usec() - lastMagUpdate_us > 70000) {
+
+        // If the magnetometer has timed out (been rejected too long) we find another magnetometer to use if available
+        // Don't do this if we are on the ground because there can be magnetic interference and we need to know if there is a problem
+        // before taking off. Don't do this within the first 30 seconds from startup because the yaw error could be due to large yaw gyro bias affsets
+        uint8_t maxCount = _ahrs->get_compass()->get_count();
+        if (magTimeout && (maxCount > 1) && !onGround && imuSampleTime_ms - ekfStartTime_ms > 30000) {
+            // search through the list of magnetometers
+            for (uint8_t i=1; i<maxCount; i++) {
+                uint8_t tempIndex = magSelectIndex + i;
+                // loop back to the start index if we have exceeded the bounds
+                if (tempIndex >= maxCount) {
+                    tempIndex -= maxCount;
+                }
+                // if the magnetometer is allowed to be used for yaw and has a different index, we start using it
+                if (_ahrs->get_compass()->use_for_yaw(tempIndex) && tempIndex != magSelectIndex) {
+                    magSelectIndex = tempIndex;
+                    hal.console->printf("EKF2 IMU%u switching to compass %u\n",(unsigned)imu_index,magSelectIndex);
+                    // reset the timeout flag and timer
+                    magTimeout = false;
+                    lastHealthyMagTime_ms = imuSampleTime_ms;
+                    // zero the learned magnetometer bias states
+                    stateStruct.body_magfield.zero();
+                    // clear the measurement buffer
+                    memset(&storedMag[0], 0, sizeof(storedMag));
+                }
+            }
+        }
+
         // store time of last measurement update
-        lastMagUpdate_us = _ahrs->get_compass()->last_update_usec();
+        lastMagUpdate_us = _ahrs->get_compass()->last_update_usec(magSelectIndex);
 
         // estimate of time magnetometer measurement was taken, allowing for delays
         magDataNew.time_ms = imuSampleTime_ms - frontend->magDelay_ms;
 
-        // Assign measurement to nearest fusion interval so that multiple measurements can be fused on the same frame
-        // This allows us to perform the covariance prediction over longer time steps which reduces numerical precision errors
-        magDataNew.time_ms = roundToNearest(magDataNew.time_ms, frontend->fusionTimeStep_ms);
+        // Correct for the average intersampling delay due to the filter updaterate
+        magDataNew.time_ms -= localFilterTimeStep_ms/2;
 
         // read compass data and scale to improve numerical conditioning
-        magDataNew.mag = _ahrs->get_compass()->get_field() * 0.001f;
+        magDataNew.mag = _ahrs->get_compass()->get_field(magSelectIndex) * 0.001f;
 
         // check for consistent data between magnetometers
         consistentMagData = _ahrs->get_compass()->consistent();
-
-        // check if compass offsets have been changed and adjust EKF bias states to maintain consistent innovations
-        if (_ahrs->get_compass()->healthy(0)) {
-            Vector3f nowMagOffsets = _ahrs->get_compass()->get_offsets(0);
-            bool changeDetected = (!is_equal(nowMagOffsets.x,lastMagOffsets.x) || !is_equal(nowMagOffsets.y,lastMagOffsets.y) || !is_equal(nowMagOffsets.z,lastMagOffsets.z));
-            // Ignore bias changes before final mag field and yaw initialisation, as there may have been a compass calibration
-            if (changeDetected && firstMagYawInit) {
-                stateStruct.body_magfield.x += (nowMagOffsets.x - lastMagOffsets.x) * 0.001f;
-                stateStruct.body_magfield.y += (nowMagOffsets.y - lastMagOffsets.y) * 0.001f;
-                stateStruct.body_magfield.z += (nowMagOffsets.z - lastMagOffsets.z) * 0.001f;
-            }
-            lastMagOffsets = nowMagOffsets;
-        }
 
         // save magnetometer measurement to buffer to be fused later
         StoreMag();
@@ -270,7 +283,13 @@ bool NavEKF2_core::RecallMag()
 *                Inertial Measurements                  *
 ********************************************************/
 
-// update IMU delta angle and delta velocity measurements
+/*
+ *  Read IMU delta angle and delta velocity measurements and downsample to 100Hz
+ *  for storage in the data buffers used by the EKF. If the IMU data arrives at
+ *  lower rate than 100Hz, then no downsampling or upsampling will be performed.
+ *  Downsampling is done using a method that does not introduce coning or sculling
+ *  errors.
+ */
 void NavEKF2_core::readIMUData()
 {
     const AP_InertialSensor &ins = _ahrs->get_ins();
@@ -296,11 +315,65 @@ void NavEKF2_core::readIMUData()
     }
     imuDataNew.delAngDT = max(ins.get_delta_time(),1.0e-4f);
 
-    // get current time stamp
+    // Get current time stamp
     imuDataNew.time_ms = imuSampleTime_ms;
 
-    // save data in the FIFO buffer
-    StoreIMU();
+    // remove gyro scale factor errors
+    imuDataNew.delAng.x = imuDataNew.delAng.x * stateStruct.gyro_scale.x;
+    imuDataNew.delAng.y = imuDataNew.delAng.y * stateStruct.gyro_scale.y;
+    imuDataNew.delAng.z = imuDataNew.delAng.z * stateStruct.gyro_scale.z;
+
+    // remove sensor bias errors
+    imuDataNew.delAng -= stateStruct.gyro_bias;
+    imuDataNew.delVel.z -= stateStruct.accel_zbias;
+
+    // Accumulate the measurement time interval for the delta velocity and angle data
+    imuDataDownSampledNew.delAngDT += imuDataNew.delAngDT;
+    imuDataDownSampledNew.delVelDT += imuDataNew.delVelDT;
+
+    // Rotate quaternon atitude from previous to new and normalise.
+    // Accumulation using quaternions prevents introduction of coning errors due to downsampling
+    Quaternion deltaQuat;
+    deltaQuat.rotate(imuDataNew.delAng);
+    imuQuatDownSampleNew = imuQuatDownSampleNew*deltaQuat;
+    imuQuatDownSampleNew.normalize();
+
+    // Rotate the accumulated delta velocity into the new frame of reference created by the latest delta angle
+    // This prevents introduction of sculling errors due to downsampling
+    Matrix3f deltaRotMat;
+    deltaQuat.inverse().rotation_matrix(deltaRotMat);
+    imuDataDownSampledNew.delVel = deltaRotMat*imuDataDownSampledNew.delVel;
+
+    // accumulate the latest delta velocity
+    imuDataDownSampledNew.delVel += imuDataNew.delVel;
+
+    // Keep track of the number of IMU frames since the last state prediction
+    framesSincePredict++;
+
+    // If 10msec has elapsed, and the frontend has allowed us to start a new predict cycle, then store the accumulated IMU data
+    // to be used by the state prediction, ignoring the frontend permission if more than 20msec has lapsed
+    if ((dtIMUavg*(float)framesSincePredict >= 0.01f && startPredictEnabled) || (dtIMUavg*(float)framesSincePredict >= 0.02f)) {
+        // convert the accumulated quaternion to an equivalent delta angle
+        imuQuatDownSampleNew.to_axis_angle(imuDataDownSampledNew.delAng);
+        // Time stamp the data
+        imuDataDownSampledNew.time_ms = imuSampleTime_ms;
+        // Write data to the FIFO IMU buffer
+        StoreIMU();
+        // zero the accumulated IMU data and quaternion
+        imuDataDownSampledNew.delAng.zero();
+        imuDataDownSampledNew.delVel.zero();
+        imuDataDownSampledNew.delAngDT = 0.0f;
+        imuDataDownSampledNew.delVelDT = 0.0f;
+        imuQuatDownSampleNew[0] = 1.0f;
+        imuQuatDownSampleNew[3] = imuQuatDownSampleNew[2] = imuQuatDownSampleNew[1] = 0.0f;
+        // reset the counter used to let the frontend know how many frames have elapsed since we started a new update cycle
+        framesSincePredict = 0;
+        // set the flag to let the filter know it has new IMU data nad needs to run
+        runUpdates = true;
+    } else {
+        // we don't have new IMU data in the buffer so don't run filter updates on this time step
+        runUpdates = false;
+    }
 
     // extract the oldest available data from the FIFO buffer
     imuDataDelayed = storedIMU[fifoIndexDelayed];
@@ -315,10 +388,10 @@ void NavEKF2_core::StoreIMU()
     if (fifoIndexNow >= IMU_BUFFER_LENGTH) {
         fifoIndexNow = 0;
     }
-    storedIMU[fifoIndexNow] = imuDataNew;
+    storedIMU[fifoIndexNow] = imuDataDownSampledNew;
     // set the index required to access the oldest data, applying an offset to the fusion time horizon that is used to
     // prevent the same fusion operation being performed on the same frame across multiple EKF's
-    fifoIndexDelayed = fifoIndexNow + 1 + fusionHorizonOffset;
+    fifoIndexDelayed = fifoIndexNow + 1;
     if (fifoIndexDelayed >= IMU_BUFFER_LENGTH) {
         fifoIndexDelayed = 0;
     }
@@ -344,7 +417,7 @@ void NavEKF2_core::RecallIMU()
     imuDataDelayed = storedIMU[fifoIndexDelayed];
     // make sure that the delta time used for the delta angles and velocities are is no less than 10% of dtIMUavg to prevent
     // divide by zero problems when converting to rates or acceleration
-    float minDT = 0.1f*dtIMUavg;
+    float minDT = 0.1f*dtEkfAvg;
     imuDataDelayed.delAngDT = max(imuDataDelayed.delAngDT,minDT);
     imuDataDelayed.delVelDT = max(imuDataDelayed.delVelDT,minDT);
 }
@@ -386,9 +459,8 @@ void NavEKF2_core::readGpsData()
             // ideally we should be using a timing signal from the GPS receiver to set this time
             gpsDataNew.time_ms = lastTimeGpsReceived_ms - frontend->_gpsDelay_ms;
 
-            // Assign measurement to nearest fusion interval so that multiple measurements can be fused on the same frame
-            // This allows us to perform the covariance prediction over longer time steps which reduces numerical precision errors
-            gpsDataNew.time_ms = roundToNearest(gpsDataNew.time_ms, frontend->fusionTimeStep_ms);
+            // Correct for the average intersampling delay due to the filter updaterate
+            gpsDataNew.time_ms -= localFilterTimeStep_ms/2;
 
             // Prevent time delay exceeding age of oldest IMU data in the buffer
             gpsDataNew.time_ms = max(gpsDataNew.time_ms,imuDataDelayed.time_ms);
@@ -622,9 +694,8 @@ void NavEKF2_core::readHgtData()
         // estimate of time height measurement was taken, allowing for delays
         baroDataNew.time_ms = lastHgtReceived_ms - frontend->_hgtDelay_ms;
 
-        // Assign measurement to nearest fusion interval so that multiple measurements can be fused on the same frame
-        // This allows us to perform the covariance prediction over longer time steps which reduces numerical precision errors
-        baroDataNew.time_ms = roundToNearest(baroDataNew.time_ms, frontend->fusionTimeStep_ms);
+        // Correct for the average intersampling delay due to the filter updaterate
+        baroDataNew.time_ms -= localFilterTimeStep_ms/2;
 
         // Prevent time delay exceeding age of oldest IMU data in the buffer
         baroDataNew.time_ms = max(baroDataNew.time_ms,imuDataDelayed.time_ms);
@@ -693,21 +764,14 @@ void NavEKF2_core::readAirSpdData()
         tasDataNew.tas = aspeed->get_airspeed() * aspeed->get_EAS2TAS();
         timeTasReceived_ms = aspeed->last_update_ms();
         tasDataNew.time_ms = timeTasReceived_ms - frontend->tasDelay_ms;
-        // Assign measurement to nearest fusion interval so that multiple measurements can be fused on the same frame
-        // This allows us to perform the covariance prediction over longer time steps which reduces numerical precision errors
-        tasDataNew.time_ms = roundToNearest(tasDataNew.time_ms, frontend->fusionTimeStep_ms);
+        // Correct for the average intersampling delay due to the filter update rate
+        tasDataNew.time_ms -= localFilterTimeStep_ms/2;
         newDataTas = true;
         StoreTAS();
         RecallTAS();
     } else {
         newDataTas = false;
     }
-}
-
-// Round to the nearest multiple of a integer
-uint32_t NavEKF2_core::roundToNearest(uint32_t dividend, uint32_t divisor )
-{
-  return ((uint32_t)round((float)dividend/float(divisor)))*divisor;
 }
 
 #endif // HAL_CPU_CLASS

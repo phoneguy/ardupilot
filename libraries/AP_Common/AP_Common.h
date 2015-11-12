@@ -44,6 +44,7 @@
 #define NOINLINE __attribute__((noinline))
 
 #define FORMAT(a,b) __attribute__((format(printf, a, b)))
+#define FMT_SCANF(a,b) __attribute__((format(scanf, a, b)))
 
 // Make some dire warnings into errors
 //
@@ -153,5 +154,11 @@ enum HomeState {
 #define AP_PRODUCT_ID_PIXHAWK_FIRE_CAPE 0x102   // Linux with the PixHawk Fire Cape
 #define AP_PRODUCT_ID_MPU9250           0x103   // MPU9250
 #define AP_PRODUCT_ID_VRBRAIN           0x150   // VRBRAIN on NuttX
+
+/*
+  Return true if value is between lower and upper bound inclusive.
+  False otherwise.
+*/
+bool is_bounded_int32(int32_t value, int32_t lower_bound, int32_t upper_bound);
 
 #endif // _AP_COMMON_H

@@ -389,12 +389,12 @@ uint8_t AP_InertialSensor::register_accel(void)
 
 /*
  * Start all backends for gyro and accel measurements. It automatically calls
- * _detect_backends() if it has not been called already.
+ * detect_backends() if it has not been called already.
  */
 void AP_InertialSensor::_start_backends()
 
 {
-    _detect_backends();
+    detect_backends();
 
     for (uint8_t i = 0; i < _backend_count; i++) {
         _backends[i]->start();
@@ -405,10 +405,11 @@ void AP_InertialSensor::_start_backends()
     }
 }
 
-/* Find a backend that has already been succesfully detected */
-AP_InertialSensor_Backend *AP_InertialSensor::_find_backend(int16_t backend_id)
+/* Find the N instance of the backend that has already been successfully detected */
+AP_InertialSensor_Backend *AP_InertialSensor::_find_backend(int16_t backend_id, uint8_t instance)
 {
     assert(_backends_detected);
+    uint8_t found = 0;
 
     for (uint8_t i = 0; i < _backend_count; i++) {
         int16_t id = _backends[i]->get_id();
@@ -416,7 +417,11 @@ AP_InertialSensor_Backend *AP_InertialSensor::_find_backend(int16_t backend_id)
         if (id < 0 || id != backend_id)
             continue;
 
-        return _backends[i];
+        if (instance == found) {
+            return _backends[i];
+        } else {
+            found++;
+        }
     }
 
     return nullptr;
@@ -480,8 +485,8 @@ void AP_InertialSensor::_add_backend(AP_InertialSensor_Backend *backend)
 /*
   detect available backends for this board
  */
-void 
-AP_InertialSensor::_detect_backends(void)
+void
+AP_InertialSensor::detect_backends(void)
 {
     if (_backends_detected)
         return;
@@ -515,6 +520,10 @@ AP_InertialSensor::_detect_backends(void)
     //_add_backend(AP_InertialSensor_L3GD20::detect);
     //_add_backend(AP_InertialSensor_LSM303D::detect);
     _add_backend(AP_InertialSensor_MPU6000::detect_spi(*this));
+#elif HAL_INS_DEFAULT == HAL_INS_MPU9250_I2C
+    _add_backend(AP_InertialSensor_MPU9250::detect_i2c(*this,
+                                                       HAL_INS_MPU9250_I2C_POINTER,
+                                                       HAL_INS_MPU9250_I2C_ADDR));
 #else
     #error Unrecognised HAL_INS_TYPE setting
 #endif
@@ -1542,13 +1551,13 @@ void AP_InertialSensor::set_delta_angle(uint8_t instance, const Vector3f &deltaa
 }
 
 /*
- * Get an AuxiliaryBus on the backend identified by @backend_id
+ * Get an AuxiliaryBus of N @instance of backend identified by @backend_id
  */
-AuxiliaryBus *AP_InertialSensor::get_auxiliary_bus(int16_t backend_id)
+AuxiliaryBus *AP_InertialSensor::get_auxiliary_bus(int16_t backend_id, uint8_t instance)
 {
-    _detect_backends();
+    detect_backends();
 
-    AP_InertialSensor_Backend *backend = _find_backend(backend_id);
+    AP_InertialSensor_Backend *backend = _find_backend(backend_id, instance);
     if (backend == NULL)
         return NULL;
 

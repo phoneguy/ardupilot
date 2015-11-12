@@ -1304,6 +1304,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
     Vector3f magNED;
     Vector3f magXYZ;
     Vector3f gyroScaleFactor;
+    uint8_t magIndex = ahrs.get_NavEKF2().getActiveMag(0);
     ahrs.get_NavEKF2().getAccelZBias(0,azbias);
     ahrs.get_NavEKF2().getWind(0,wind);
     ahrs.get_NavEKF2().getMagNED(0,magNED);
@@ -1323,7 +1324,8 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         magD    : (int16_t)(magNED.z),
         magX    : (int16_t)(magXYZ.x),
         magY    : (int16_t)(magXYZ.y),
-        magZ    : (int16_t)(magXYZ.z)
+        magZ    : (int16_t)(magXYZ.z),
+        index   : (uint8_t)(magIndex)
     };
     WriteBlock(&pkt2, sizeof(pkt2));
 
@@ -1449,6 +1451,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         ahrs.get_NavEKF2().getMagNED(1,magNED);
         ahrs.get_NavEKF2().getMagXYZ(1,magXYZ);
         ahrs.get_NavEKF2().getGyroScaleErrorPercentage(1,gyroScaleFactor);
+        magIndex = ahrs.get_NavEKF2().getActiveMag(1);
         struct log_NKF2 pkt7 = {
             LOG_PACKET_HEADER_INIT(LOG_NKF7_MSG),
             time_us : hal.scheduler->micros64(),
@@ -1463,7 +1466,8 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
             magD    : (int16_t)(magNED.z),
             magX    : (int16_t)(magXYZ.x),
             magY    : (int16_t)(magXYZ.y),
-            magZ    : (int16_t)(magXYZ.z)
+            magZ    : (int16_t)(magXYZ.z),
+            index   : (uint8_t)(magIndex)
         };
         WriteBlock(&pkt7, sizeof(pkt7));
 
@@ -1488,6 +1492,7 @@ void DataFlash_Class::Log_Write_EKF2(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
 
         // Write 9th EKF packet
         ahrs.get_NavEKF2().getVariances(1,velVar, posVar, hgtVar, magVar, tasVar, offset);
+        magLength = magVar.length();
         ahrs.get_NavEKF2().getFilterFaults(1,faultStatus);
         ahrs.get_NavEKF2().getFilterTimeouts(1,timeoutStatus);
         ahrs.get_NavEKF2().getFilterStatus(1,solutionStatus);
