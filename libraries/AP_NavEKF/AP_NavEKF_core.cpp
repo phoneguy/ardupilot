@@ -380,7 +380,7 @@ void NavEKF_core::UpdateFilter()
     hal.util->perf_begin(_perf_UpdateFilter);
 
     //get starting time for update step
-    imuSampleTime_ms = hal.scheduler->millis();
+    imuSampleTime_ms = AP_HAL::millis();
 
     // read IMU data and convert to delta angles and velocities
     readIMUData();
@@ -3799,6 +3799,10 @@ bool NavEKF_core::readDeltaVelocity(uint8_t ins_index, Vector3f &dVel, float &dV
     if (ins_index < ins.get_accel_count()) {
         ins.get_delta_velocity(ins_index,dVel);
         dVel_dt = ins.get_delta_velocity_dt(ins_index);
+        // catch invalid delta time
+        if (dVel_dt <= 0.0f) {
+            dVel_dt = dtIMUavg;
+        }
         return true;
     }
     return false;
@@ -3819,11 +3823,18 @@ void NavEKF_core::readIMUData()
 {
     const AP_InertialSensor &ins = _ahrs->get_ins();
 
-    dtIMUavg = 1.0f/ins.get_sample_rate();
-    dtDelAng = max(ins.get_delta_time(),1.0e-4f);
+    // calculate the average time between IMU updates
+    dtIMUavg = 1.0f/(float)ins.get_sample_rate();
+
+    // calculate the most recent time between gyro delta angle updates
+    if (ins.get_delta_time() > 0.0f) {
+        dtDelAng = ins.get_delta_time();
+    } else {
+        dtDelAng = dtIMUavg;
+    }
 
     // the imu sample time is used as a common time reference throughout the filter
-    imuSampleTime_ms = hal.scheduler->millis();
+    imuSampleTime_ms = AP_HAL::millis();
 
     // dual accel mode - require both IMU's to be able to provide delta velocity outputs
     if (ins.use_accel(0) && ins.use_accel(1) && readDeltaVelocity(0, dVelIMU1, dtDelVel1) && readDeltaVelocity(1, dVelIMU2, dtDelVel2)) {
@@ -4373,11 +4384,12 @@ void NavEKF_core::InitialiseVariables()
         _perf_FuseMagnetometer = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EKF_FuseMagnetometer");
         _perf_FuseAirspeed = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EKF_FuseAirspeed");
         _perf_FuseSideslip = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EKF_FuseSideslip");
-        _perf_OpticalFlowEKF = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EKF_FuseOptFlow");
+        _perf_OpticalFlowEKF = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EKF_OpticalFlowEKF");
+        _perf_FuseOptFlow = hal.util->perf_alloc(AP_HAL::Util::PC_ELAPSED, "EKF_FuseOptFlow");
     }
 
     // initialise time stamps
-    imuSampleTime_ms = hal.scheduler->millis();
+    imuSampleTime_ms = AP_HAL::millis();
     lastHealthyMagTime_ms = imuSampleTime_ms;
     TASmsecPrev = imuSampleTime_ms;
     BETAmsecPrev = imuSampleTime_ms;

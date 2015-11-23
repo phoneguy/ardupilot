@@ -105,6 +105,9 @@
 #include <AC_PrecLand/AC_PrecLand.h>
 #include <AP_IRLock/AP_IRLock.h>
 #endif
+#include <AC_InputManager/AC_InputManager.h>        // Pilot input handling library
+#include <AC_InputManager/AC_InputManager_Heli.h>   // Heli specific pilot input handling library
+
 
 // AP_HAL to Arduino compatibility layer
 // Configuration
@@ -497,13 +500,20 @@ private:
     AP_LandingGear landinggear;
 
     // terrain handling
-#if AP_TERRAIN_AVAILABLE
+#if AP_TERRAIN_AVAILABLE && AC_TERRAIN
     AP_Terrain terrain;
 #endif
 
     // Precision Landing
 #if PRECISION_LANDING == ENABLED
     AC_PrecLand precland;
+#endif
+
+    // Pilot Input Management Library
+    // Only used for Helicopter for AC3.3, to be expanded to include Multirotor
+    // child class for AC3.4
+#if FRAME_CONFIG == HELI_FRAME
+    AC_InputManager_Heli input_manager;
 #endif
 
     // use this to prevent recursion during sensor init
@@ -566,7 +576,7 @@ private:
     void set_land_complete_maybe(bool b);
     void set_pre_arm_check(bool b);
     void set_pre_arm_rc_check(bool b);
-    void set_using_interlock(bool b);
+    void update_using_interlock();
     void set_motor_emergency_stop(bool b);
     float get_smoothing_gain();
     void get_pilot_desired_lean_angles(float roll_in, float pitch_in, float &roll_out, float &pitch_out, float angle_max);
@@ -670,8 +680,6 @@ private:
     void log_picture();
     uint8_t mavlink_compassmot(mavlink_channel_t chan);
     void delay(uint32_t ms);
-    uint32_t millis();
-    uint32_t micros();
     bool acro_init(bool ignore_checks);
     void acro_run();
     void get_pilot_desired_angle_rates(int16_t roll_in, int16_t pitch_in, int16_t yaw_in, float &roll_out, float &pitch_out, float &yaw_out);
@@ -818,7 +826,6 @@ private:
     bool mode_allows_arming(uint8_t mode, bool arming_from_gcs);
     void notify_flight_mode(uint8_t mode);
     void heli_init();
-    int16_t get_pilot_desired_collective(int16_t control_in);
     void check_dynamic_flight(void);
     void update_heli_control_dynamics(void);
     void heli_update_landing_swash();
@@ -1014,5 +1021,8 @@ public:
 
 extern const AP_HAL::HAL& hal;
 extern Copter copter;
+
+using AP_HAL::millis;
+using AP_HAL::micros;
 
 #endif // _COPTER_H_

@@ -93,17 +93,17 @@ void AP_AHRS_NavEKF::update_EKF1(void)
     if (!ekf1_started) {
         // wait 1 second for DCM to output a valid tilt error estimate
         if (start_time_ms == 0) {
-            start_time_ms = hal.scheduler->millis();
+            start_time_ms = AP_HAL::millis();
         }
-        if (hal.scheduler->millis() - start_time_ms > startup_delay_ms) {
+        if (AP_HAL::millis() - start_time_ms > startup_delay_ms) {
             ekf1_started = EKF1.InitialiseFilterDynamic();
         }
     }
     if (ekf1_started) {
         EKF1.UpdateFilter();
-        EKF1.getRotationBodyToNED(_dcm_matrix);
         if (active_EKF_type() == EKF_TYPE1) {
             Vector3f eulers;
+            EKF1.getRotationBodyToNED(_dcm_matrix);
             EKF1.getEulerAngles(eulers);
             roll  = eulers.x;
             pitch = eulers.y;
@@ -163,17 +163,17 @@ void AP_AHRS_NavEKF::update_EKF2(void)
     if (!ekf2_started) {
         // wait 1 second for DCM to output a valid tilt error estimate
         if (start_time_ms == 0) {
-            start_time_ms = hal.scheduler->millis();
+            start_time_ms = AP_HAL::millis();
         }
-        if (hal.scheduler->millis() - start_time_ms > startup_delay_ms) {
+        if (AP_HAL::millis() - start_time_ms > startup_delay_ms) {
             ekf2_started = EKF2.InitialiseFilter();
         }
     }
     if (ekf2_started) {
         EKF2.UpdateFilter();
-        EKF2.getRotationBodyToNED(_dcm_matrix);
         if (active_EKF_type() == EKF_TYPE2) {
             Vector3f eulers;
+            EKF2.getRotationBodyToNED(_dcm_matrix);
             EKF2.getEulerAngles(-1,eulers);
             roll  = eulers.x;
             pitch = eulers.y;
@@ -633,11 +633,11 @@ bool AP_AHRS_NavEKF::initialised(void) const
     case 1:
     default:
         // initialisation complete 10sec after ekf has started
-        return (ekf1_started && (hal.scheduler->millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
+        return (ekf1_started && (AP_HAL::millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
 
     case 2:
         // initialisation complete 10sec after ekf has started
-        return (ekf2_started && (hal.scheduler->millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
+        return (ekf2_started && (AP_HAL::millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
     }
 };
 

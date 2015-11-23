@@ -37,7 +37,7 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
     _pid_accel_z(pid_accel_z),
     _p_pos_xy(p_pos_xy),
     _pi_vel_xy(pi_vel_xy),
-    _dt(POSCONTROL_DT_10HZ),
+    _dt(POSCONTROL_DT_400HZ),
     _dt_xy(POSCONTROL_DT_50HZ),
     _last_update_xy_ms(0),
     _last_update_z_ms(0),
@@ -310,14 +310,14 @@ void AC_PosControl::init_takeoff()
 // is_active_z - returns true if the z-axis position controller has been run very recently
 bool AC_PosControl::is_active_z() const
 {
-    return ((hal.scheduler->millis() - _last_update_z_ms) <= POSCONTROL_ACTIVE_TIMEOUT_MS);
+    return ((AP_HAL::millis() - _last_update_z_ms) <= POSCONTROL_ACTIVE_TIMEOUT_MS);
 }
 
 /// update_z_controller - fly to altitude in cm above home
 void AC_PosControl::update_z_controller()
 {
     // check time since last cast
-    uint32_t now = hal.scheduler->millis();
+    uint32_t now = AP_HAL::millis();
     if (now - _last_update_z_ms > POSCONTROL_ACTIVE_TIMEOUT_MS) {
         _flags.reset_rate_to_accel_z = true;
         _flags.reset_accel_to_throttle = true;
@@ -612,7 +612,7 @@ float AC_PosControl::get_distance_to_target() const
 // is_active_xy - returns true if the xy position controller has been run very recently
 bool AC_PosControl::is_active_xy() const
 {
-    return ((hal.scheduler->millis() - _last_update_xy_ms) <= POSCONTROL_ACTIVE_TIMEOUT_MS);
+    return ((AP_HAL::millis() - _last_update_xy_ms) <= POSCONTROL_ACTIVE_TIMEOUT_MS);
 }
 
 /// init_xy_controller - initialise the xy controller
@@ -642,7 +642,7 @@ void AC_PosControl::init_xy_controller(bool reset_I)
 void AC_PosControl::update_xy_controller(xy_mode mode, float ekfNavVelGainScaler, bool use_althold_lean_angle)
 {
     // compute dt
-    uint32_t now = hal.scheduler->millis();
+    uint32_t now = AP_HAL::millis();
     float dt = (now - _last_update_xy_ms) / 1000.0f;
     _last_update_xy_ms = now;
 
@@ -669,7 +669,7 @@ void AC_PosControl::update_xy_controller(xy_mode mode, float ekfNavVelGainScaler
 
 float AC_PosControl::time_since_last_xy_update() const
 {
-    uint32_t now = hal.scheduler->millis();
+    uint32_t now = AP_HAL::millis();
     return (now - _last_update_xy_ms)*0.001f;
 }
 
@@ -689,13 +689,14 @@ void AC_PosControl::init_vel_controller_xyz()
     _flags.reset_rate_to_accel_xy = true;
     _flags.reset_accel_to_lean_xy = true;
 
-    // set target position in xy axis
+    // set target position
     const Vector3f& curr_pos = _inav.get_position();
     set_xy_target(curr_pos.x, curr_pos.y);
+    set_alt_target(curr_pos.z);
 
     // move current vehicle velocity into feed forward velocity
     const Vector3f& curr_vel = _inav.get_velocity();
-    set_desired_velocity_xy(curr_vel.x, curr_vel.y);
+    set_desired_velocity(curr_vel);
 }
 
 /// update_velocity_controller_xyz - run the velocity controller - should be called at 100hz or higher
@@ -705,37 +706,40 @@ void AC_PosControl::init_vel_controller_xyz()
 void AC_PosControl::update_vel_controller_xyz(float ekfNavVelGainScaler)
 {
     // capture time since last iteration
-    uint32_t now = hal.scheduler->millis();
-    float dt = (now - _last_update_xy_ms) / 1000.0f;
+    uint32_t now = AP_HAL::millis();
+    float dt = (now - _last_update_xy_ms)*0.001f;
 
-    // sanity check dt - expect to be called faster than ~5hz
-    if (dt >= POSCONTROL_ACTIVE_TIMEOUT_MS*1.0e-3f) {
-        dt = 0.0f;
+    // call xy controller
+    if (dt >= get_dt_xy()) {
+        // sanity check dt
+        if (dt >= 0.2f) {
+            dt = 0.0f;
+        }
+
+        // check if xy leash needs to be recalculated
+        calc_leash_length_xy();
+
+        // apply desired velocity request to position target
+        desired_vel_to_pos(dt);
+
+        // run position controller's position error to desired velocity step
+        pos_to_rate_xy(XY_MODE_POS_LIMITED_AND_VEL_FF, dt, ekfNavVelGainScaler);
+
+        // run velocity to acceleration step
+        rate_to_accel_xy(dt, ekfNavVelGainScaler);
+
+        // run acceleration to lean angle step
+        accel_to_lean_angles(dt, ekfNavVelGainScaler, false);
+
+        // update xy update time
+        _last_update_xy_ms = now;
     }
 
-    // check if xy leash needs to be recalculated
-    calc_leash_length_xy();
-
-    // apply desired velocity request to position target
-    desired_vel_to_pos(dt);
-
-    // run position controller's position error to desired velocity step
-    pos_to_rate_xy(XY_MODE_POS_LIMITED_AND_VEL_FF, dt, ekfNavVelGainScaler);
-
-    // run velocity to acceleration step
-    rate_to_accel_xy(dt, ekfNavVelGainScaler);
-
-    // run acceleration to lean angle step
-    accel_to_lean_angles(dt, ekfNavVelGainScaler, false);
-
     // update altitude target
-    set_alt_target_from_climb_rate(_vel_desired.z, dt, false);
+    set_alt_target_from_climb_rate_ff(_vel_desired.z, _dt, false);
 
     // run z-axis position controller
     update_z_controller();
-
-    // record update time
-    _last_update_xy_ms = now;
 }
 
 ///

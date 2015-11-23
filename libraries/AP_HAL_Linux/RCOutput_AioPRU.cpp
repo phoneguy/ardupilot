@@ -27,11 +27,9 @@
 
 using namespace Linux;
 
-static const AP_HAL::HAL& hal = AP_HAL::get_HAL();
-
 static void catch_sigbus(int sig)
 {
-    hal.scheduler->panic("RCOutputAioPRU.cpp:SIGBUS error gernerated\n");
+    AP_HAL::panic("RCOutputAioPRU.cpp:SIGBUS error gernerated\n");
 }
 void RCOutput_AioPRU::init(void* machtnicht)
 {
@@ -51,13 +49,12 @@ void RCOutput_AioPRU::init(void* machtnicht)
 
    // Reset PRU 1
    *ctrl = 0;
-   hal.scheduler->delay(1);
 
    // Load firmware
    memcpy(iram, PRUcode, sizeof(PRUcode));
 
    // Start PRU 1
-   *ctrl = 3;
+   *ctrl |= 2;
 
    // all outputs default to 50Hz, the top level vehicle code
    // overrides this when necessary

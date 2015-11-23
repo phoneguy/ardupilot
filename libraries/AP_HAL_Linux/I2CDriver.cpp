@@ -33,7 +33,7 @@ I2CDriver::I2CDriver(AP_HAL::Semaphore* semaphore, const char *device) :
 
 #if CONFIG_HAL_BOARD_SUBTYPE != HAL_BOARD_SUBTYPE_LINUX_NONE
     if (!((Util*)hal.util)->is_chardev_node(_device))
-        hal.scheduler->panic("I2C device is not a chardev node");
+        AP_HAL::panic("I2C device is not a chardev node");
 #endif
 }
 
@@ -51,7 +51,7 @@ I2CDriver::I2CDriver(AP_HAL::Semaphore* semaphore,
 
     d = opendir(dirname);
     if (!d)
-        hal.scheduler->panic("Could not get list of I2C buses");
+        AP_HAL::panic("Could not get list of I2C buses");
 
     for (de = readdir(d); de; de = readdir(d)) {
         const char *p, * const *t;
@@ -85,7 +85,7 @@ I2CDriver::I2CDriver(AP_HAL::Semaphore* semaphore,
     closedir(d);
 
     if (!((Util*)hal.util)->is_chardev_node(_device))
-        hal.scheduler->panic("I2C device is not a chardev node");
+        AP_HAL::panic("I2C device is not a chardev node");
 }
 
 I2CDriver::~I2CDriver()
@@ -120,10 +120,27 @@ bool I2CDriver::set_address(uint8_t addr)
     if (_fd == -1) {
         return false;
     }
-    if (_addr != addr) {
-        ioctl(_fd, I2C_SLAVE, addr);
+    if (_addr == addr) {
+        goto end;
+    } else {
+        if (ioctl(_fd, I2C_SLAVE, addr) < 0) {
+            if (errno != EBUSY) {
+                return false;
+            }
+            /* Only print this message once per i2c bus */
+            if (_print_ioctl_error) {
+                hal.console->printf("couldn't set i2c slave address: %s\n",
+                                    strerror(errno));
+                hal.console->printf("trying I2C_SLAVE_FORCE\n");
+                _print_ioctl_error = false;
+            }
+            if (ioctl(_fd, I2C_SLAVE_FORCE, addr) < 0) {
+                return false;
+            }
+        }
         _addr = addr;
     }
+end:
     return true;
 }
 
