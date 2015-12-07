@@ -1387,7 +1387,10 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
             break;
 
         case MAV_CMD_GET_HOME_POSITION:
-            send_home(copter.ahrs.get_home());
+            if (copter.ap.home_state != HOME_UNSET) {
+                send_home(copter.ahrs.get_home());
+                result = MAV_RESULT_ACCEPTED;
+            }
             break;
 
         case MAV_CMD_DO_SET_SERVO:
@@ -1841,12 +1844,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 
         if (packet.idx >= copter.rally.get_rally_total() ||
             packet.idx >= copter.rally.get_rally_max()) {
-            send_text(MAV_SEVERITY_NOTICE,"bad rally point message ID");
+            send_text(MAV_SEVERITY_NOTICE,"Bad rally point message ID");
             break;
         }
 
         if (packet.count != copter.rally.get_rally_total()) {
-            send_text(MAV_SEVERITY_NOTICE,"bad rally point message count");
+            send_text(MAV_SEVERITY_NOTICE,"Bad rally point message count");
             break;
         }
 
@@ -1859,7 +1862,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         rally_point.flags = packet.flags;
 
         if (!copter.rally.set_rally_point_with_index(packet.idx, rally_point)) {
-            send_text(MAV_SEVERITY_CRITICAL, "error setting rally point");
+            send_text(MAV_SEVERITY_CRITICAL, "Error setting rally point");
         }
 
         break;
@@ -1867,39 +1870,32 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 
     //send a rally point to the GCS
     case MAVLINK_MSG_ID_RALLY_FETCH_POINT: {
-        //send_text(MAV_SEVERITY_INFO, "## getting rally point in GCS_Mavlink.cpp 1"); // #### TEMP
-
         mavlink_rally_fetch_point_t packet;
         mavlink_msg_rally_fetch_point_decode(msg, &packet);
 
-        //send_text(MAV_SEVERITY_INFO, "## getting rally point in GCS_Mavlink.cpp 2"); // #### TEMP
-
         if (packet.idx > copter.rally.get_rally_total()) {
-            send_text(MAV_SEVERITY_NOTICE, "bad rally point index");
+            send_text(MAV_SEVERITY_NOTICE, "Bad rally point index");
             break;
         }
 
-        //send_text(MAV_SEVERITY_INFO, "## getting rally point in GCS_Mavlink.cpp 3"); // #### TEMP
-
         RallyLocation rally_point;
         if (!copter.rally.get_rally_point_with_index(packet.idx, rally_point)) {
-           send_text(MAV_SEVERITY_NOTICE, "failed to set rally point");
+           send_text(MAV_SEVERITY_NOTICE, "Failed to set rally point");
            break;
         }
-
-        //send_text(MAV_SEVERITY_INFO, "## getting rally point in GCS_Mavlink.cpp 4"); // #### TEMP
 
         mavlink_msg_rally_point_send_buf(msg,
                                          chan, msg->sysid, msg->compid, packet.idx,
                                          copter.rally.get_rally_total(), rally_point.lat, rally_point.lng,
                                          rally_point.alt, rally_point.break_alt, rally_point.land_dir,
                                          rally_point.flags);
-
-        //send_text(MAV_SEVERITY_INFO, "## getting rally point in GCS_Mavlink.cpp 5"); // #### TEMP
-
         break;
     }
 #endif // AC_RALLY == ENABLED
+
+    case MAVLINK_MSG_ID_REMOTE_LOG_BLOCK_STATUS:
+        copter.DataFlash.remote_log_block_status_msg(chan, msg);
+        break;
 
     case MAVLINK_MSG_ID_AUTOPILOT_VERSION_REQUEST:
         copter.gcs[chan-MAVLINK_COMM_0].send_autopilot_version(FIRMWARE_VERSION);
@@ -1933,6 +1929,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         break;
     }
 
+    case MAVLINK_MSG_ID_ADSB_VEHICLE:
+#if ADSB_ENABLED == ENABLED
+        copter.adsb.update_vehicle(msg);
+#endif
+        break;
+
     }     // end switch
 } // end handle mavlink
 
@@ -1965,7 +1967,7 @@ void Copter::mavlink_delay_cb()
     }
     if (tnow - last_5s > 5000) {
         last_5s = tnow;
-        gcs_send_text(MAV_SEVERITY_INFO, "Initialising APM...");
+        gcs_send_text(MAV_SEVERITY_INFO, "Initialising APM");
     }
     check_usb_mux();
 

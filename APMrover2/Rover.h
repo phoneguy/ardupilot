@@ -34,7 +34,6 @@
 #include <StorageManager/StorageManager.h>
 #include <AP_GPS/AP_GPS.h>         // ArduPilot GPS library
 #include <AP_ADC/AP_ADC.h>         // ArduPilot Mega Analog to Digital Converter Library
-#include <AP_ADC_AnalogSource/AP_ADC_AnalogSource.h>
 #include <AP_Baro/AP_Baro.h>
 #include <AP_Compass/AP_Compass.h>     // ArduPilot Mega Magnetometer Library
 #include <AP_Math/AP_Math.h>        // ArduPilot Mega Vector/Matrix math Library
@@ -420,7 +419,7 @@ private:
     void do_erase_logs(void);
     void Log_Write_Performance();
     void Log_Write_Steering();
-    bool Log_Write_Startup(uint8_t type);
+    void Log_Write_Startup(uint8_t type);
     void Log_Write_Control_Tuning();
     void Log_Write_Nav_Tuning();
     void Log_Write_Sonar();

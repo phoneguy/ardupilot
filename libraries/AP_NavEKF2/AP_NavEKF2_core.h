@@ -29,8 +29,9 @@
 
 #include <AP_Math/AP_Math.h>
 #include "AP_NavEKF2.h"
-
+#include <stdio.h>
 #include <AP_Math/vectorN.h>
+#include <AP_NavEKF2/AP_NavEKF2_Buffer.h>
 
 // GPS pre-flight check bit locations
 #define MASK_GPS_NSATS      (1<<0)
@@ -51,7 +52,7 @@ public:
     NavEKF2_core(void);
 
     // setup this core backend
-    void setup_core(NavEKF2 *_frontend, uint8_t _imu_index, uint8_t _core_index);
+    bool setup_core(NavEKF2 *_frontend, uint8_t _imu_index, uint8_t _core_index);
     
     // Initialise the states from accelerometer and magnetometer data (if present)
     // This method can only be used when the vehicle is static
@@ -419,18 +420,6 @@ private:
     // zero specified range of columns in the state covariance matrix
     void zeroCols(Matrix24 &covMat, uint8_t first, uint8_t last);
 
-    // store imu data in the FIFO
-    void StoreIMU(void);
-
-    // Reset the stored IMU history to current data
-    void StoreIMU_reset(void);
-
-    // recall IMU data from the FIFO
-    void RecallIMU();
-
-    // store output data in the FIFO
-    void StoreOutput(void);
-
     // Reset the stored output history to current data
     void StoreOutputReset(void);
 
@@ -439,9 +428,6 @@ private:
 
     // Rotate the stored output quaternion history through a quaternion rotation
     void StoreQuatRotate(Quaternion deltaQuat);
-
-    // recall output data from the FIFO
-    void RecallOutput();
 
     // store altimeter data
     void StoreBaro();
@@ -463,13 +449,6 @@ private:
     // recall magetometer data at the fusion time horizon
     // return true if data found
     bool RecallMag();
-
-    // store GPS data
-    void StoreGPS();
-
-    // recall GPS data at the fusion time horizon
-    // return true if data found
-    bool RecallGPS();
 
     // store true airspeed data
     void StoreTAS();
@@ -659,13 +638,13 @@ private:
     Matrix24 KH;                    // intermediate result used for covariance updates
     Matrix24 KHP;                   // intermediate result used for covariance updates
     Matrix24 P;                     // covariance matrix
-    imu_elements *storedIMU;        // IMU data buffer [imu_buffer_length]
-    gps_elements storedGPS[OBS_BUFFER_LENGTH];      // GPS data buffer
-    mag_elements storedMag[OBS_BUFFER_LENGTH];      // Magnetometer data buffer
-    baro_elements storedBaro[OBS_BUFFER_LENGTH];    // Baro data buffer
-    range_elements storedRange[OBS_BUFFER_LENGTH];  // Rang finder data buffer
-    tas_elements storedTAS[OBS_BUFFER_LENGTH];      // TAS data buffer
-    output_elements *storedOutput;  // output state buffer [imu_buffer_length]
+    imu_ring_buffer_t<imu_elements> storedIMU;      // IMU data buffer
+    obs_ring_buffer_t<gps_elements> storedGPS;      // GPS data buffer
+    obs_ring_buffer_t<mag_elements> storedMag;      // Magnetometer data buffer
+    obs_ring_buffer_t<baro_elements> storedBaro;    // Baro data buffer
+    obs_ring_buffer_t<tas_elements> storedTAS;      // TAS data buffer
+    obs_ring_buffer_t<range_elements> storedRange;
+    imu_ring_buffer_t<output_elements> storedOutput;// output state buffer
     Vector3f correctedDelAng;       // delta angles about the xyz body axes corrected for errors (rad)
     Quaternion correctedDelAngQuat; // quaternion representation of correctedDelAng
     Vector3f correctedDelVel;       // delta velocities along the XYZ body axes for weighted average of IMU1 and IMU2 corrected for errors (m/s)
@@ -700,8 +679,7 @@ private:
     Vector3f velDotNED;             // rate of change of velocity in NED frame
     Vector3f velDotNEDfilt;         // low pass filtered velDotNED
     uint32_t imuSampleTime_ms;      // time that the last IMU value was taken
-    bool newDataTas;                // true when new airspeed data has arrived
-    bool tasDataWaiting;            // true when new airspeed data is waiting to be fused
+    bool tasDataToFuse;             // true when new airspeed data is waiting to be fused
     uint32_t lastBaroReceived_ms;   // time last time we received baro height data
     uint16_t hgtRetryTime_ms;       // time allowed without use of height measurements before a height timeout is declared
     uint32_t lastVelPassTime_ms;    // time stamp when GPS velocity measurement last passed innovation consistency check (msec)
@@ -827,7 +805,7 @@ private:
     float lastInnovation;
 
     // variables added for optical flow fusion
-    of_elements storedOF[OBS_BUFFER_LENGTH];    // OF data buffer
+    obs_ring_buffer_t<of_elements> storedOF;    // OF data buffer
     of_elements ofDataNew;          // OF data at the current time horizon
     of_elements ofDataDelayed;      // OF data at the fusion time horizon
     uint8_t ofStoreIndex;           // OF data storage index

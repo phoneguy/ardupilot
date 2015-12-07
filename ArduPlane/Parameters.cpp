@@ -1022,6 +1022,10 @@ const AP_Param::Info Plane::var_info[] = {
     GOBJECT(terrain,                "TERRAIN_", AP_Terrain),
 #endif
 
+    // @Group: ADSB_
+    // @Path: ../libraries/AP_ADSB/AP_ADSB.cpp
+    GOBJECT(adsb,                "ADSB_", AP_ADSB),
+
     // RC channel
     //-----------
     // @Group: RC1_
@@ -1153,6 +1157,10 @@ const AP_Param::Info Plane::var_info[] = {
     // @Path: ../libraries/AP_Mount/AP_Mount.cpp
     GOBJECT(camera_mount,           "MNT",  AP_Mount),
 #endif
+
+    // @Group: LOG
+    // @Path: ../libraries/DataFlash/DataFlash.cpp
+    GOBJECT(DataFlash,           "LOG",  DataFlash_Class),
 
     // @Group: BATT
     // @Path: ../libraries/AP_BattMonitor/AP_BattMonitor.cpp

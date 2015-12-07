@@ -46,8 +46,10 @@ extern const AP_HAL::HAL& hal;
 /*
   constructor
  */
-DataFlash_File::DataFlash_File(DataFlash_Class &front, const char *log_directory) :
-    DataFlash_Backend(front),
+DataFlash_File::DataFlash_File(DataFlash_Class &front,
+                               DFMessageWriter_DFLogStart *writer,
+                               const char *log_directory) :
+    DataFlash_Backend(front, writer),
     _write_fd(-1),
     _read_fd(-1),
     _read_fd_log_num(0),
@@ -88,9 +90,9 @@ DataFlash_File::DataFlash_File(DataFlash_Class &front, const char *log_directory
 
 
 // initialisation
-void DataFlash_File::Init(const struct LogStructure *structure, uint8_t num_types)
+void DataFlash_File::Init()
 {
-    DataFlash_Backend::Init(structure, num_types);
+    DataFlash_Backend::Init();
     // create the log directory if need be
     int ret;
     struct stat st;
@@ -435,7 +437,7 @@ bool DataFlash_File::WritePrioritisedBlock(const void *pBuffer, uint16_t size, b
     uint16_t space = BUF_SPACE(_writebuf);
 
     if (_writing_startup_messages &&
-        _front._startup_messagewriter.fmt_done()) {
+        _startup_messagewriter->fmt_done()) {
         // the state machine has called us, and it has finished
         // writing format messages out.  It can always get back to us
         // with more messages later, so let's leave room for other
@@ -727,6 +729,8 @@ uint16_t DataFlash_File::start_new_log(void)
 {
     stop_logging();
 
+    _startup_messagewriter->reset();
+
     if (_open_error) {
         // we have previously failed to open a file - don't try again
         // to prevent us trying to open files while in flight
@@ -962,7 +966,7 @@ void DataFlash_File::_io_timer(void)
     }
     if (_writebuf_head > _tail) {
         // only write to the end of the buffer
-        nbytes = min(nbytes, _writebuf_size - _writebuf_head);
+        nbytes = MIN(nbytes, _writebuf_size - _writebuf_head);
     }
 
     // try to align writes on a 512 byte boundary to avoid filesystem
