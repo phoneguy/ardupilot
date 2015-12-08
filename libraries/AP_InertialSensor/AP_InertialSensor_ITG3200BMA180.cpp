@@ -13,14 +13,17 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+// ITG3205 Gyroscope  http://www.sparkfun.com/datasheets/Sensors/Gyro/PS-ITG-3200-00-01.4.pdf
 
 #include <AP_HAL/AP_HAL.h>
+#if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
+
 #include "AP_InertialSensor_ITG3200BMA180.h"
 
 const extern AP_HAL::HAL& hal;
 
 // This is how often we wish to make raw samples of the sensors in Hz
-const uint32_t  raw_sample_rate_hz = 1000;
+const uint32_t  raw_sample_rate_hz = 800;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
@@ -56,13 +59,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define ITG3200_GYRO_SCALE_R_S (1.0f / 14.375f) * (3.1415926f / 180.0f)
 
 AP_InertialSensor_ITG3200BMA180::AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu) :
-    AP_InertialSensor_Backend(imu),
-    _have_gyro_sample(false),
-    _have_accel_sample(false),
-    _accel_filter(raw_sample_rate_hz, 20),
-    _gyro_filter(raw_sample_rate_hz, 20),
-    _last_gyro_timestamp(0),
-    _last_accel_timestamp(0)
+    AP_InertialSensor_Backend(imu)
 {}
 
 /*
@@ -95,7 +92,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     uint8_t data;
     hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_CHIP_ID, &data);
     if (data != BMA180_ACCELEROMETER_CHIPID)
-        hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 accelerometer sensor"));
+        AP_HAL::panic("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 accelerometer sensor");
 
     // default range 2G: 1G = 4096 unit.
     // register: ctrl_reg0  -- value: set bit ee_w to 1 to enable writing
@@ -131,7 +128,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     // Expect to read the same as the Gyro I2C adress:
     hal.i2c->readRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_WHO_AM_I, &data);
     if (data != ITG3200_GYRO_ADDRESS)
-        hal.scheduler->panic(PSTR("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor"));
+        AP_HAL::panic("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor");
 
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_PWR_MGM, 0x00);
     hal.scheduler->delay(1);
@@ -150,57 +147,27 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_INT_CFG, 0x00);
     hal.scheduler->delay(1);
 
-    // Set up the filter desired
-    _set_filter_frequency(_accel_filter_cutoff());
-
     // give back i2c semaphore
     i2c_sem->give();
 
-    _gyro_instance = _imu.register_gyro();
-    _accel_instance = _imu.register_accel();
+    _gyro_instance = _imu.register_gyro(raw_sample_rate_hz);
+    _accel_instance = _imu.register_accel(raw_sample_rate_hz);
+
+//    _product_id = AP_PRODUCT_ID_ITG3200BMA180;
 
     return true;
 }
-
-/*
-  set the filter frequency
- */
-void AP_InertialSensor_ITG3200BMA180::_set_filter_frequency(uint8_t filter_hz)
-{
-    _accel_filter.set_cutoff_frequency(raw_sample_rate_hz, filter_hz);
-    _gyro_filter.set_cutoff_frequency(raw_sample_rate_hz, filter_hz);
-}
-
 
 // This takes about 20us to run
 bool AP_InertialSensor_ITG3200BMA180::update(void)
 {
-    Vector3f accel, gyro;
-
-    hal.scheduler->suspend_timer_procs();
-    accel = _accel_filtered;
-    gyro = _gyro_filtered;
-    _have_gyro_sample = false;
-    _have_accel_sample = false;
-    hal.scheduler->resume_timer_procs();
-
-    // Adjust for chip scaling to get m/s/s
-    accel *= BMA180_ACCELEROMETER_SCALE_M_S;
-    _publish_accel(_accel_instance, accel);
-
-    // Adjust for chip scaling to get radians/sec
-    gyro *= ITG3200_GYRO_SCALE_R_S;
-    _publish_gyro(_gyro_instance, gyro);
-
-    if (_last_filter_hz != _accel_filter_cutoff()) {
-        _set_filter_frequency(_accel_filter_cutoff());
-        _last_filter_hz = _accel_filter_cutoff();
-    }
+    update_accel(_accel_instance);
+    update_gyro(_gyro_instance);
 
     return true;
 }
 
-void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
+void AP_InertialSensor_ITG3200BMA180::accumulate(void)
 {
     // get pointer to i2c bus semaphore
     AP_HAL::Semaphore* i2c_sem = hal.i2c->get_semaphore();
@@ -211,7 +178,7 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
 
     // Read accelerometer
     uint8_t buffer[6];
-    uint32_t now = hal.scheduler->micros();
+    uint32_t now = AP_HAL::micros();
     // This takes about 250us at 400kHz I2C speed
     if ((now - _last_accel_timestamp) >= raw_sample_interval_us
         && hal.i2c->readRegisters(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_DATA, 6, buffer) == 0)
@@ -219,13 +186,16 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
         int16_t y = -(((((int16_t)buffer[1]) << 8) | (buffer[0])>> 2));    // chip X axis
         int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2])>> 2));    // chip Y axis
         int16_t z = -(((((int16_t)buffer[5]) << 8) | (buffer[4])>> 2));    // chip Z axis
-        _accel_filtered = _accel_filter.apply(Vector3f(x,y,z));
-        _have_accel_sample = true;
+        Vector3f accel = Vector3f(x,y,z);
+        // Adjust for chip scaling to get m/s/s
+        accel *= BMA180_ACCELEROMETER_SCALE_M_S;
+        _rotate_and_correct_accel(_accel_instance, accel);
+        _notify_new_accel_raw_sample(_accel_instance, accel);
         _last_accel_timestamp = now;
     }
 
     // Read gyro
-    now = hal.scheduler->micros();
+    now = AP_HAL::micros();
     // This takes about 250us at 400kHz I2C speed
     if ((now - _last_gyro_timestamp) >= raw_sample_interval_us
         && hal.i2c->readRegisters(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_GYROX_H, 6, buffer) == 0)
@@ -234,12 +204,15 @@ void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
         int16_t y = -((((int16_t)buffer[0]) << 8) | buffer[1]);    // chip X axis
         int16_t x = -((((int16_t)buffer[2]) << 8) | buffer[3]);    // chip Y axis
         int16_t z = -((((int16_t)buffer[4]) << 8) | buffer[5]);    // chip Z axis
-        _gyro_filtered = _gyro_filter.apply(Vector3f(x,y,z));
-        _have_gyro_sample = true;
-        _last_gyro_timestamp = now;
+        Vector3f gyro = Vector3f(x,y,z);
+        // Adjust for chip scaling to get radians/sec
+        gyro *= ITG3200_GYRO_SCALE_R_S;
+        _rotate_and_correct_gyro(_gyro_instance, gyro);
+        _notify_new_gyro_raw_sample(_gyro_instance, gyro);
     }
 
     // give back i2c semaphore
     i2c_sem->give();
 }
 
+#endif // CONFIG_HAL_BOARD
