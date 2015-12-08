@@ -4,28 +4,18 @@
 #define __AP_INERTIAL_SENSOR_MPU6000_H__
 
 #include <stdint.h>
+
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
-#include <AP_Progmem/AP_Progmem.h>
+#include <Filter/Filter.h>
+#include <Filter/LowPassFilter2p.h>
+#include <Filter/LowPassFilter.h>
 
 #include "AP_InertialSensor.h"
 #include "AuxiliaryBus.h"
 
 // enable debug to see a register dump on startup
 #define MPU6000_DEBUG 0
-
-// on fast CPUs we sample at 1kHz and use a software filter
-#if HAL_CPU_CLASS >= HAL_CPU_CLASS_75
-#define MPU6000_FAST_SAMPLING 1
-#else
-#define MPU6000_FAST_SAMPLING 0
-#endif
-
-#if MPU6000_FAST_SAMPLING
-#include <Filter/Filter.h>
-#include <Filter/LowPassFilter2p.h>
-#include <Filter/LowPassFilter.h>
-#endif
 
 #define MPU6000_SAMPLE_SIZE 14
 #define MPU6000_MAX_FIFO_SAMPLES 3
@@ -51,7 +41,7 @@ public:
                             AP_HAL::DigitalSource *_drdy_pin,
                             uint8_t &n_samples) = 0;
     virtual AP_HAL::Semaphore* get_semaphore() = 0;
-    virtual bool has_auxiliar_bus() = 0;
+    virtual bool has_auxiliary_bus() = 0;
 };
 
 class AP_InertialSensor_MPU6000 : public AP_InertialSensor_Backend
@@ -73,13 +63,10 @@ public:
     /* update accel and gyro state */
     bool update();
 
-    bool gyro_sample_available(void) { return _sum_count >= _sample_count; }
-    bool accel_sample_available(void) { return _sum_count >= _sample_count; }
-
     /*
      * Return an AuxiliaryBus if the bus driver allows it
      */
-    AuxiliaryBus *get_auxiliar_bus() override;
+    AuxiliaryBus *get_auxiliary_bus() override;
 
     void start() override;
 
@@ -98,7 +85,6 @@ private:
 
     AP_HAL::DigitalSource *_drdy_pin;
     bool    _init_sensor(void);
-    bool    _sample_available();
     void    _read_data_transaction();
     bool    _data_ready();
     void    _poll_data(void);
@@ -112,37 +98,16 @@ private:
     AP_MPU6000_BusDriver *_bus;
     AP_HAL::Semaphore    *_bus_sem;
 
-    AP_MPU6000_AuxiliaryBus *_auxiliar_bus = nullptr;
+    AP_MPU6000_AuxiliaryBus *_auxiliary_bus = nullptr;
 
     static const float   _gyro_scale;
 
-    // support for updating filter at runtime
-    int8_t _last_accel_filter_hz;
-    int8_t _last_gyro_filter_hz;
-
     void _set_filter_register(uint16_t filter_hz);
 
-    // how many hardware samples before we report a sample to the caller
-    uint8_t _sample_count;
-
-#if MPU6000_FAST_SAMPLING
-    Vector3f _accel_filtered;
-    Vector3f _gyro_filtered;
     float    _temp_filtered;
 
-    // Low Pass filters for gyro and accel
-    LowPassFilter2pVector3f _accel_filter;
-    LowPassFilter2pVector3f _gyro_filter;
     LowPassFilter2pFloat    _temp_filter;
-#else
-    // accumulation in timer - must be read with timer disabled
-    // the sum of the values since last read
-    Vector3l _accel_sum;
-    Vector3l _gyro_sum;
-    int32_t  _temp_sum;
 
-#endif
-    volatile uint16_t _sum_count;
     bool _fifo_mode;
     uint8_t *_samples = nullptr;
 };
@@ -161,7 +126,7 @@ public:
                                AP_HAL::DigitalSource *_drdy_pin,
                                uint8_t &n_samples);
     AP_HAL::Semaphore* get_semaphore();
-    bool has_auxiliar_bus() override;
+    bool has_auxiliary_bus() override;
 
 private:
     AP_HAL::SPIDeviceDriver *_spi;
@@ -184,7 +149,7 @@ public:
                                AP_HAL::DigitalSource *_drdy_pin,
                                uint8_t &n_samples);
     AP_HAL::Semaphore* get_semaphore();
-    bool has_auxiliar_bus() override;
+    bool has_auxiliary_bus() override;
 
 private:
     uint8_t _addr;

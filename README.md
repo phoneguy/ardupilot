@@ -85,11 +85,15 @@
 >>   - ***Board***: BBBmini
 >> - [Georgii Staroselskii](https://github.com/staroselskii)
 >>   - ***Board***: NavIO
+>> - [Víctor Mayoral Vilches](https://github.com/vmayoral)
+>>   - ***Board***: Erle-Brain 2
 >> - [Emile Castelnuovo](https://github.com/emilecastelnuovo)
 >>   - ***Board***: VRBrain
 >> - [Mike McCauley](#)
 >>   - ***Board***: Flymaple
 >> - [Jonathan Challinger] (https://github.com/3drobotics/ardupilot-solo)
 >>   - ***Vehicle***: 3DRobotics Solo ArduPilot maintainer
+>> - [Gustavo José de Sousa](https://github.com/guludo)
+>>   - ***Subsystem***: Build system
 >> - [Craig Elder] (https://github.com/CraigElder)
 >>   - ***Administration***: Dronecode Technical Community Manager

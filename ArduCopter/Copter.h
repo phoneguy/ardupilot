@@ -32,21 +32,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include <AP_HAL/AP_HAL.h>
+
 // Common dependencies
 #include <AP_Common/AP_Common.h>
-#include <AP_Progmem/AP_Progmem.h>
 #include <AP_Menu/AP_Menu.h>
 #include <AP_Param/AP_Param.h>
 #include <StorageManager/StorageManager.h>
-// AP_HAL
-#include <AP_HAL/AP_HAL.h>
-#include <AP_HAL_AVR/AP_HAL_AVR.h>
-#include <AP_HAL_SITL/AP_HAL_SITL.h>
-#include <AP_HAL_PX4/AP_HAL_PX4.h>
-#include <AP_HAL_VRBRAIN/AP_HAL_VRBRAIN.h>
-#include <AP_HAL_FLYMAPLE/AP_HAL_FLYMAPLE.h>
-#include <AP_HAL_Linux/AP_HAL_Linux.h>
-#include <AP_HAL_Empty/AP_HAL_Empty.h>
 
 // Application dependencies
 #include <GCS_MAVLink/GCS.h>
@@ -55,7 +47,6 @@
 #include <AP_GPS/AP_GPS.h>             // ArduPilot GPS library
 #include <DataFlash/DataFlash.h>          // ArduPilot Mega Flash Memory Library
 #include <AP_ADC/AP_ADC.h>             // ArduPilot Mega Analog to Digital Converter Library
-#include <AP_ADC_AnalogSource/AP_ADC_AnalogSource.h>
 #include <AP_Baro/AP_Baro.h>
 #include <AP_Compass/AP_Compass.h>         // ArduPilot Mega Magnetometer Library
 #include <AP_Math/AP_Math.h>            // ArduPilot Mega Vector/Matrix math Library
@@ -91,7 +82,6 @@
 #include <AC_WPNav/AC_Circle.h>          // circle navigation library
 #include <AP_Declination/AP_Declination.h>     // ArduPilot Mega Declination Helper Library
 #include <AC_Fence/AC_Fence.h>           // Arducopter Fence library
-#include <SITL/SITL.h>               // software in the loop support
 #include <AP_Scheduler/AP_Scheduler.h>       // main loop scheduler
 #include <AP_RCMapper/AP_RCMapper.h>        // RC input mapping library
 #include <AP_Notify/AP_Notify.h>          // Notify library
@@ -109,11 +99,15 @@
 #endif
 #include <AP_LandingGear/AP_LandingGear.h>     // Landing Gear library
 #include <AP_Terrain/AP_Terrain.h>
+#include <AP_ADSB/AP_ADSB.h>
 #include <AP_RPM/AP_RPM.h>
 #if PRECISION_LANDING == ENABLED
 #include <AC_PrecLand/AC_PrecLand.h>
 #include <AP_IRLock/AP_IRLock.h>
 #endif
+#include <AC_InputManager/AC_InputManager.h>        // Pilot input handling library
+#include <AC_InputManager/AC_InputManager_Heli.h>   // Heli specific pilot input handling library
+
 
 // AP_HAL to Arduino compatibility layer
 // Configuration
@@ -124,14 +118,20 @@
 // Local modules
 #include "Parameters.h"
 
-class Copter {
-    public:
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+#include <SITL/SITL.h>
+#endif
+
+class Copter : public AP_HAL::HAL::Callbacks {
+public:
     friend class GCS_MAVLINK;
     friend class Parameters;
 
     Copter(void);
-    void setup();
-    void loop();
+
+    // HAL::Callbacks implementation.
+    void setup() override;
+    void loop() override;
 
 private:
     // key aircraft parameters passed to multiple libraries
@@ -188,10 +188,10 @@ private:
     // Inertial Navigation EKF
     NavEKF EKF{&ahrs, barometer, sonar};
     NavEKF2 EKF2{&ahrs, barometer, sonar};
-    AP_AHRS_NavEKF ahrs{ins, barometer, gps, sonar, EKF, EKF2};
+    AP_AHRS_NavEKF ahrs{ins, barometer, gps, sonar, EKF, EKF2, AP_AHRS_NavEKF::FLAG_ALWAYS_USE_EKF};
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    SITL sitl;
+    SITL::SITL sitl;
 #endif
 
     // Mission library
@@ -263,9 +263,9 @@ private:
 
     struct {
         bool running;
-        float speed;
+        float max_speed;
+        float alt_delta;
         uint32_t start_ms;
-        uint32_t time_ms;
     } takeoff_state;
 
     RCMapper rcmap;
@@ -500,7 +500,7 @@ private:
     AP_LandingGear landinggear;
 
     // terrain handling
-#if AP_TERRAIN_AVAILABLE
+#if AP_TERRAIN_AVAILABLE && AC_TERRAIN
     AP_Terrain terrain;
 #endif
 
@@ -508,6 +508,15 @@ private:
 #if PRECISION_LANDING == ENABLED
     AC_PrecLand precland;
 #endif
+
+    // Pilot Input Management Library
+    // Only used for Helicopter for AC3.3, to be expanded to include Multirotor
+    // child class for AC3.4
+#if FRAME_CONFIG == HELI_FRAME
+    AC_InputManager_Heli input_manager;
+#endif
+
+    AP_ADSB adsb {ahrs};
 
     // use this to prevent recursion during sensor init
     bool in_mavlink_delay;
@@ -569,7 +578,7 @@ private:
     void set_land_complete_maybe(bool b);
     void set_pre_arm_check(bool b);
     void set_pre_arm_rc_check(bool b);
-    void set_using_interlock(bool b);
+    void update_using_interlock();
     void set_motor_emergency_stop(bool b);
     float get_smoothing_gain();
     void get_pilot_desired_lean_angles(float roll_in, float pitch_in, float &roll_out, float &pitch_out, float angle_max);
@@ -612,7 +621,7 @@ private:
     void gcs_send_mission_item_reached_message(uint16_t mission_index);
     void gcs_data_stream_send(void);
     void gcs_check_input(void);
-    void gcs_send_text_P(MAV_SEVERITY severity, const prog_char_t *str);
+    void gcs_send_text(MAV_SEVERITY severity, const char *str);
     void do_erase_logs(void);
     void Log_Write_AutoTune(uint8_t axis, uint8_t tune_step, float meas_target, float meas_min, float meas_max, float new_gain_rp, float new_gain_rd, float new_gain_sp, float new_ddt);
     void Log_Write_AutoTuneDetails(float angle_cd, float rate_cds);
@@ -673,8 +682,6 @@ private:
     void log_picture();
     uint8_t mavlink_compassmot(mavlink_channel_t chan);
     void delay(uint32_t ms);
-    uint32_t millis();
-    uint32_t micros();
     bool acro_init(bool ignore_checks);
     void acro_run();
     void get_pilot_desired_angle_rates(int16_t roll_in, int16_t pitch_in, int16_t yaw_in, float &roll_out, float &pitch_out, float &yaw_out);
@@ -726,6 +733,8 @@ private:
     void autotune_updating_p_up(float &tune_p, float tune_p_max, float tune_p_step_ratio, float target, float measurement_max);
     void autotune_updating_p_up_d_down(float &tune_d, float tune_d_min, float tune_d_step_ratio, float &tune_p, float tune_p_min, float tune_p_max, float tune_p_step_ratio, float target, float measurement_min, float measurement_max);
     void autotune_twitching_measure_acceleration(float &rate_of_change, float rate_measurement, float &rate_measurement_max);
+    void adsb_update(void);
+    void adsb_handle_vehicle_threats(void);
     bool brake_init(bool ignore_checks);
     void brake_run();
     bool circle_init(bool ignore_checks);
@@ -821,7 +830,6 @@ private:
     bool mode_allows_arming(uint8_t mode, bool arming_from_gcs);
     void notify_flight_mode(uint8_t mode);
     void heli_init();
-    int16_t get_pilot_desired_collective(int16_t control_in);
     void check_dynamic_flight(void);
     void update_heli_control_dynamics(void);
     void heli_update_landing_swash();
@@ -936,7 +944,7 @@ private:
     void takeoff_get_climb_rates(float& pilot_climb_rate, float& takeoff_climb_rate);
     void print_hit_enter();
     void tuning();
-    void gcs_send_text_fmt(const prog_char_t *fmt, ...);
+    void gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...);
     bool start_command(const AP_Mission::Mission_Command& cmd);
     bool verify_command(const AP_Mission::Mission_Command& cmd);
     bool verify_command_callback(const AP_Mission::Mission_Command& cmd);
@@ -1017,5 +1025,8 @@ public:
 
 extern const AP_HAL::HAL& hal;
 extern Copter copter;
+
+using AP_HAL::millis;
+using AP_HAL::micros;
 
 #endif // _COPTER_H_

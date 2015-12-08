@@ -47,15 +47,15 @@ public:
     uint8_t temperature;
 };
 
-class Linux::LinuxRCOutput_Bebop : public AP_HAL::RCOutput {
+class Linux::RCOutput_Bebop : public AP_HAL::RCOutput {
 public:
-    LinuxRCOutput_Bebop();
+    RCOutput_Bebop();
 
-    static LinuxRCOutput_Bebop *from(AP_HAL::RCOutput *rcout) {
-        return static_cast<LinuxRCOutput_Bebop*>(rcout);
+    static RCOutput_Bebop *from(AP_HAL::RCOutput *rcout) {
+        return static_cast<RCOutput_Bebop*>(rcout);
     }
 
-    void     init(void* dummy);
+    void     init();
     void     set_freq(uint32_t chmask, uint16_t freq_hz);
     uint16_t get_freq(uint8_t ch);
     void     enable_ch(uint8_t ch);

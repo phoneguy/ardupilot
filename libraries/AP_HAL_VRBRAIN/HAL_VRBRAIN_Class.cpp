@@ -4,6 +4,8 @@
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 
+#include <assert.h>
+
 #include "AP_HAL_VRBRAIN.h"
 #include "AP_HAL_VRBRAIN_Namespace.h"
 #include "HAL_VRBRAIN_Class.h"
@@ -30,10 +32,10 @@
 
 using namespace VRBRAIN;
 
-static Empty::EmptySemaphore  i2cSemaphore;
-static Empty::EmptyI2CDriver  i2cDriver(&i2cSemaphore);
-static Empty::EmptySPIDeviceManager spiDeviceManager;
-//static Empty::EmptyGPIO gpioDriver;
+static Empty::Semaphore  i2cSemaphore;
+static Empty::I2CDriver  i2cDriver(&i2cSemaphore);
+static Empty::SPIDeviceManager spiDeviceManager;
+//static Empty::GPIO gpioDriver;
 
 static VRBRAINScheduler schedulerInstance;
 static VRBRAINStorage storageDriver;
@@ -157,10 +159,10 @@ static int main_loop(int argc, char **argv)
     hal.uartC->begin(57600);
     hal.uartD->begin(57600);
     hal.uartE->begin(57600);
-    hal.scheduler->init(NULL);
-    hal.rcin->init(NULL);
-    hal.rcout->init(NULL);
-    hal.analogin->init(NULL);
+    hal.scheduler->init();
+    hal.rcin->init();
+    hal.rcout->init();
+    hal.analogin->init();
     hal.gpio->init();
 
 
@@ -234,7 +236,7 @@ static void usage(void)
 }
 
 
-void HAL_VRBRAIN::init(int argc, char * const argv[]) const
+void HAL_VRBRAIN::run(int argc, char * const argv[], Callbacks* callbacks) const
 {
     int i;
     const char *deviceA = UARTA_DEFAULT_DEVICE;
@@ -248,6 +250,9 @@ void HAL_VRBRAIN::init(int argc, char * const argv[]) const
         usage();
         exit(1);
     }
+
+    assert(callbacks);
+    g_callbacks = callbacks;
 
     for (i=0; i<argc; i++) {
         if (strcmp(argv[i], "start") == 0) {
@@ -339,7 +344,10 @@ void HAL_VRBRAIN::init(int argc, char * const argv[]) const
     exit(1);
 }
 
-const HAL_VRBRAIN AP_HAL_VRBRAIN;
+const AP_HAL::HAL& AP_HAL::get_HAL() {
+    static const HAL_VRBRAIN hal_vrbrain;
+    return hal_vrbrain;
+}
 
 #endif // CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 
