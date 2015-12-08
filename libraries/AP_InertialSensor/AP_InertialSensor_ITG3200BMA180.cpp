@@ -173,7 +173,7 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
     return true;
 }
 
-void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
+void AP_InertialSensor_ITG3200BMA180::accumulate(void)
 {
     // get pointer to i2c bus semaphore
     AP_HAL::Semaphore* i2c_sem = hal.i2c->get_semaphore();
