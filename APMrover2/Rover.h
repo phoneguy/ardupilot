@@ -34,7 +34,6 @@
 #include <StorageManager/StorageManager.h>
 #include <AP_GPS/AP_GPS.h>         // ArduPilot GPS library
 #include <AP_ADC/AP_ADC.h>         // ArduPilot Mega Analog to Digital Converter Library
-#include <AP_ADC_AnalogSource/AP_ADC_AnalogSource.h>
 #include <AP_Baro/AP_Baro.h>
 #include <AP_Compass/AP_Compass.h>     // ArduPilot Mega Magnetometer Library
 #include <AP_Math/AP_Math.h>        // ArduPilot Mega Vector/Matrix math Library
@@ -420,7 +419,7 @@ private:
     void do_erase_logs(void);
     void Log_Write_Performance();
     void Log_Write_Steering();
-    bool Log_Write_Startup(uint8_t type);
+    void Log_Write_Startup(uint8_t type);
     void Log_Write_Control_Tuning();
     void Log_Write_Nav_Tuning();
     void Log_Write_Sonar();
@@ -457,8 +456,6 @@ private:
     void update_commands(void);
     void delay(uint32_t ms);
     void mavlink_delay(uint32_t ms);
-    uint32_t millis();
-    uint32_t micros();
     void read_control_switch();
     uint8_t readSwitch(void);
     void reset_control_switch();
@@ -565,5 +562,8 @@ public:
 
 extern const AP_HAL::HAL& hal;
 extern Rover rover;
+
+using AP_HAL::millis;
+using AP_HAL::micros;
 
 #endif // _ROVER_H_

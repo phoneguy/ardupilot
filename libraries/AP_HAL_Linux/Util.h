@@ -47,7 +47,7 @@ public:
      * should not be used on hot path since it will open, write and close the
      * file for each call.
      */
-    int write_file(const char *path, const char *fmt, ...) FORMAT(3, 4);
+    int write_file(const char *path, const char *fmt, ...) FMT_PRINTF(3, 4);
 
     /*
      * Read a string as specified by @fmt from the file in @path. Note this
@@ -55,6 +55,11 @@ public:
      * file for each call.
      */
     int read_file(const char *path, const char *fmt, ...) FMT_SCANF(3, 4);
+
+    perf_counter_t perf_alloc(perf_counter_type t, const char *name) override;
+    void perf_begin(perf_counter_t perf) override;
+    void perf_end(perf_counter_t perf) override;
+    void perf_count(perf_counter_t perf) override;
 
 private:
     static Linux::ToneAlarm _toneAlarm;

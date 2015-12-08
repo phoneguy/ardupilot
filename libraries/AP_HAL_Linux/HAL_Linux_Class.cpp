@@ -91,10 +91,10 @@ static GPIO_BBB gpioDriver;
  */
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RASPILOT || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2
 static GPIO_RPI gpioDriver;
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
 static GPIO_Sysfs gpioDriver;
 #else
-static Empty::EmptyGPIO gpioDriver;
+static Empty::GPIO gpioDriver;
 #endif
 
 /*
@@ -142,7 +142,7 @@ static RCOutput_Bebop rcoutDriver;
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
 static RCOutput_PCA9685 rcoutDriver(PCA9685_PRIMARY_ADDRESS, false, 0, MINNOW_GPIO_S5_1);
 #else
-static Empty::EmptyRCOutput rcoutDriver;
+static Empty::RCOutput rcoutDriver;
 #endif
 
 static Scheduler schedulerInstance;
@@ -246,7 +246,7 @@ void HAL_Linux::run(int argc, char* const argv[], Callbacks* callbacks) const
         }
     }
 
-    scheduler->init(NULL);
+    scheduler->init();
     gpio->init();
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP
     i2c->begin();
@@ -258,12 +258,12 @@ void HAL_Linux::run(int argc, char* const argv[], Callbacks* callbacks) const
 #else
     i2c->begin();
 #endif
-    spi->init(NULL);
-    rcout->init(NULL);
-    rcin->init(NULL);
+    spi->init();
+    rcout->init();
+    rcin->init();
     uartA->begin(115200);    
     uartE->begin(115200);    
-    analogin->init(NULL);
+    analogin->init();
     utilInstance.init(argc+gopt.optind-1, &argv[gopt.optind-1]);
 
     // NOTE: See commit 9f5b4ffca ("AP_HAL_Linux_Class: Correct
