@@ -1,7 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "AntennaTracker V0.7.3"
-#define FIRMWARE_VERSION 0,7,3,FIRMWARE_VERSION_TYPE_DEV
+#define THISFIRMWARE "AntennaTracker V0.7.4"
+#define FIRMWARE_VERSION 0,7,4,FIRMWARE_VERSION_TYPE_DEV
 
 /*
    Lead developers: Matthew Ridley and Andrew Tridgell
@@ -39,7 +39,6 @@
 #include <AP_Compass/AP_Compass.h>     // ArduPilot Mega Magnetometer Library
 #include <AP_Math/AP_Math.h>        // ArduPilot Mega Vector/Matrix math Library
 #include <AP_ADC/AP_ADC.h>         // ArduPilot Mega Analog to Digital Converter Library
-#include <AP_ADC_AnalogSource/AP_ADC_AnalogSource.h>
 #include <AP_InertialSensor/AP_InertialSensor.h> // Inertial Sensor Library
 #include <AP_AHRS/AP_AHRS.h>         // ArduPilot Mega DCM Library
 #include <Filter/Filter.h>                     // Filter library

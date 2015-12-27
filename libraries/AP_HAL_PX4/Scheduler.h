@@ -45,7 +45,7 @@ public:
     PX4Scheduler();
     /* AP_HAL::Scheduler methods */
 
-    void     init(void *unused);
+    void     init();
     void     delay(uint16_t ms);
     void     delay_microseconds(uint16_t us);
     void     delay_microseconds_boost(uint16_t us);
@@ -88,10 +88,10 @@ private:
     pthread_t _storage_thread_ctx;
     pthread_t _uart_thread_ctx;
 
-    void *_timer_thread(void);
-    void *_io_thread(void);
-    void *_storage_thread(void);
-    void *_uart_thread(void);
+    static void *_timer_thread(void *arg);
+    static void *_io_thread(void *arg);
+    static void *_storage_thread(void *arg);
+    static void *_uart_thread(void *arg);
 
     void _run_timers(bool called_from_timer_thread);
     void _run_io(void);

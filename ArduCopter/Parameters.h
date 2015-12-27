@@ -145,6 +145,9 @@ public:
         k_param_gps_glitch,             // deprecated
         k_param_baro_glitch,            // 71 - deprecated
 
+        // AP_ADSB Library
+        k_param_adsb,                   // 72
+
         // 74: precision landing object
         k_param_precland = 74,
 
@@ -353,6 +356,7 @@ public:
         k_param_rpm_sensor,
         k_param_autotune_min_d, // 251
         k_param_pi_precland,    // 252
+        k_param_DataFlash = 253, // 253 - Logging Group
 
         // 254,255: reserved
     };

@@ -22,7 +22,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_ADC/AP_ADC.h>
 #include <AP_Declination/AP_Declination.h>
-#include <AP_ADC_AnalogSource/AP_ADC_AnalogSource.h>
 #include <Filter/Filter.h>
 #include <AP_Buffer/AP_Buffer.h>
 #include <AP_Airspeed/AP_Airspeed.h>
@@ -516,12 +515,16 @@ bool Replay::find_log_info(struct log_information &info)
         }
 
         if (strlen(clock_source) == 0) {
-            // if you want to add a clock source, also add it to
-            // handle_msg and handle_log_format_msg, above
-            if (streq(type, "IMU")) {
-                memcpy(clock_source, "IMU", 3);
-            } else if (streq(type, "IMT")) {
+            // If you want to add a clock source, also add it to
+            // handle_msg and handle_log_format_msg, above.  Note that
+            // ordering is important here.  For example, when we log
+            // IMT we may reduce the logging speed of IMU, so then
+            // using IMU as your clock source will lead to incorrect
+            // behaviour.
+            if (streq(type, "IMT")) {
                 memcpy(clock_source, "IMT", 3);
+            } else if (streq(type, "IMU")) {
+                memcpy(clock_source, "IMU", 3);
             } else {
                 continue;
             }
@@ -834,11 +837,11 @@ void Replay::log_check_solution(void)
     float vel_error = (velocity - check_state.velocity).length();
     float pos_error = get_distance(check_state.pos, loc);
 
-    check_result.max_roll_error  = max(check_result.max_roll_error,  roll_error);
-    check_result.max_pitch_error = max(check_result.max_pitch_error, pitch_error);
-    check_result.max_yaw_error   = max(check_result.max_yaw_error,   yaw_error);
-    check_result.max_vel_error   = max(check_result.max_vel_error,   vel_error);
-    check_result.max_pos_error   = max(check_result.max_pos_error,   pos_error);
+    check_result.max_roll_error  = MAX(check_result.max_roll_error,  roll_error);
+    check_result.max_pitch_error = MAX(check_result.max_pitch_error, pitch_error);
+    check_result.max_yaw_error   = MAX(check_result.max_yaw_error,   yaw_error);
+    check_result.max_vel_error   = MAX(check_result.max_vel_error,   vel_error);
+    check_result.max_pos_error   = MAX(check_result.max_pos_error,   pos_error);
 }
 
 
@@ -886,7 +889,7 @@ void Replay::loop()
             Vector2f offset;
             uint8_t faultStatus;
 
-            const Matrix3f &dcm_matrix = _vehicle.ahrs.AP_AHRS_DCM::get_dcm_matrix();
+            const Matrix3f &dcm_matrix = _vehicle.ahrs.AP_AHRS_DCM::get_rotation_body_to_ned();
             dcm_matrix.to_euler(&DCM_attitude.x, &DCM_attitude.y, &DCM_attitude.z);
             _vehicle.EKF.getEulerAngles(ekf_euler);
             _vehicle.EKF.getVelNED(velNED);

@@ -20,6 +20,7 @@
 #include "GCS.h"
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_HAL/AP_HAL.h>
+#include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Vehicle/AP_Vehicle.h>
 
 extern const AP_HAL::HAL& hal;
@@ -209,7 +210,7 @@ void GCS_MAVLINK::send_meminfo(void)
 // report power supply status
 void GCS_MAVLINK::send_power_status(void)
 {
-#ifdef CONFIG_ARCH_BOARD_PX4FMU_V2
+#if defined(CONFIG_ARCH_BOARD_PX4FMU_V2) || defined(CONFIG_ARCH_BOARD_PX4FMU_V4)
     mavlink_msg_power_status_send(chan,
                                   hal.analogin->board_voltage() * 1000,
                                   hal.analogin->servorail_voltage() * 1000,
@@ -394,7 +395,7 @@ void GCS_MAVLINK::handle_mission_write_partial_list(AP_Mission &mission, mavlink
     if ((unsigned)packet.start_index > mission.num_commands() ||
         (unsigned)packet.end_index > mission.num_commands() ||
         packet.end_index < packet.start_index) {
-        send_text(MAV_SEVERITY_WARNING,"flight plan update rejected");
+        send_text(MAV_SEVERITY_WARNING,"Flight plan update rejected");
         return;
     }
 
@@ -664,8 +665,8 @@ bool GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &missio
     mavlink_msg_mission_item_decode(msg, &packet);
 
     // convert mavlink packet to mission command
-    if (!AP_Mission::mavlink_to_mission_cmd(packet, cmd)) {
-        result = MAV_MISSION_INVALID;
+    result = AP_Mission::mavlink_to_mission_cmd(packet, cmd);
+    if (result != MAV_MISSION_ACCEPTED) {
         goto mission_ack;
     }
 
@@ -735,7 +736,7 @@ bool GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &missio
             msg->compid,
             MAV_MISSION_ACCEPTED);
         
-        send_text(MAV_SEVERITY_INFO,"flight plan received");
+        send_text(MAV_SEVERITY_INFO,"Flight plan received");
         waypoint_receiving = false;
         mission_is_complete = true;
         // XXX ignores waypoint radius for individual waypoints, can

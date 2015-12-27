@@ -952,6 +952,10 @@ const AP_Param::Info Copter::var_info[] = {
     GOBJECT(camera_mount,           "MNT",  AP_Mount),
 #endif
 
+    // @Group: LOG
+    // @Path: ../libraries/DataFlash/DataFlash.cpp
+    GOBJECT(DataFlash,           "LOG",  DataFlash_Class),
+
     // @Group: BATT
     // @Path: ../libraries/AP_BattMonitor/AP_BattMonitor.cpp
     GOBJECT(battery,                "BATT",         AP_BattMonitor),
@@ -1087,6 +1091,10 @@ const AP_Param::Info Copter::var_info[] = {
     // @Path: ../libraries/AP_RPM/AP_RPM.cpp
     GOBJECT(rpm_sensor, "RPM", AP_RPM),
 
+    // @Group: ADSB_
+    // @Path: ../libraries/AP_ADSB/AP_ADSB.cpp
+    GOBJECT(adsb,                "ADSB_", AP_ADSB),
+
     // @Param: AUTOTUNE_AXES
     // @DisplayName: Autotune axis bitmask
     // @Description: 1-byte bitmap of axes to autotune
@@ -1107,7 +1115,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Description: Defines the minimum D gain
     // @Range: 0.001 0.006
     // @User: Standard
-    GSCALAR(autotune_min_d, "AUTOTUNE_MIN_D", 0.004f),
+    GSCALAR(autotune_min_d, "AUTOTUNE_MIN_D", 0.001f),
 
     AP_VAREND
 };
@@ -1164,6 +1172,6 @@ void Copter::load_parameters(void)
         // Load all auto-loaded EEPROM variables
         AP_Param::load_all();
         AP_Param::convert_old_parameters(&conversion_table[0], ARRAY_SIZE(conversion_table));
-        cliSerial->printf("load_all took %uus\n", micros() - before);
+        cliSerial->printf("load_all took %uus\n", (unsigned)(micros() - before));
     }
 }

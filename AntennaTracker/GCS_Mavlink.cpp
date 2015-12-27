@@ -540,12 +540,23 @@ void Tracker::mavlink_check_target(const mavlink_message_t* msg)
     //  Note: this doesn't check success for all sends meaning it's not guaranteed the vehicle's positions will be sent at 1hz
     for (uint8_t i=0; i < num_gcs; i++) {
         if (gcs[i].initialised) {
+            // request position
             if (comm_get_txspace((mavlink_channel_t)i) - MAVLINK_NUM_NON_PAYLOAD_BYTES >= MAVLINK_MSG_ID_DATA_STREAM_LEN) {
                 mavlink_msg_request_data_stream_send(
                     (mavlink_channel_t)i,
                     msg->sysid,
                     msg->compid,
                     MAV_DATA_STREAM_POSITION,
+                    1,  // 1hz
+                    1); // start streaming
+            }
+            // request air pressure
+            if (comm_get_txspace((mavlink_channel_t)i) - MAVLINK_NUM_NON_PAYLOAD_BYTES >= MAVLINK_MSG_ID_DATA_STREAM_LEN) {
+                mavlink_msg_request_data_stream_send(
+                    (mavlink_channel_t)i,
+                    msg->sysid,
+                    msg->compid,
+                    MAV_DATA_STREAM_RAW_SENSORS,
                     1,  // 1hz
                     1); // start streaming
             }
@@ -599,7 +610,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         uint8_t result = MAV_RESULT_UNSUPPORTED;
         
         // do command
-        send_text(MAV_SEVERITY_INFO,"command received: ");
+        send_text(MAV_SEVERITY_INFO,"Command received: ");
         
         switch(packet.command) {
             
@@ -669,6 +680,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 
             case MAV_CMD_GET_HOME_POSITION:
                 send_home(tracker.ahrs.get_home());
+                result = MAV_RESULT_ACCEPTED;
                 break;
 
             case MAV_CMD_DO_SET_MODE:
@@ -827,7 +839,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         // check if this is the HOME wp
         if (packet.seq == 0) {
             tracker.set_home(tell_command); // New home in EEPROM
-            send_text(MAV_SEVERITY_INFO,"new HOME received");
+            send_text(MAV_SEVERITY_INFO,"New HOME received");
             waypoint_receiving = false;
         }
 
@@ -916,7 +928,7 @@ void Tracker::mavlink_delay_cb()
     }
     if (tnow - last_5s > 5000) {
         last_5s = tnow;
-        gcs_send_text(MAV_SEVERITY_INFO, "Initialising APM...");
+        gcs_send_text(MAV_SEVERITY_INFO, "Initialising APM");
     }
     in_mavlink_delay = false;
 }

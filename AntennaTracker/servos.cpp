@@ -218,7 +218,7 @@ void Tracker::update_yaw_position_servo(float yaw)
     int8_t new_slew_dir = slew_dir;
 
     // get earth frame z-axis rotation rate in radians
-    Vector3f earth_rotation = ahrs.get_gyro() * ahrs.get_dcm_matrix();
+    Vector3f earth_rotation = ahrs.get_gyro() * ahrs.get_rotation_body_to_ned();
 
 
     bool making_progress;
@@ -248,7 +248,7 @@ void Tracker::update_yaw_position_servo(float yaw)
     }
 
     if (new_slew_dir != slew_dir) {
-        tracker.gcs_send_text_fmt(MAV_SEVERITY_WARNING, "SLEW: %d/%d err=%ld servo=%ld ez=%.3f",
+        tracker.gcs_send_text_fmt(MAV_SEVERITY_WARNING, "Slew: %d/%d err=%ld servo=%ld ez=%.3f",
                                   (int)slew_dir, (int)new_slew_dir,
                                   (long)angle_err,
                                   (long)channel_yaw.servo_out,

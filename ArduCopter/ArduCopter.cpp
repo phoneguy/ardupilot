@@ -140,6 +140,9 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(read_receiver_rssi,    40,     75),
     SCHED_TASK(rpm_update,            40,    200),
     SCHED_TASK(compass_cal_update,    4,    100),
+#if ADSB_ENABLED == ENABLED
+    SCHED_TASK(adsb_update,          400,    100),
+#endif
 #if FRSKY_TELEM_ENABLED == ENABLED
     SCHED_TASK(frsky_telemetry_send,  80,     75),
 #endif
@@ -466,15 +469,7 @@ void Copter::one_hz_loop()
         Log_Write_Data(DATA_AP_STATE, ap.value);
     }
 
-    // perform pre-arm checks & display failures every 30 seconds
-    static uint8_t pre_arm_display_counter = 15;
-    pre_arm_display_counter++;
-    if (pre_arm_display_counter >= 30) {
-        pre_arm_checks(true);
-        pre_arm_display_counter = 0;
-    }else{
-        pre_arm_checks(false);
-    }
+    update_arming_checks();
 
     if (!motors.armed()) {
         // make it possible to change ahrs orientation at runtime during initial config
@@ -548,7 +543,7 @@ void Copter::update_GPS(void)
         if (gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
 
 #if CAMERA == ENABLED
-            if (camera.update_location(current_loc) == true) {
+            if (camera.update_location(current_loc, copter.ahrs) == true) {
                 do_take_picture();
             }
 #endif

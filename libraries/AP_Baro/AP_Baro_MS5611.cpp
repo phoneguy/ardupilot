@@ -19,21 +19,14 @@
 
   Heavily modified by Andrew Tridgell
 */
+#include "AP_Baro_MS5611.h"
 
 #include <AP_HAL/AP_HAL.h>
-#include "AP_Baro.h"
 
 extern const AP_HAL::HAL& hal;
 
 #define CMD_MS5611_RESET 0x1E
-#define CMD_MS5611_PROM_Setup 0xA0
-#define CMD_MS5611_PROM_C1 0xA2
-#define CMD_MS5611_PROM_C2 0xA4
-#define CMD_MS5611_PROM_C3 0xA6
-#define CMD_MS5611_PROM_C4 0xA8
-#define CMD_MS5611_PROM_C5 0xAA
-#define CMD_MS5611_PROM_C6 0xAC
-#define CMD_MS5611_PROM_CRC 0xAE
+#define CMD_MS56XX_PROM 0xA0
 
 #define ADDR_CMD_CONVERT_D1_OSR256  0x40 /* write to this address to start pressure conversion */
 #define ADDR_CMD_CONVERT_D1_OSR512  0x42 /* write to this address to start pressure conversion */
@@ -184,6 +177,10 @@ AP_Baro_MS56XX::AP_Baro_MS56XX(AP_Baro &baro, AP_SerialBus *serial, bool use_tim
     _D1(0.0f),
     _D2(0.0f)
 {
+}
+
+void AP_Baro_MS56XX::_init()
+{
     _instance = _frontend.register_sensor();
     _serial->init();
 
@@ -198,18 +195,18 @@ AP_Baro_MS56XX::AP_Baro_MS56XX(AP_Baro &baro, AP_SerialBus *serial, bool use_tim
     _serial->write(CMD_MS5611_RESET);
     hal.scheduler->delay(4);
 
-    // We read the factory calibration
-    // The on-chip CRC is not used
-    _C1 = _serial->read_16bits(CMD_MS5611_PROM_C1);
-    _C2 = _serial->read_16bits(CMD_MS5611_PROM_C2);
-    _C3 = _serial->read_16bits(CMD_MS5611_PROM_C3);
-    _C4 = _serial->read_16bits(CMD_MS5611_PROM_C4);
-    _C5 = _serial->read_16bits(CMD_MS5611_PROM_C5);
-    _C6 = _serial->read_16bits(CMD_MS5611_PROM_C6);
-
-    if (!_check_crc()) {
-        AP_HAL::panic("Bad CRC on MS5611");
+    uint16_t prom[8];
+    if (!_read_prom(prom)) {
+        AP_HAL::panic("Can't read PROM");
     }
+
+    // Save factory calibration coefficients
+    _c1 = prom[1];
+    _c2 = prom[2];
+    _c3 = prom[3];
+    _c4 = prom[4];
+    _c5 = prom[5];
+    _c6 = prom[6];
 
     // Send a command to read Temp first
     _serial->write(ADDR_CMD_CONVERT_D2);
@@ -231,52 +228,79 @@ AP_Baro_MS56XX::AP_Baro_MS56XX(AP_Baro &baro, AP_SerialBus *serial, bool use_tim
 }
 
 /**
- * MS5611 crc4 method based on PX4Firmware code
+ * MS56XX crc4 method from datasheet for 16 bytes (8 short values)
  */
-bool AP_Baro_MS56XX::_check_crc(void)
+static uint16_t crc4(uint16_t *data)
 {
-    int16_t cnt;
-    uint16_t n_rem;
-    uint16_t crc_read;
+    uint16_t n_rem = 0;
     uint8_t n_bit;
-    uint16_t n_prom[8] = { _serial->read_16bits(CMD_MS5611_PROM_Setup),
-                           _C1, _C2, _C3, _C4, _C5, _C6,
-                           _serial->read_16bits(CMD_MS5611_PROM_CRC) };
-    n_rem = 0x00;
 
-    /* save the read crc */
-    crc_read = n_prom[7];
-
-    /* remove CRC byte */
-    n_prom[7] = (0xFF00 & (n_prom[7]));
-
-    for (cnt = 0; cnt < 16; cnt++) {
+    for (uint8_t cnt = 0; cnt < 16; cnt++) {
         /* uneven bytes */
         if (cnt & 1) {
-            n_rem ^= (uint8_t)((n_prom[cnt >> 1]) & 0x00FF);
-
+            n_rem ^= (uint8_t)((data[cnt >> 1]) & 0x00FF);
         } else {
-            n_rem ^= (uint8_t)(n_prom[cnt >> 1] >> 8);
+            n_rem ^= (uint8_t)(data[cnt >> 1] >> 8);
         }
 
         for (n_bit = 8; n_bit > 0; n_bit--) {
             if (n_rem & 0x8000) {
                 n_rem = (n_rem << 1) ^ 0x3000;
-
             } else {
                 n_rem = (n_rem << 1);
             }
         }
     }
 
-    /* final 4 bit remainder is CRC value */
-    n_rem = (0x000F & (n_rem >> 12));
-    n_prom[7] = crc_read;
-
-    /* return true if CRCs match */
-    return (0x000F & crc_read) == (n_rem ^ 0x00);
+    return (n_rem >> 12) & 0xF;
 }
 
+bool AP_Baro_MS56XX::_read_prom(uint16_t prom[8])
+{
+    /*
+     * MS5611-01BA datasheet, CYCLIC REDUNDANCY CHECK (CRC): "MS5611-01BA
+     * contains a PROM memory with 128-Bit. A 4-bit CRC has been implemented
+     * to check the data validity in memory."
+     *
+     * CRC field must me removed for CRC-4 calculation.
+     */
+    for (uint8_t i = 0; i < 8; i++) {
+        prom[i] = _serial->read_16bits(CMD_MS56XX_PROM + (i << 1));
+    }
+
+    /* save the read crc */
+    const uint16_t crc_read = prom[7] & 0xf;
+
+    /* remove CRC byte */
+    prom[7] &= 0xff00;
+
+    return crc_read == crc4(prom);
+}
+
+bool AP_Baro_MS5637::_read_prom(uint16_t prom[8])
+{
+    /*
+     * MS5637-02BA03 datasheet, CYCLIC REDUNDANCY CHECK (CRC): "MS5637
+     * contains a PROM memory with 112-Bit. A 4-bit CRC has been implemented
+     * to check the data validity in memory."
+     *
+     * 8th PROM word must be zeroed and CRC field removed for CRC-4
+     * calculation.
+     */
+    for (uint8_t i = 0; i < 7; i++) {
+        prom[i] = _serial->read_16bits(CMD_MS56XX_PROM + (i << 1));
+    }
+
+    prom[7] = 0;
+
+    /* save the read crc */
+    const uint16_t crc_read = (prom[0] & 0xf000) >> 12;
+
+    /* remove CRC byte */
+    prom[0] &= ~0xf000;
+
+    return crc_read == crc4(prom);
+}
 
 /*
   Read the sensor. This is a state machine
@@ -388,8 +412,10 @@ void AP_Baro_MS56XX::update()
 
 /* MS5611 class */
 AP_Baro_MS5611::AP_Baro_MS5611(AP_Baro &baro, AP_SerialBus *serial, bool use_timer)
-    :AP_Baro_MS56XX(baro, serial, use_timer)
-{}
+    : AP_Baro_MS56XX(baro, serial, use_timer)
+{
+    _init();
+}
 
 // Calculate Temperature and compensated Pressure in real units (Celsius degrees*100, mbar*100).
 void AP_Baro_MS5611::_calculate()
@@ -405,10 +431,10 @@ void AP_Baro_MS5611::_calculate()
     // we do the calculations using floating point allows us to take advantage
     // of the averaging of D1 and D1 over multiple samples, giving us more
     // precision
-    dT = _D2-(((uint32_t)_C5)<<8);
-    TEMP = (dT * _C6)/8388608;
-    OFF = _C2 * 65536.0f + (_C4 * dT) / 128;
-    SENS = _C1 * 32768.0f + (_C3 * dT) / 256;
+    dT = _D2-(((uint32_t)_c5)<<8);
+    TEMP = (dT * _c6)/8388608;
+    OFF = _c2 * 65536.0f + (_c4 * dT) / 128;
+    SENS = _c1 * 32768.0f + (_c3 * dT) / 256;
 
     if (TEMP < 0) {
         // second order temperature compensation when under 20 degrees C
@@ -428,8 +454,11 @@ void AP_Baro_MS5611::_calculate()
 
 /* MS5607 Class */
 AP_Baro_MS5607::AP_Baro_MS5607(AP_Baro &baro, AP_SerialBus *serial, bool use_timer)
-    :AP_Baro_MS56XX(baro, serial, use_timer)
-{}
+    : AP_Baro_MS56XX(baro, serial, use_timer)
+{
+    _init();
+}
+
 // Calculate Temperature and compensated Pressure in real units (Celsius degrees*100, mbar*100).
 void AP_Baro_MS5607::_calculate()
 {
@@ -444,10 +473,10 @@ void AP_Baro_MS5607::_calculate()
     // we do the calculations using floating point allows us to take advantage
     // of the averaging of D1 and D1 over multiple samples, giving us more
     // precision
-    dT = _D2-(((uint32_t)_C5)<<8);
-    TEMP = (dT * _C6)/8388608;
-    OFF = _C2 * 131072.0f + (_C4 * dT) / 64;
-    SENS = _C1 * 65536.0f + (_C3 * dT) / 128;
+    dT = _D2-(((uint32_t)_c5)<<8);
+    TEMP = (dT * _c6)/8388608;
+    OFF = _c2 * 131072.0f + (_c4 * dT) / 64;
+    SENS = _c1 * 65536.0f + (_c3 * dT) / 128;
 
     if (TEMP < 0) {
         // second order temperature compensation when under 20 degrees C
@@ -469,6 +498,7 @@ void AP_Baro_MS5607::_calculate()
 AP_Baro_MS5637::AP_Baro_MS5637(AP_Baro &baro, AP_SerialBus *serial, bool use_timer)
     : AP_Baro_MS56XX(baro, serial, use_timer)
 {
+    _init();
 }
 
 // Calculate Temperature and compensated Pressure in real units (Celsius degrees*100, mbar*100).
@@ -482,10 +512,10 @@ void AP_Baro_MS5637::_calculate()
     // Formulas from manufacturer datasheet
     // sub -15c temperature compensation is not included
 
-    dT = raw_temperature - (((uint32_t)_C5) << 8);
-    TEMP = 2000 + ((int64_t)dT * (int64_t)_C6) / 8388608;
-    OFF = (int64_t)_C2 * (int64_t)131072 + ((int64_t)_C4 * (int64_t)dT) / (int64_t)64;
-    SENS = (int64_t)_C1 * (int64_t)65536 + ((int64_t)_C3 * (int64_t)dT) / (int64_t)128;
+    dT = raw_temperature - (((uint32_t)_c5) << 8);
+    TEMP = 2000 + ((int64_t)dT * (int64_t)_c6) / 8388608;
+    OFF = (int64_t)_c2 * (int64_t)131072 + ((int64_t)_c4 * (int64_t)dT) / (int64_t)64;
+    SENS = (int64_t)_c1 * (int64_t)65536 + ((int64_t)_c3 * (int64_t)dT) / (int64_t)128;
 
     if (TEMP < 2000) {
         // second order temperature compensation when under 20 degrees C

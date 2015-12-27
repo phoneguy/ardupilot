@@ -20,6 +20,8 @@ namespace Linux {
     class DigitalSource;
     class DigitalSource_Sysfs;
     class PWM_Sysfs;
+    class PWM_Sysfs_Bebop;
+    class PWM_Sysfs_Base;
     class RCInput;
     class RCInput_PRU;
     class RCInput_AioPRU;
@@ -42,6 +44,11 @@ namespace Linux {
     class ToneAlarm;
     class Heat;
     class HeatPwm;
+    class CameraSensor;
+    class CameraSensor_Mt9v117;
+    class VideoIn;
+    class OpticalFlow_Onboard;
+    class Flow_PX4;
 }
 
 #endif // __AP_HAL_LINUX_NAMESPACE_H__

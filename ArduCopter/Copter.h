@@ -47,7 +47,6 @@
 #include <AP_GPS/AP_GPS.h>             // ArduPilot GPS library
 #include <DataFlash/DataFlash.h>          // ArduPilot Mega Flash Memory Library
 #include <AP_ADC/AP_ADC.h>             // ArduPilot Mega Analog to Digital Converter Library
-#include <AP_ADC_AnalogSource/AP_ADC_AnalogSource.h>
 #include <AP_Baro/AP_Baro.h>
 #include <AP_Compass/AP_Compass.h>         // ArduPilot Mega Magnetometer Library
 #include <AP_Math/AP_Math.h>            // ArduPilot Mega Vector/Matrix math Library
@@ -100,6 +99,7 @@
 #endif
 #include <AP_LandingGear/AP_LandingGear.h>     // Landing Gear library
 #include <AP_Terrain/AP_Terrain.h>
+#include <AP_ADSB/AP_ADSB.h>
 #include <AP_RPM/AP_RPM.h>
 #if PRECISION_LANDING == ENABLED
 #include <AC_PrecLand/AC_PrecLand.h>
@@ -199,7 +199,7 @@ private:
 
     // Optical flow sensor
 #if OPTFLOW == ENABLED
-    OpticalFlow optflow;
+    OpticalFlow optflow{ahrs};
 #endif
 
     // gnd speed limit required to observe optical flow sensor limits
@@ -516,6 +516,8 @@ private:
     AC_InputManager_Heli input_manager;
 #endif
 
+    AP_ADSB adsb {ahrs};
+
     // use this to prevent recursion during sensor init
     bool in_mavlink_delay;
 
@@ -731,6 +733,8 @@ private:
     void autotune_updating_p_up(float &tune_p, float tune_p_max, float tune_p_step_ratio, float target, float measurement_max);
     void autotune_updating_p_up_d_down(float &tune_d, float tune_d_min, float tune_d_step_ratio, float &tune_p, float tune_p_min, float tune_p_max, float tune_p_step_ratio, float target, float measurement_min, float measurement_max);
     void autotune_twitching_measure_acceleration(float &rate_of_change, float rate_measurement, float &rate_measurement_max);
+    void adsb_update(void);
+    void adsb_handle_vehicle_threats(void);
     bool brake_init(bool ignore_checks);
     void brake_run();
     bool circle_init(bool ignore_checks);
@@ -850,6 +854,8 @@ private:
     void arm_motors_check();
     void auto_disarm_check();
     bool init_arm_motors(bool arming_from_gcs);
+    void update_arming_checks(void);
+    bool all_arming_checks_passing(bool arming_from_gcs);
     bool pre_arm_checks(bool display_failure);
     void pre_arm_rc_checks();
     bool pre_arm_gps_checks(bool display_failure);

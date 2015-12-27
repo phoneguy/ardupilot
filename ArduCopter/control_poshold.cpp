@@ -507,7 +507,7 @@ void Copter::poshold_run()
         poshold.pitch = constrain_int16(poshold.pitch, -aparm.angle_max, aparm.angle_max);
 
         // update attitude controller targets
-        attitude_control.angle_ef_roll_pitch_rate_ef_yaw(poshold.roll, poshold.pitch, target_yaw_rate);
+        attitude_control.input_euler_angle_roll_pitch_euler_rate_yaw(poshold.roll, poshold.pitch, target_yaw_rate);
 
         // throttle control
         if (sonar_enabled && (sonar_alt_health >= SONAR_ALT_HEALTH_MAX)) {
@@ -531,13 +531,13 @@ void Copter::poshold_update_pilot_lean_angle(float &lean_angle_filtered, float &
         // lean_angle_raw must be pulling lean_angle_filtered towards zero, smooth the decrease
         if (lean_angle_filtered > 0) {
             // reduce the filtered lean angle at 5% or the brake rate (whichever is faster).
-            lean_angle_filtered -= max((float)lean_angle_filtered * POSHOLD_SMOOTH_RATE_FACTOR, max(1, g.poshold_brake_rate/LOOP_RATE_FACTOR));
+            lean_angle_filtered -= MAX((float)lean_angle_filtered * POSHOLD_SMOOTH_RATE_FACTOR, MAX(1, g.poshold_brake_rate/LOOP_RATE_FACTOR));
             // do not let the filtered angle fall below the pilot's input lean angle.
             // the above line pulls the filtered angle down and the below line acts as a catch
-            lean_angle_filtered = max(lean_angle_filtered, lean_angle_raw);
+            lean_angle_filtered = MAX(lean_angle_filtered, lean_angle_raw);
         }else{
-            lean_angle_filtered += max(-(float)lean_angle_filtered * POSHOLD_SMOOTH_RATE_FACTOR, max(1, g.poshold_brake_rate/LOOP_RATE_FACTOR));
-            lean_angle_filtered = min(lean_angle_filtered, lean_angle_raw);
+            lean_angle_filtered += MAX(-(float)lean_angle_filtered * POSHOLD_SMOOTH_RATE_FACTOR, MAX(1, g.poshold_brake_rate/LOOP_RATE_FACTOR));
+            lean_angle_filtered = MIN(lean_angle_filtered, lean_angle_raw);
         }
     }
 }

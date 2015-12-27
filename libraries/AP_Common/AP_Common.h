@@ -43,24 +43,8 @@
 // sometimes we need to prevent inlining to prevent large stack usage
 #define NOINLINE __attribute__((noinline))
 
-#define FORMAT(a,b) __attribute__((format(printf, a, b)))
+#define FMT_PRINTF(a,b) __attribute__((format(printf, a, b)))
 #define FMT_SCANF(a,b) __attribute__((format(scanf, a, b)))
-
-// Make some dire warnings into errors
-//
-// Some warnings indicate questionable code; rather than let
-// these slide, we force them to become errors so that the
-// developer has to find a safer alternative.
-//
-//#pragma GCC diagnostic error "-Wfloat-equal"
-
-// The following is strictly for type-checking arguments to printf calls
-// in conjunction with a suitably modified Arduino IDE; never define for
-// production as it generates bad code.
-//
-#if defined(PRINTF_FORMAT_WARNING_DEBUG)
- # define float double                  // silence spurious format warnings for %f
-#endif
 
 #define ToRad(x) radians(x)	// *pi/180
 #define ToDeg(x) degrees(x)	// *180/pi
@@ -149,6 +133,7 @@ enum HomeState {
 #define AP_PRODUCT_ID_SITL              0x03    // Software in the loop
 #define AP_PRODUCT_ID_PX4               0x04    // PX4 on NuttX
 #define AP_PRODUCT_ID_PX4_V2            0x05    // PX4 FMU2 on NuttX
+#define AP_PRODUCT_ID_PX4_V4            0x06    // PX4 FMU4 on NuttX
 #define AP_PRODUCT_ID_FLYMAPLE          0x100   // Flymaple with ITG3205, ADXL345, HMC5883, BMP085
 #define AP_PRODUCT_ID_L3G4200D          0x101   // Linux with L3G4200D and ADXL345
 #define AP_PRODUCT_ID_PIXHAWK_FIRE_CAPE 0x102   // Linux with the PixHawk Fire Cape

@@ -22,6 +22,7 @@ help:
 	@echo ""
 	@echo "  px4-v1 - the PX4v1 board"
 	@echo "  px4-v2 - the Pixhawk"
+	@echo "  px4-v4 - the XRacer"
 	@echo "  pxf - the Beagle Bone Black (BBB) + PXF cape combination"
 	@echo "  navio - the RaspberryPi + NavIO cape combination"
 	@echo "  linux - a generic Linux build"
@@ -35,3 +36,4 @@ help:
 	@echo "  erleboard - the ErleBoard legacy design"
 	@echo "  minlure - the drone lure for MinnowBoard and others"
 	@echo "  erlebrain2 - the Erle-Brain 2 board"
+	@echo "  bhat - the RaspberryPi + BH HAT combination"

@@ -66,6 +66,11 @@ SPIDeviceDriver SPIDeviceManager::_device[] = {
     SPIDeviceDriver(0, 0, AP_HAL::SPIDevice_Dataflash, SPI_MODE_3, 8, RPI_GPIO_5,  1*MHZ, 8*MHZ),
     SPIDeviceDriver(0, 0, AP_HAL::SPIDevice_RASPIO, SPI_MODE_3, 8, RPI_GPIO_7,  8*MHZ, 8*MHZ),
 };
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BH
+SPIDeviceDriver SPIDeviceManager::_device[] = {
+    SPIDeviceDriver(0, 0, AP_HAL::SPIDevice_MPU9250, SPI_MODE_0, 8, RPI_GPIO_7, 1*MHZ, 20*MHZ),
+    SPIDeviceDriver(0, 0, AP_HAL::SPIDevice_Ublox, SPI_MODE_0, 8, RPI_GPIO_8, 250*KHZ, 5*MHZ),
+};
 #else
 // empty device table
 SPIDeviceDriver SPIDeviceManager::_device[0];
@@ -146,7 +151,7 @@ void SPIDeviceDriver::transfer(const uint8_t *data, uint16_t len)
     transaction(data, NULL, len);
 }
 
-void SPIDeviceManager::init(void *)
+void SPIDeviceManager::init()
 {
     for (uint8_t i=0; i<LINUX_SPI_DEVICE_NUM_DEVICES; i++) {
         if (_device[i]._bus >= LINUX_SPI_MAX_BUSES) {

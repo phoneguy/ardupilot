@@ -18,6 +18,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <RC_Channel/RC_Channel.h>
 #include "AP_MotorsHeli_Single.h"
+#include <GCS_MAVLink/GCS.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -219,6 +220,18 @@ void AP_MotorsHeli_Single::set_desired_rotor_speed(int16_t desired_speed)
 }
 
 // calculate_scalars - recalculates various scalers used.
+void AP_MotorsHeli_Single::calculate_armed_scalars()
+{
+    _main_rotor.set_ramp_time(_rsc_ramp_time);
+    _main_rotor.set_runup_time(_rsc_runup_time);
+    _main_rotor.set_critical_speed(_rsc_critical);
+    _main_rotor.set_idle_output(_rsc_idle_output);
+    _main_rotor.set_power_output_range(_rsc_power_low, _rsc_power_high);
+    _main_rotor.recalc_scalers();
+}
+
+
+// calculate_scalars - recalculates various scalers used.
 void AP_MotorsHeli_Single::calculate_scalars()
 {
     // range check collective min, max and mid
@@ -244,13 +257,8 @@ void AP_MotorsHeli_Single::calculate_scalars()
 
     // send setpoints to main rotor controller and trigger recalculation of scalars
     _main_rotor.set_control_mode(static_cast<RotorControlMode>(_rsc_mode.get()));
-    _main_rotor.set_ramp_time(_rsc_ramp_time);
-    _main_rotor.set_runup_time(_rsc_runup_time);
-    _main_rotor.set_critical_speed(_rsc_critical);
-    _main_rotor.set_idle_output(_rsc_idle_output);
-    _main_rotor.set_power_output_range(_rsc_power_low, _rsc_power_high);
-    _main_rotor.recalc_scalers();
-
+    calculate_armed_scalars();
+    
     // send setpoints to tail rotor controller and trigger recalculation of scalars
     if (_tail_type == AP_MOTORS_HELI_SINGLE_TAILTYPE_DIRECTDRIVE_VARPITCH) {
         _tail_rotor.set_control_mode(ROTOR_CONTROL_MODE_SPEED_SETPOINT);
@@ -526,4 +534,35 @@ void AP_MotorsHeli_Single::servo_test()
     _roll_control_input = _roll_test;
     _pitch_control_input = _pitch_test;
     _yaw_control_input = _yaw_test;
+}
+
+// parameter_check - check if helicopter specific parameters are sensible
+bool AP_MotorsHeli_Single::parameter_check(bool display_msg) const
+{
+    // returns false if Phase Angle is outside of range 
+    if ((_phase_angle > 90) || (_phase_angle < -90)){
+        if (display_msg) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: H_PHANG out of range");
+        }
+        return false;
+    }
+
+    // returns false if Acro External Gyro Gain is outside of range
+    if ((_ext_gyro_gain_acro < 0) || (_ext_gyro_gain_acro > 1000)){
+        if (display_msg) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: H_GYR_GAIN_ACRO out of range");
+        }
+        return false;
+    }
+
+    // returns false if Standard External Gyro Gain is outside of range
+    if ((_ext_gyro_gain_std < 0) || (_ext_gyro_gain_std > 1000)){
+        if (display_msg) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: H_GYR_GAIN out of range");
+        }
+        return false;
+    }
+
+    // check parent class parameters
+    return AP_MotorsHeli::parameter_check(display_msg);
 }

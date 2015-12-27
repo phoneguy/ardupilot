@@ -52,10 +52,8 @@
 #endif
 
 #if HIL_MODE != HIL_MODE_DISABLED       // we are in HIL mode
- #undef CONFIG_BARO
- #define CONFIG_BARO HAL_BARO_HIL
- #undef  CONFIG_COMPASS
- #define CONFIG_COMPASS HAL_COMPASS_HIL
+ #undef CONFIG_SONAR
+ #define CONFIG_SONAR DISABLED
 #endif
 
 #define MAGNETOMETER ENABLED
@@ -146,14 +144,6 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-// Barometer
-//
-
-#ifndef CONFIG_BARO
- # define CONFIG_BARO AP_BARO_BMP085
-#endif
-
-//////////////////////////////////////////////////////////////////////////////
 // Sonar
 //
 
@@ -183,20 +173,6 @@
 
 #ifndef SONAR_TILT_CORRECTION               // by disable tilt correction for use of range finder data by EKF
  # define SONAR_TILT_CORRECTION DISABLED
-#endif
-
-//////////////////////////////////////////////////////////////////////////////
-// HIL_MODE                                 OPTIONAL
-
-#ifndef HIL_MODE
- #define HIL_MODE        HIL_MODE_DISABLED
-#endif
-
-#if HIL_MODE != HIL_MODE_DISABLED       // we are in HIL mode
-
- #undef CONFIG_SONAR
- #define CONFIG_SONAR DISABLED
-
 #endif
 
 
@@ -254,6 +230,10 @@
 
 #ifndef FS_CLOSE_TO_HOME_CM
  # define FS_CLOSE_TO_HOME_CM               500 // if vehicle within 5m of home, vehicle will LAND instead of RTL during some failsafes
+#endif
+
+#ifndef PREARM_DISPLAY_PERIOD
+# define PREARM_DISPLAY_PERIOD 30
 #endif
 
 // pre-arm baro vs inertial nav max alt disparity
@@ -340,6 +320,12 @@
 // Parachute release
 #ifndef PARACHUTE
  # define PARACHUTE ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// ADSB support
+#ifndef ADSB_ENABLED
+# define ADSB_ENABLED ENABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
