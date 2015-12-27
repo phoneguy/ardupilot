@@ -9,6 +9,9 @@ sitl: plane copter rover antennatracker
 linux: TARGET=linux
 linux: plane copter rover antennatracker
 
+bbb: TARGET=bbb
+bbb: plane copter rover antennatracker
+
 clean: TARGET=clean
 clean: plane copter rover antennatracker
 
