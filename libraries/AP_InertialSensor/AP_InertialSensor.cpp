@@ -430,10 +430,11 @@ AP_InertialSensor_Backend *AP_InertialSensor::_find_backend(int16_t backend_id, 
 }
 
 void
-AP_InertialSensor::init(Sample_rate sample_rate)
+AP_InertialSensor::init(uint16_t sample_rate)
 {
     // remember the sample rate
     _sample_rate = sample_rate;
+    _loop_delta_t = 1.0f / sample_rate;
 
     if (_gyro_count == 0 && _accel_count == 0) {
         _start_backends();
@@ -452,21 +453,7 @@ AP_InertialSensor::init(Sample_rate sample_rate)
         _init_gyro();
     }
 
-    switch (sample_rate) {
-    case RATE_50HZ:
-        _sample_period_usec = 20000;
-        break;
-    case RATE_100HZ:
-        _sample_period_usec = 10000;
-        break;
-    case RATE_200HZ:
-        _sample_period_usec = 5000;
-        break;
-    case RATE_400HZ:
-    default:
-        _sample_period_usec = 2500;
-        break;
-    }
+    _sample_period_usec = 1000*1000UL / _sample_rate;
 
     // establish the baseline time between samples
     _delta_time = 0;
