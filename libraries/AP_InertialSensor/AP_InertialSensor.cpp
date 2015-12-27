@@ -285,7 +285,7 @@ const AP_Param::GroupInfo AP_InertialSensor::var_info[] = {
     // @Param: STILL_THRESH
     // @DisplayName: Stillness threshold for detecting if we are moving
     // @Description: Threshold to tolerate vibration to determine if vehicle is motionless. This depends on the frame type and if there is a constant vibration due to motors before launch or after landing. Total motionless is about 0.05. Suggested values: Planes/rover use 0.1, multirotors use 1, tradHeli uses 5
-    // @Range: 0.05 to 50
+    // @Range: 0.05 50
     // @User: Advanced
     AP_GROUPINFO("STILL_THRESH", 23, AP_InertialSensor, _still_threshold,  DEFAULT_STILL_THRESH),
 
@@ -532,6 +532,10 @@ AP_InertialSensor::detect_backends(void)
     _add_backend(AP_InertialSensor_MPU9250::detect_i2c(*this,
                                                        HAL_INS_MPU9250_I2C_POINTER,
                                                        HAL_INS_MPU9250_I2C_ADDR));
+#elif HAL_INS_DEFAULT == HAL_INS_QFLIGHT
+    _add_backend(AP_InertialSensor_QFLIGHT::detect(*this));
+#elif HAL_INS_DEFAULT == HAL_INS_QURT
+    _add_backend(AP_InertialSensor_QURT::detect(*this));
 #else
     #error Unrecognised HAL_INS_TYPE setting
 #endif

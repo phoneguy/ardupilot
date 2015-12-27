@@ -32,6 +32,8 @@ private:
 
     uint32_t _last_gyro_timestamp;
     uint32_t _last_accel_timestamp;
+
+    enum Rotation _default_rotation;
 };
 #endif
 #endif // __AP_INERTIAL_SENSOR_ITG3200BMA180_H__

@@ -67,7 +67,14 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define ITG3200_GYRO_SCALE_R_S (1.0f / 14.375f) * (3.1415926f / 180.0f)
 
 AP_InertialSensor_ITG3200BMA180::AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu) :
-    AP_InertialSensor_Backend(imu)
+    AP_InertialSensor_Backend(imu),
+
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
+    _default_rotation(ROTATION_NONE)
+#else
+ _default_rotation(ROTATION_NONE)
+#endif
+
 {}
 
 /*
@@ -192,7 +199,7 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
         && hal.i2c->readRegisters(BMA180_ADDRESS, BMA180_DATA, 6, buffer) == 0)
     {
         int16_t y = (((((int16_t)buffer[1]) << 8) | (buffer[0])>> 4));    // chip X axis
-        int16_t x = (((((int16_t)buffer[3]) << 8) | (buffer[2])>> 4));    // chip Y axis
+        int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2])>> 4));    // chip Y axis
         int16_t z = (((((int16_t)buffer[5]) << 8) | (buffer[4])>> 4));    // chip Z axis
         Vector3f accel = Vector3f(x,y,z);
         // Adjust for chip scaling to get m/s/s
@@ -210,7 +217,7 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
     {
         // See above re order of samples in buffer
         int16_t y = ((((int16_t)buffer[0]) << 8) | buffer[1]);    // chip X axis
-        int16_t x = ((((int16_t)buffer[2]) << 8) | buffer[3]);    // chip Y axis
+        int16_t x = -((((int16_t)buffer[2]) << 8) | buffer[3]);    // chip Y axis
         int16_t z = ((((int16_t)buffer[4]) << 8) | buffer[5]);    // chip Z axis
         Vector3f gyro = Vector3f(x,y,z);
         // Adjust for chip scaling to get radians/sec
