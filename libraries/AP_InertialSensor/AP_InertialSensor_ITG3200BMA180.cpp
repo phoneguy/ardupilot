@@ -37,16 +37,16 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_ADDRESS    0x40
 #define BMA180_CHIPID     0x03
 #define BMA180_CHIP_ID    0x00
-#define BMA180_PWR        0x0D
+#define BMA180_PWR        0x0d
 #define BMA180_RESET      0x10
 #define BMA180_BW_TCS     0x20
 #define BMA180_RANGE      0x35
 #define BMA180_TCO_Z      0x30
-#define BMA180_DATA       0X02
+#define BMA180_DATA       0x02
 #define BMA180_GRAVITY    255
-#define BMA180_CTRL_REG0  0x0D
-#define BMA180_CTRL_REG1  0x0E
-#define BMA180_CTRL_REG2  0x0F
+#define BMA180_CTRL_REG0  0x0d
+#define BMA180_CTRL_REG1  0x0e
+#define BMA180_CTRL_REG2  0x0f
 
 // BMA180 ACC scaling for 16g
 // Result will be scaled to 1m/s/s
@@ -55,11 +55,11 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
 #define ITG3200_GYRO_WHO_AM_I      0x00
-#define ITG3200_GYRO_PWR_MGM       0x3E
+#define ITG3200_GYRO_PWR_MGM       0x3e
 #define ITG3200_GYRO_DLPF_FS       0x16
 #define ITG3200_GYRO_INT_CFG       0x17
 #define ITG3200_GYRO_SMPLRT_DIV    0x15
-#define ITG3200_GYRO_GYROX_H       0x1D
+#define ITG3200_GYRO_GYROX_H       0x1d
 
 // ITG3200 Gyroscope scaling
 // ITG3200 is 14.375 LSB degrees/sec with FS_SEL=3
@@ -101,6 +101,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_CHIP_ID, &data);
     if (data != BMA180_CHIPID)
         AP_HAL::panic("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 ACC sensor");
+//    hal.console->printf("bma180 ok");
 
     // RESET chip
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RESET, 0xb6);
@@ -115,7 +116,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_BW_TCS, &control);
     control = control & 0x0F;        // save tcs register
-    control = control | (0x00 << 4); //test // set low pass filter to 10Hz (bits value = 0000xxxx)
+    control = control | (0x04 << 4); //test // set low pass filter to 10Hz (bits value = 0000xxxx)
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_BW_TCS, control);
     hal.scheduler->delay(5);
 
@@ -136,6 +137,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->readRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_WHO_AM_I, &data);
     if (data != ITG3200_GYRO_ADDRESS)
         AP_HAL::panic("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor");
+//    hal.console->printf("itg3200 ok");
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_PWR_MGM, 0x00);
     hal.scheduler->delay(1);
 
@@ -159,7 +161,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     _gyro_instance = _imu.register_gyro(raw_sample_rate_hz);
     _accel_instance = _imu.register_accel(raw_sample_rate_hz);
 
-//    _product_id = AP_PRODUCT_ID_DROTEK10DOF;
+    _product_id = AP_PRODUCT_ID_DROTEK10DOF;
 
     return true;
 }
@@ -173,7 +175,7 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
     return true;
 }
 
-void AP_InertialSensor_ITG3200BMA180::_accumulate(void)
+void AP_InertialSensor_ITG3200BMA180::accumulate(void)
 {
     // get pointer to i2c bus semaphore
     AP_HAL::Semaphore* i2c_sem = hal.i2c->get_semaphore();
