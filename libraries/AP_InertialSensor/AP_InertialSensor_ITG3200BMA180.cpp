@@ -55,11 +55,11 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
 #define ITG3200_GYRO_WHO_AM_I      0x00
-#define ITG3200_GYRO_PWR_MGM       0x3E
+#define ITG3200_GYRO_PWR_MGM       0x3e
 #define ITG3200_GYRO_DLPF_FS       0x16
 #define ITG3200_GYRO_INT_CFG       0x17
 #define ITG3200_GYRO_SMPLRT_DIV    0x15
-#define ITG3200_GYRO_GYROX_H       0x1D
+#define ITG3200_GYRO_GYROX_H       0x1d
 
 // ITG3200 Gyroscope scaling
 // ITG3200 is 14.375 LSB degrees/sec with FS_SEL=3
