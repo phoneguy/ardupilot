@@ -42,7 +42,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_BW_TCS     0x20
 #define BMA180_RANGE      0x35
 #define BMA180_TCO_Z      0x30
-#define BMA180_DATA       0X02
+#define BMA180_DATA       0x02
 #define BMA180_GRAVITY    255
 #define BMA180_CTRL_REG0  0x0D
 #define BMA180_CTRL_REG1  0x0E
@@ -115,7 +115,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_BW_TCS, &control);
     control = control & 0x0F;        // save tcs register
-    control = control | (0x00 << 4); //test // set low pass filter to 10Hz (bits value = 0000xxxx)
+    control = control | (0x04 << 4); //test // set low pass filter to 10Hz (bits value = 0000xxxx)
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_BW_TCS, control);
     hal.scheduler->delay(5);
 
