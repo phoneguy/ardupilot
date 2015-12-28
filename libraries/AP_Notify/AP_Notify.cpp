@@ -49,6 +49,9 @@ struct AP_Notify::notify_events_type AP_Notify::events;
     #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI
         ToshibaLED_I2C toshibaled;
         NotifyDevice *AP_Notify::_devices[] = {&toshibaled};
+    #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
+        RCOutputRGBLed bhled(HAL_RCOUT_RGBLED_RED, HAL_RCOUT_RGBLED_GREEN, HAL_RCOUT_RGBLED_BLUE);
+        NotifyDevice *AP_Notify::_devices[] = {&bhled};
     #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_RASPILOT
         ToshibaLED_I2C toshibaled;
         ToneAlarm_Linux tonealarm;
