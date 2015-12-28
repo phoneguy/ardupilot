@@ -16,6 +16,7 @@
 /*
   ITG3200BMA180 IMU driver
  */
+
 // Interface to the gyro and accel sensors:
 // ITG3200 Gyroscope  http://www.sparkfun.com/datasheets/Sensors/Gyro/PS-ITG-3200-00-01.4.pdf
 // BMA180 Accelerometer http://irtfweb.ifa.hawaii.edu/~tcs3/jumpman/jumppc/1107-BMA180/BMA180-DataSheet-v2.5.pdf
@@ -47,10 +48,17 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_CTRL_REG0  0x0d
 #define BMA180_CTRL_REG1  0x0e
 #define BMA180_CTRL_REG2  0x0f
+#define BMA180_BW_10      0x00
+#define BMA180_BW_20      0x01
+#define BMA180_BW_42      0x02
+#define BMA180_BW_75      0x03
+#define BMA180_BW_150     0x04
+#define BMA180_BW_300     0x05
+#define BMA180_BW_600     0x06
 
 // BMA180 ACC scaling for 16g
 // Result will be scaled to 1m/s/s
-#define BMA180_ACC_SCALE_M_S    (GRAVITY_MSS / 4096); //2048
+#define BMA180_ACC_SCALE_M_S    (GRAVITY_MSS / 2048); // 4096 is 8 g
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
@@ -72,7 +80,7 @@ AP_InertialSensor_ITG3200BMA180::AP_InertialSensor_ITG3200BMA180(AP_InertialSens
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
     _default_rotation(ROTATION_NONE)
 #else
- _default_rotation(ROTATION_NONE)
+    _default_rotation(ROTATION_NONE)
 #endif
 
 {}
@@ -108,13 +116,10 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_CHIP_ID, &data);
     if (data != BMA180_CHIPID)
         AP_HAL::panic("AP_InertialSensor_ITG3200_BMA180: could not find BMA180 ACC sensor");
-//    hal.console->printf("bma180 ok");
 
     // RESET chip
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RESET, 0xb6);
-    // default range 2G: 1G = 4096 unit.
 
-    // register: ctrl_reg0  -- value: set bit ee_w to 1 to enable writing
     hal.scheduler->delay(10);
 
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_PWR, 1<<4);    // enable writing
@@ -135,7 +140,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_RANGE, &control);
     control = control & 0xF1;        // save offset_x and smp_skip register
-    control = control | (0x05 << 1); // set range to 8G
+    control = control | (0x06 << 1); // set range to 8G
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RANGE, control);
     hal.scheduler->delay(5);
 
@@ -144,7 +149,6 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->readRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_WHO_AM_I, &data);
     if (data != ITG3200_GYRO_ADDRESS)
         AP_HAL::panic("AP_InertialSensor_ITG3200BMA180: could not find ITG-3200 gyro sensor");
-//    hal.console->printf("itg3200 ok");
     hal.i2c->writeRegister(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_PWR_MGM, 0x00);
     hal.scheduler->delay(1);
 
