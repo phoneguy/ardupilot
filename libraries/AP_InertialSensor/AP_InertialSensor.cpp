@@ -285,7 +285,7 @@ const AP_Param::GroupInfo AP_InertialSensor::var_info[] = {
     // @Param: STILL_THRESH
     // @DisplayName: Stillness threshold for detecting if we are moving
     // @Description: Threshold to tolerate vibration to determine if vehicle is motionless. This depends on the frame type and if there is a constant vibration due to motors before launch or after landing. Total motionless is about 0.05. Suggested values: Planes/rover use 0.1, multirotors use 1, tradHeli uses 5
-    // @Range: 0.05 to 50
+    // @Range: 0.05 50
     // @User: Advanced
     AP_GROUPINFO("STILL_THRESH", 23, AP_InertialSensor, _still_threshold,  DEFAULT_STILL_THRESH),
 
@@ -430,10 +430,11 @@ AP_InertialSensor_Backend *AP_InertialSensor::_find_backend(int16_t backend_id, 
 }
 
 void
-AP_InertialSensor::init(Sample_rate sample_rate)
+AP_InertialSensor::init(uint16_t sample_rate)
 {
     // remember the sample rate
     _sample_rate = sample_rate;
+    _loop_delta_t = 1.0f / sample_rate;
 
     if (_gyro_count == 0 && _accel_count == 0) {
         _start_backends();
@@ -452,21 +453,7 @@ AP_InertialSensor::init(Sample_rate sample_rate)
         _init_gyro();
     }
 
-    switch (sample_rate) {
-    case RATE_50HZ:
-        _sample_period_usec = 20000;
-        break;
-    case RATE_100HZ:
-        _sample_period_usec = 10000;
-        break;
-    case RATE_200HZ:
-        _sample_period_usec = 5000;
-        break;
-    case RATE_400HZ:
-    default:
-        _sample_period_usec = 2500;
-        break;
-    }
+    _sample_period_usec = 1000*1000UL / _sample_rate;
 
     // establish the baseline time between samples
     _delta_time = 0;
@@ -532,6 +519,10 @@ AP_InertialSensor::detect_backends(void)
     _add_backend(AP_InertialSensor_MPU9250::detect_i2c(*this,
                                                        HAL_INS_MPU9250_I2C_POINTER,
                                                        HAL_INS_MPU9250_I2C_ADDR));
+#elif HAL_INS_DEFAULT == HAL_INS_QFLIGHT
+    _add_backend(AP_InertialSensor_QFLIGHT::detect(*this));
+#elif HAL_INS_DEFAULT == HAL_INS_QURT
+    _add_backend(AP_InertialSensor_QURT::detect(*this));
 #else
     #error Unrecognised HAL_INS_TYPE setting
 #endif
