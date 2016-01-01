@@ -1214,6 +1214,10 @@ const AP_Param::Info Plane::var_info[] = {
     // @Path: ../libraries/AP_RSSI/AP_RSSI.cpp
     GOBJECT(rssi, "RSSI_",  AP_RSSI),
 
+    // @Group: NTF_
+    // @Path: ../libraries/AP_Notify/AP_Notify.cpp
+    GOBJECT(notify, "NTF_",  AP_Notify),
+
     AP_VAREND
 };
 
@@ -1277,6 +1281,6 @@ void Plane::load_parameters(void)
         // Load all auto-loaded EEPROM variables
         AP_Param::load_all();
         AP_Param::convert_old_parameters(&conversion_table[0], ARRAY_SIZE(conversion_table));
-        cliSerial->printf("load_all took %uus\n", micros() - before);
+        cliSerial->printf("load_all took %uus\n", (unsigned)(micros() - before));
     }
 }

@@ -135,6 +135,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(read_receiver_rssi,    10,     75),
     SCHED_TASK(rpm_update,            10,    200),
     SCHED_TASK(compass_cal_update,   100,    100),
+    SCHED_TASK(accel_cal_update,      10,    100),
 #if ADSB_ENABLED == ENABLED
     SCHED_TASK(adsb_update,            1,    100),
 #endif
@@ -319,6 +320,10 @@ void Copter::throttle_loop()
     // update trad heli swash plate movement
     heli_update_landing_swash();
 #endif
+
+#if GNDEFFECT_COMPENSATION == ENABLED
+    update_ground_effect_detector();
+#endif // GNDEFFECT_COMPENSATION == ENABLED
 }
 
 // update_mount - update camera mount position
