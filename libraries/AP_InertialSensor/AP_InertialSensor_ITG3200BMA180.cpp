@@ -33,32 +33,41 @@ const uint32_t  raw_sample_rate_hz = 800;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
-///////
 /// ACC BMA180 register definitions
 #define BMA180_ADDRESS    0x40
 #define BMA180_CHIPID     0x03
 #define BMA180_CHIP_ID    0x00
 #define BMA180_PWR        0x0d
 #define BMA180_RESET      0x10
-#define BMA180_BW_TCS     0x20
-#define BMA180_RANGE      0x35
+#define BMA180_BW_REG     0x20
+#define BMA180_RANGE_REG  0x35
 #define BMA180_TCO_Z      0x30
 #define BMA180_DATA       0x02
 #define BMA180_GRAVITY    255
 #define BMA180_CTRL_REG0  0x0d
 #define BMA180_CTRL_REG1  0x0e
 #define BMA180_CTRL_REG2  0x0f
+
 #define BMA180_BW_10      0x00
 #define BMA180_BW_20      0x01
-#define BMA180_BW_42      0x02
+#define BMA180_BW_40      0x02
 #define BMA180_BW_75      0x03
 #define BMA180_BW_150     0x04
 #define BMA180_BW_300     0x05
 #define BMA180_BW_600     0x06
+#define BMA180_BW_1200    0x07
 
-// BMA180 ACC scaling for 16g
+#define BMA180_RANGE_1G   0x00
+#define BMA180_RANGE_1_5G 0x01
+#define BMA180_RANGE_2G   0x02
+#define BMA180_RANGE_3G   0x03
+#define BMA180_RANGE_4G   0x04
+#define BMA180_RANGE_8G   0x05
+#define BMA180_RANGE_16G  0x06
+
+// BMA180 ACC scaling for 16g 1.98 mg/LSB 14 bit mode
 // Result will be scaled to 1m/s/s
-#define BMA180_ACC_SCALE_M_S    (GRAVITY_MSS / 2048); // 4096 is 8 g
+#define BMA180_ACC_SCALE_M_S    (GRAVITY_MSS / 2303); // 4096 is 8 g
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
@@ -126,10 +135,10 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.scheduler->delay(5);
 
-    hal.i2c->readRegister(BMA180_ADDRESS, BMA180_BW_TCS, &control);
+    hal.i2c->readRegister(BMA180_ADDRESS, BMA180_BW_REG, &control);
     control = control & 0x0F;        // save tcs register
-    control = control | (0x04 << 4); //test // set low pass filter to 10Hz (bits value = 0000xxxx)
-    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_BW_TCS, control);
+    control = control | (BMA180_BW_300 << 4); // set low pass filter to
+    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_BW_REG, control);
     hal.scheduler->delay(5);
 
     hal.i2c->readRegister(BMA180_ADDRESS, BMA180_TCO_Z, &control);
@@ -138,10 +147,10 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_TCO_Z, control);
     hal.scheduler->delay(5);
 
-    hal.i2c->readRegister(BMA180_ADDRESS, BMA180_RANGE, &control);
-    control = control & 0xF1;        // save offset_x and smp_skip register
-    control = control | (0x06 << 1); // set range to 8G
-    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RANGE, control);
+    hal.i2c->readRegister(BMA180_ADDRESS, BMA180_RANGE_REG, &control);
+    control = control & 0xF1;                    // save offset_x and smp_skip register
+    control = control | (BMA180_RANGE_16G << 1); // set range to
+    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RANGE_REG, control);
     hal.scheduler->delay(5);
 
     // Init the Gyro
@@ -202,9 +211,9 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
     if ((now - _last_accel_timestamp) >= raw_sample_interval_us
         && hal.i2c->readRegisters(BMA180_ADDRESS, BMA180_DATA, 6, buffer) == 0)
     {
-        int16_t y = (((((int16_t)buffer[1]) << 8) | (buffer[0])>> 4));    // chip X axis
-        int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2])>> 4));    // chip Y axis
-        int16_t z = (((((int16_t)buffer[5]) << 8) | (buffer[4])>> 4));    // chip Z axis
+        int16_t y =  (((((int16_t)buffer[1]) << 8) | (buffer[0]) >> 2));    // chip X axis
+        int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2]) >> 2));    // chip Y axis
+        int16_t z =  (((((int16_t)buffer[5]) << 8) | (buffer[4]) >> 2));    // chip Z axis
         Vector3f accel = Vector3f(x,y,z);
         // Adjust for chip scaling to get m/s/s
         accel *= BMA180_ACC_SCALE_M_S;
@@ -220,9 +229,9 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
         && hal.i2c->readRegisters(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_GYROX_H, 6, buffer) == 0)
     {
         // See above re order of samples in buffer
-        int16_t y = ((((int16_t)buffer[0]) << 8) | buffer[1]);    // chip X axis
+        int16_t y =  ((((int16_t)buffer[0]) << 8) | buffer[1]);    // chip X axis
         int16_t x = -((((int16_t)buffer[2]) << 8) | buffer[3]);    // chip Y axis
-        int16_t z = ((((int16_t)buffer[4]) << 8) | buffer[5]);    // chip Z axis
+        int16_t z =  ((((int16_t)buffer[4]) << 8) | buffer[5]);    // chip Z axis
         Vector3f gyro = Vector3f(x,y,z);
         // Adjust for chip scaling to get radians/sec
         gyro *= ITG3200_GYRO_SCALE_R_S;
