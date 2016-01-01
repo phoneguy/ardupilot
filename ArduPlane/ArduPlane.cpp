@@ -60,6 +60,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK(update_notify,          50,    300),
     SCHED_TASK(read_rangefinder,       50,    500),
     SCHED_TASK(compass_cal_update,     50,    100),
+    SCHED_TASK(accel_cal_update,       10,    100),
 #if OPTFLOW == ENABLED
     SCHED_TASK(update_optical_flow,    50,    500),
 #endif
@@ -837,6 +838,7 @@ void Plane::update_flight_stage(void)
             } else if (mission.get_current_nav_cmd().id == MAV_CMD_NAV_LAND) {
 
                 if ((g.land_abort_throttle_enable && channel_throttle->control_in > 95) ||
+                        auto_state.commanded_go_around ||
                         flight_stage == AP_SpdHgtControl::FLIGHT_LAND_ABORT){
                     // abort mode is sticky, it must complete while executing NAV_LAND
                     set_flight_stage(AP_SpdHgtControl::FLIGHT_LAND_ABORT);
