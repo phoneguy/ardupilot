@@ -5,11 +5,11 @@
 #include "AP_Mount.h"
 #include "AP_Mount_Backend.h"
 #include "AP_Mount_Servo.h"
+#include "AP_Mount_SimpleServo.h"
 #include "AP_Mount_MAVLink.h"
 #include "AP_Mount_Alexmos.h"
 #include "AP_Mount_SToRM32.h"
 #include "AP_Mount_SToRM32_serial.h"
-#include "AP_Mount_SimpleServo.h"
 
 const AP_Param::GroupInfo AP_Mount::var_info[] = {
     // @Param: _DEFLT_MODE
@@ -505,6 +505,11 @@ void AP_Mount::init(const AP_SerialManager& serial_manager)
         // check for servo mounts
         if (mount_type == Mount_Type_Servo) {
             _backends[instance] = new AP_Mount_Servo(*this, state[instance], instance);
+            _num_instances++;
+
+        // check for super simple servo mounts
+        } else if (mount_type == Mount_Type_SimpleServo) {
+            _backends[instance] = new AP_Mount_SimpleServo(*this, state[instance], instance);
             _num_instances++;
 
 #if AP_AHRS_NAVEKF_AVAILABLE

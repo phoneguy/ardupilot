@@ -36,11 +36,11 @@
 // declare backend classes
 class AP_Mount_Backend;
 class AP_Mount_Servo;
+class AP_Mount_SimpleServo;
 class AP_Mount_MAVLink;
 class AP_Mount_Alexmos;
 class AP_Mount_SToRM32;
 class AP_Mount_SToRM32_serial;
-class AP_Mount_SimpleServo;
 
 /*
   This is a workaround to allow the MAVLink backend access to the
@@ -52,11 +52,11 @@ class AP_Mount
     // declare backends as friends
     friend class AP_Mount_Backend;
     friend class AP_Mount_Servo;
+    friend class AP_Mount_SimpleServo;
     friend class AP_Mount_MAVLink;
     friend class AP_Mount_Alexmos;
     friend class AP_Mount_SToRM32;
     friend class AP_Mount_SToRM32_serial;
-    friend class AP_Mount_SimpleServo;
 
 public:
 
