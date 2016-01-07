@@ -537,6 +537,8 @@ AP_InertialSensor::detect_backends(void)
     _add_backend(AP_InertialSensor_QFLIGHT::detect(*this));
 #elif HAL_INS_DEFAULT == HAL_INS_QURT
     _add_backend(AP_InertialSensor_QURT::detect(*this));
+#elif HAL_INS_DEFAULT == HAL_INS_ITG3200BMA180
+    _add_backend(AP_InertialSensor_ITG3200BMA180::detect(*this));
 #else
     #error Unrecognised HAL_INS_TYPE setting
 #endif
