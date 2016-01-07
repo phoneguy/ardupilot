@@ -42,7 +42,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
 // BMA180 accelerometer scaling
 // Result will be scaled to 1m/s/s
-#define BMA180_ACCELEROMETER_SCALE_M_S    (GRAVITY_MSS / 4096.0f)
+#define BMA180_ACCELEROMETER_SCALE_M_S    (GRAVITY_MSS / 2303.0f)
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS              0x69
@@ -119,7 +119,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.i2c->readRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_RANGE, &control);
     control = control & 0xF1;        // save offset_x and smp_skip register
-    control = control | (0x05 << 1); // set range to 8G
+    control = control | (0x06 << 1); // set range to 16G
     hal.i2c->writeRegister(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_RANGE, control);
 
     hal.scheduler->delay(5);
@@ -183,9 +183,9 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
     if ((now - _last_accel_timestamp) >= raw_sample_interval_us
         && hal.i2c->readRegisters(BMA180_ACCELEROMETER_ADDRESS, BMA180_ACCELEROMETER_DATA, 6, buffer) == 0)
     {
-        int16_t y = -(((((int16_t)buffer[1]) << 8) | (buffer[0])>> 2));    // chip X axis
-        int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2])>> 2));    // chip Y axis
-        int16_t z = -(((((int16_t)buffer[5]) << 8) | (buffer[4])>> 2));    // chip Z axis
+        int16_t y = (((((int16_t)buffer[1]) << 8) | (buffer[0])>> 4));    // chip X axis
+        int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2])>> 4));    // chip Y axis
+        int16_t z = (((((int16_t)buffer[5]) << 8) | (buffer[4])>> 4));    // chip Z axis
         Vector3f accel = Vector3f(x,y,z);
         // Adjust for chip scaling to get m/s/s
         accel *= BMA180_ACCELEROMETER_SCALE_M_S;
@@ -201,9 +201,9 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
         && hal.i2c->readRegisters(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_GYROX_H, 6, buffer) == 0)
     {
         // See above re order of samples in buffer
-        int16_t y = -((((int16_t)buffer[0]) << 8) | buffer[1]);    // chip X axis
+        int16_t y = ((((int16_t)buffer[0]) << 8) | buffer[1]);    // chip X axis
         int16_t x = -((((int16_t)buffer[2]) << 8) | buffer[3]);    // chip Y axis
-        int16_t z = -((((int16_t)buffer[4]) << 8) | buffer[5]);    // chip Z axis
+        int16_t z = ((((int16_t)buffer[4]) << 8) | buffer[5]);    // chip Z axis
         Vector3f gyro = Vector3f(x,y,z);
         // Adjust for chip scaling to get radians/sec
         gyro *= ITG3200_GYRO_SCALE_R_S;
