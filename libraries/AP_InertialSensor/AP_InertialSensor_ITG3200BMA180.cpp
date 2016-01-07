@@ -44,9 +44,16 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_TCO_Z      0x30
 #define BMA180_DATA       0x02
 #define BMA180_GRAVITY    255
-#define BMA180_CTRL_REG0  0x0d
-#define BMA180_CTRL_REG1  0x0e
-#define BMA180_CTRL_REG2  0x0f
+#define BMA180_CMD_CTRL_REG0  0x0d
+#define BMA180_CMD_CTRL_REG1  0x0e
+#define BMA180_CMD_CTRL_REG2  0x0f
+#define BMA180_CMD_CTRL_REG3  0x21
+#define BMA180_CMD_CTRL_REG4  0x22
+
+#define BMA180_CMD_STATUS_REG1    0x09
+#define BMA180_CMD_STATUS_REG2    0x0a
+#define BMA180_CMD_STATUS_REG3    0x0b
+#define BMA180_CMD_STATUS_REG4    0x0c
 
 #define BMA180_BW_10      0x00
 #define BMA180_BW_20      0x01
@@ -68,7 +75,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 // BMA180 ACC scaling for 16g 1.98 mg/LSB 14 bit mode
 // Result will be scaled to 1m/s/s
 
-#define BMA180_ACC_SCALE_M_S  (GRAVITY_MSS / 2772);//2303); 2376// 4096 is 8 g
+#define BMA180_ACC_SCALE_M_S  (GRAVITY_MSS / 2303);
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
@@ -132,7 +139,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     hal.scheduler->delay(10);
 
-    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_PWR, 1<<4);    // enable writing
+    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_PWR, 1<<4);    // enable writing to eeprom
 
     hal.scheduler->delay(5);
 
@@ -153,6 +160,8 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     control = control | (BMA180_RANGE_16G << 1); // set range to
     hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_RANGE_REG, control);
     hal.scheduler->delay(5);
+
+    hal.i2c->writeRegister(BMA180_ADDRESS, BMA180_PWR, 0 << 4);    // disable writing to eeprom
 
     // Init the Gyro
     // Expect to read the same as the Gyro I2C adress:
