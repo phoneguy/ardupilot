@@ -36,6 +36,7 @@
 // declare backend classes
 class AP_Mount_Backend;
 class AP_Mount_Servo;
+class AP_Mount_SimpleServo;
 class AP_Mount_MAVLink;
 class AP_Mount_Alexmos;
 class AP_Mount_SToRM32;
@@ -51,6 +52,7 @@ class AP_Mount
     // declare backends as friends
     friend class AP_Mount_Backend;
     friend class AP_Mount_Servo;
+    friend class AP_Mount_SimpleServo;
     friend class AP_Mount_MAVLink;
     friend class AP_Mount_Alexmos;
     friend class AP_Mount_SToRM32;
@@ -65,7 +67,8 @@ public:
         Mount_Type_MAVLink = 2,         /// MAVLink controlled mount
         Mount_Type_Alexmos = 3,         /// Alexmos mount
         Mount_Type_SToRM32 = 4,         /// SToRM32 mount using MAVLink protocol
-        Mount_Type_SToRM32_serial = 5   /// SToRM32 mount using custom serial protocol
+        Mount_Type_SToRM32_serial = 5,  /// SToRM32 mount using custom serial protocol
+        Mount_Type_SimpleServo = 6      /// Super simple gimbal using servos
     };
 
     struct gimbal_params {
@@ -184,7 +187,7 @@ protected:
         struct Location _roi_target;        // roi target location
 
         struct gimbal_params _gimbalParams;
-        
+
     } state[AP_MOUNT_MAX_INSTANCES];
 };
 

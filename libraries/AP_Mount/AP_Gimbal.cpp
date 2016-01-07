@@ -19,7 +19,7 @@ void AP_Gimbal::receive_feedback(mavlink_channel_t chan, mavlink_message_t *msg)
     }
 
     Quaternion quatEst;_ekf.getQuat(quatEst);Vector3f eulerEst;quatEst.to_euler(eulerEst.x, eulerEst.y, eulerEst.z);
-    //::printf("est=%1.1f %1.1f %1.1f %d\t", eulerEst.x,eulerEst.y,eulerEst.z,_ekf.getStatus());    
+    //::printf("est=%1.1f %1.1f %1.1f %d\t", eulerEst.x,eulerEst.y,eulerEst.z,_ekf.getStatus());
     //::printf("joint_angles=(%+1.2f %+1.2f %+1.2f)\t", _measurement.joint_angles.x,_measurement.joint_angles.y,_measurement.joint_angles.z);
     //::printf("delta_ang=(%+1.3f %+1.3f %+1.3f)\t",_measurement.delta_angles.x,_measurement.delta_angles.y,_measurement.delta_angles.z);     
     //::printf("delta_vel=(%+1.3f %+1.3f %+1.3f)\t",_measurement.delta_velocity.x,_measurement.delta_velocity.y,_measurement.delta_velocity.z);     
@@ -62,9 +62,9 @@ void AP_Gimbal::send_report(mavlink_channel_t chan) const
                                    _report_msg.delta_angle_z, 
                                    _report_msg.delta_velocity_x, 
                                    _report_msg.delta_velocity_y, 
-                                   _report_msg.delta_velocity_z, 
-                                   _report_msg.joint_roll, 
-                                   _report_msg.joint_el, 
+                                   _report_msg.delta_velocity_z,
+                                   _report_msg.joint_roll,
+                                   _report_msg.joint_el,
                                    _report_msg.joint_az);
 }
 
@@ -116,7 +116,7 @@ Vector3f AP_Gimbal::getGimbalRateDemVecYaw(const Quaternion &quatEst)
          // calculate the maximum steady state rate error corresponding to the maximum permitted yaw angle error
         float maxRate = _gimbalParams.K_gimbalRate * yawErrorLimit;
         float vehicle_rate_mag_ef = vehicle_rate_ef.length();
-        float excess_rate_correction = fabsf(vehicle_rate_mag_ef) - maxRate; 
+        float excess_rate_correction = fabsf(vehicle_rate_mag_ef) - maxRate;
         if (vehicle_rate_mag_ef > maxRate) {
             if (vehicle_rate_ef.z>0.0f){
                 gimbalRateDemVecYaw += _ahrs.get_rotation_body_to_ned().transposed()*Vector3f(0,0,excess_rate_correction);

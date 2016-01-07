@@ -5,6 +5,7 @@
 #include "AP_Mount.h"
 #include "AP_Mount_Backend.h"
 #include "AP_Mount_Servo.h"
+#include "AP_Mount_SimpleServo.h"
 #include "AP_Mount_MAVLink.h"
 #include "AP_Mount_Alexmos.h"
 #include "AP_Mount_SToRM32.h"
@@ -195,7 +196,7 @@ const AP_Param::GroupInfo AP_Mount::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Mount Type
     // @Description: Mount Type (None, Servo or MAVLink)
-    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial
+    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial 6:SuperSimpleGimbal
     // @RebootRequired: True
     // @User: Standard
     AP_GROUPINFO("_TYPE", 19, AP_Mount, state[0]._type, 0),
@@ -452,7 +453,7 @@ const AP_Param::GroupInfo AP_Mount::var_info[] = {
     // @Param: 2_TYPE
     // @DisplayName: Mount2 Type
     // @Description: Mount Type (None, Servo or MAVLink)
-    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial
+    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial 6:SuperSimpleGimbal
     // @User: Standard
     AP_GROUPINFO("2_TYPE",           42, AP_Mount, state[1]._type, 0),
 #endif // AP_MOUNT_MAX_INSTANCES > 1
@@ -504,6 +505,11 @@ void AP_Mount::init(const AP_SerialManager& serial_manager)
         // check for servo mounts
         if (mount_type == Mount_Type_Servo) {
             _backends[instance] = new AP_Mount_Servo(*this, state[instance], instance);
+            _num_instances++;
+
+        // check for super simple servo mounts
+        } else if (mount_type == Mount_Type_SimpleServo) {
+            _backends[instance] = new AP_Mount_SimpleServo(*this, state[instance], instance);
             _num_instances++;
 
 #if AP_AHRS_NAVEKF_AVAILABLE
@@ -674,7 +680,7 @@ void AP_Mount::handle_gimbal_report(mavlink_channel_t chan, mavlink_message_t *m
         if (_backends[instance] != NULL) {
             _backends[instance]->handle_gimbal_report(chan, msg);
         }
-    }    
+    }
 }
 
 // send a GIMBAL_REPORT message to the GCS
@@ -684,5 +690,5 @@ void AP_Mount::send_gimbal_report(mavlink_channel_t chan)
         if (_backends[instance] != NULL) {
             _backends[instance]->send_gimbal_report(chan);
         }
-    }    
+    }
 }
