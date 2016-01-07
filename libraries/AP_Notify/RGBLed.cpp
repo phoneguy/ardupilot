@@ -118,8 +118,8 @@ void RGBLed::update_colours(void)
         } else {
             // even display blue light
             _red_des = _led_off;
-            _blue_des = brightness;
-            _green_des = _led_off;
+            _blue_des = _led_off;
+            _green_des = ;brightness;
         }
 
         // exit so no other status modify this pattern
