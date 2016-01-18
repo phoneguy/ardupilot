@@ -31,12 +31,6 @@
         "P8.12",	/* pru0: pr1_pru0_pru_r30_14, HC-SR04 trigger */
         "P8.16",	/* pru0: pr1_pru0_pru_r31_14, HC-SR04 echo */
 
-        /* SPI0 */
-        "P9.22",    /* spi0: spi0_sclk, SPI0_SCLK */
-        "P9.21",    /* spi0: spi0_d0, SPI0_MISO */
-        "P9.18",    /* spi0: spi0_d1, SPI0_MOSI */
-        "P9.17",    /* spi0: spi0_cs0, CS0 */
-
         /* SPI1 */
         "P9.31",	/* spi1: spi1_sclk, SPI1_SCLK */
         "P9.29",	/* spi1: spi1_d0, SPI1_MISO */
