@@ -322,9 +322,9 @@
 #define HAL_INS_DEFAULT HAL_INS_MPU9250
 #define HAL_BARO_DEFAULT HAL_BARO_BMP085//MS5611_SPI
 #define HAL_COMPASS_DEFAULT HAL_AK8963_MPU9250
-#define HAL_GPIO_A_LED_PIN        61
-#define HAL_GPIO_B_LED_PIN        117
-#define HAL_GPIO_C_LED_PIN        48
+#define HAL_GPIO_A_LED_PIN        117
+#define HAL_GPIO_B_LED_PIN        48
+#define HAL_GPIO_C_LED_PIN        61
 #define HAL_GPIO_LED_ON           HIGH//LOW
 #define HAL_GPIO_LED_OFF          LOW//HIGH
 #define HAL_RCOUT_RGBLED_RED      8

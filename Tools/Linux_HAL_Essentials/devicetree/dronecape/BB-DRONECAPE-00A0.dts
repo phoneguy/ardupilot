@@ -1,12 +1,12 @@
 /dts-v1/;
 /plugin/;
 
-/* Device tree file for BBG */
+/* Device tree file for DRONECAPE */
 
 / {
-    compatible = "ti,beaglebone", "ti,beaglebone-black";
+    compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
 
-    part-number = "BB-BBG";
+    part-number = "BB-DRONECAPE";
     version = "00A0";
 
     exclusive-use =
@@ -31,6 +31,12 @@
         "P8.12",	/* pru0: pr1_pru0_pru_r30_14, HC-SR04 trigger */
         "P8.16",	/* pru0: pr1_pru0_pru_r31_14, HC-SR04 echo */
 
+        /* SPI0 */
+        "P9.22",    /* spi0: spi0_sclk, SPI0_SCLK */
+        "P9.21",    /* spi0: spi0_d0, SPI0_MISO */
+        "P9.18",    /* spi0: spi0_d1, SPI0_MOSI */
+        "P9.17",    /* spi0: spi0_cs0, CS0 */
+
         /* SPI1 */
         "P9.31",	/* spi1: spi1_sclk, SPI1_SCLK */
         "P9.29",	/* spi1: spi1_d0, SPI1_MISO */
@@ -39,16 +45,16 @@
         "P9.42",	/* spi1: spi1_cs1, MS5611 CS1 */
 		
         /* UART2 MAVLink */
-        "P9.21",	/* uart2: uart2_txd */
         "P9.22",	/* uart2: uart2_rxd */
+        "P9.21",	/* uart2: uart2_txd */
 
         /* UART4 MAVLink */
-        "P9.13",	/* uart4: uart4_txd */
         "P9.11",	/* uart4: uart4_rxd */
+        "P9.13",	/* uart4: uart4_txd */
 
         /* UART5 GPS */
-        "P8.37", 	/* uart5: uart5_txd */
         "P8.38", 	/* uart5: uart5_rxd */
+        "P8.37", 	/* uart5: uart5_txd */
 
         /* CAN1 */
         "P9.24", 	/* can1: dcan1_rx */
@@ -102,22 +108,22 @@
 
             bb_uart2_pins: pinmux_bb_uart2_pins {
                 pinctrl-single,pins = <
-                    0x154 0x01  /* spi0_d0.uart2_txd | MODE1 P9.21 */
-                    0x150 0x21  /* spi0_sclk.uart2_rxd | MODE1 P9.22 */
+                    0x150 0x21 /* spi0_sclk.uart2_rxd | MODE1 P9.22 */
+                    0x154 0x01 /* spi0_d0.uart2_txd   | MODE1 P9.21 */
                 >;
             };
-
+			
             bb_uart4_pins: pinmux_bb_uart4_pins {
                 pinctrl-single,pins = <
-                    0x074 0x06  /* gpmc_wpm.uart4_txd   | MODE6 P9.13 */
-                    0x070 0x26  /* gpmc_wait0.uart4_rxd | MODE6 P9.11 */
+                    0x070 0x26  /* lcd_data9.uart4_rxd | MODE6 P9.11 */
+                    0x074 0x06  /* lcd_data8.uart4_txd | MODE6 P9.13 */
                 >;
             };
 			
             bb_uart5_pins: pinmux_bb_uart5_pins {
                 pinctrl-single,pins = <
-                    0x0C0 0x04  /* lcd_data8.uart5_txd | MODE4 P8.37 */
                     0x0C4 0x24  /* lcd_data9.uart5_rxd | MODE4 P8.38 */
+                    0x0C0 0x04  /* lcd_data8.uart5_txd | MODE4 P8.37 */
                 >;
             };			
 
@@ -169,7 +175,6 @@
            };
         };
     };
-
 
     fragment@3 {
         target = <&uart3>;
