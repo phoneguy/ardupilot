@@ -1,7 +1,7 @@
 #Hardware
 
 ## Load device tree
-To load the BBBMINI device tree type `startup.sh load`.
+To load the DRONECAPE device tree type `startup.sh load`.
 
 ## Build dtbo file
 To rebuild the dtbo file type `make` and than `make install`to copy the dtbo file to `/lib/firmware`.
@@ -53,6 +53,14 @@ P9.30 SPI1_MOSI | MOSI / SD1 | OUT | 3.3 Volt
 P9.31 SPI1_SCLK | SCLK / SCL | OUT | 3.3 Volt
 P9.42 MS5611_CS | MS5611_CS | OUT | 3.3 Volt
 
+### UART2 MAVLink ESP2866 or 2nd GPS
+Baudrate 57600, 8, n, 1
+
+BBB | Radio | I/O | Remark
+------------ | ------------- | ------------- | -------------
+P9.01 DGND | GND | 
+P9.22 TX | RADIO_RX | OUT | 3.3 Volt 
+P9.21 RX | RADIO_TX | IN | 3.3 Volt
 
 ### UART4 MAVLink radio module
 Baudrate 57600, 8, n, 1
