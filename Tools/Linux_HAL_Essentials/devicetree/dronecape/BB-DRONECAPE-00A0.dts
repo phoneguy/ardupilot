@@ -28,6 +28,7 @@
         "P8.46",	/* pru1: pr1_pru1_pru_r30_1, CH_11 */
         "P8.45",	/* pru1: pr1_pru1_pru_r30_0, CH_12 */
 
+        /* Sonar Input */
         "P8.12",	/* pru0: pr1_pru0_pru_r30_14, HC-SR04 trigger */
         "P8.16",	/* pru0: pr1_pru0_pru_r31_14, HC-SR04 echo */
 
@@ -36,9 +37,9 @@
         "P9.29",	/* spi1: spi1_d0, SPI1_MISO */
         "P9.30",	/* spi1: spi1_d1, SPI1_MOSI */
         "P9.28",	/* spi1: spi1_cs0, MPU9250 CS0 */
-        "P9.42",	/* spi1: spi1_cs1, MS5611 CS1 */
+        "P9.42A",	/* spi1: spi1_cs1, MS5611 CS1 */
 		
-        /* UART2 MAVLink */
+        /* UART2 GPS */
         "P9.22",	/* uart2: uart2_rxd */
         "P9.21",	/* uart2: uart2_txd */
 
@@ -95,8 +96,6 @@
                     0x198 0x13	/* mcasp0_axr0.spi1_d1, MODE3 | OUTPUT_PULLUP | SPI1_MOSI P9_30 */
                     0x19c 0x13	/* mcasp0_ahclkr.spi1_cs0, MODE3 | OUTPUT_PULLUP | MPU9250 CS0 P9_28 */
                     0x164 0x12	/* ecap0_in_pwm0_out.spi1_cs1, MODE2 | OUTPUT_PULLUP | MS5611 CS1 P9_42 */
-
-                    0x1a0 0x30  /* Mcasp0_aclkr P9_42 */
                 >;
             };
 
@@ -150,8 +149,6 @@
             #address-cells = <1>;
             #size-cells = <0>;
 
-            cs-gpios = <&gpio4 17 0>, <&gpio1 7 0>;
-
             spi1_0 {
                 #address-cells = <1>;
                 #size-cells = <0>;
@@ -171,7 +168,7 @@
     };
 
     fragment@3 {
-        target = <&uart3>;
+        target = <&uart2>;
         __overlay__ {
             status = "okay";
             pinctrl-names = "default";
@@ -180,7 +177,7 @@
     };
 
     fragment@4 {
-        target = <&uart5>;
+        target = <&uart4>;
         __overlay__ {
             status = "okay";
             pinctrl-names = "default";
@@ -189,7 +186,7 @@
     };
 
     fragment@5 {
-        target = <&uart6>;
+        target = <&uart5>;
         __overlay__ {
             status = "okay";
             pinctrl-names = "default";
