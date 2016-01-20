@@ -7,9 +7,15 @@ set -ex
 
 . ~/.profile
 
+# CXX and CC are exported by default by travis
+unset CXX CC
+
+export BUILDROOT=/tmp/travis.build.$$
+rm -rf $BUILDROOT
+
 # If TRAVIS_BUILD_TARGET is not set, default to all of them
 if [ -z "$TRAVIS_BUILD_TARGET" ]; then
-    TRAVIS_BUILD_TARGET="sitl linux navio raspilot minlure px4-v2 px4-v4"
+    TRAVIS_BUILD_TARGET="sitl linux navio raspilot minlure bebop px4-v2 px4-v4"
 fi
 
 declare -A build_platforms
@@ -17,15 +23,16 @@ declare -A build_concurrency
 declare -A build_extra_clean
 declare -A waf_supported_boards
 
-build_platforms=(  ["ArduPlane"]="navio raspilot minlure sitl linux px4-v2"
-                   ["ArduCopter"]="navio raspilot minlure sitl linux px4-v2 px4-v4"
-                   ["APMrover2"]="navio raspilot minlure sitl linux px4-v2"
-                   ["AntennaTracker"]="navio raspilot minlure sitl linux px4-v2"
+build_platforms=(  ["ArduPlane"]="navio raspilot minlure bebop sitl linux px4-v2"
+                   ["ArduCopter"]="navio raspilot minlure bebop sitl linux px4-v2 px4-v4"
+                   ["APMrover2"]="navio raspilot minlure bebop sitl linux px4-v2"
+                   ["AntennaTracker"]="navio raspilot minlure bebop sitl linux px4-v2"
                    ["Tools/Replay"]="linux")
 
 build_concurrency=(["navio"]="-j2"
                    ["raspilot"]="-j2"
                    ["minlure"]="-j2"
+                   ["bebop"]="-j2"
                    ["sitl"]="-j2"
                    ["linux"]="-j2"
                    ["px4-v2"]=""
@@ -62,5 +69,11 @@ for t in $TRAVIS_BUILD_TARGET; do
         $waf configure --board $t
         $waf clean
         $waf ${build_concurrency[$t]} build
+        if [[ $t == linux ]]; then
+            $waf check
+        fi
     fi
 done
+
+echo build OK
+exit 0

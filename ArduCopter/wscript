@@ -18,7 +18,6 @@ def build(bld):
             'AC_Sprayer',
             'AC_WPNav',
             'AP_Camera',
-            'AP_Curve',
             'AP_EPM',
             'AP_Frsky_Telem',
             'AP_IRLock',
@@ -34,9 +33,11 @@ def build(bld):
             'AP_Relay',
             'AP_ServoRelayEvents',
         ],
+        use='mavlink',
     )
 
     ardupilotwaf.program(
         bld,
+        program_name='arducopter',
         use=vehicle + '_libs',
     )
