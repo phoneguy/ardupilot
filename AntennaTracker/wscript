@@ -12,9 +12,11 @@ def build(bld):
         libraries=ardupilotwaf.COMMON_VEHICLE_DEPENDENT_LIBRARIES + [
             'PID',
         ],
+        use='mavlink',
     )
 
     ardupilotwaf.program(
         bld,
+        program_name='antennatracker',
         use=vehicle + '_libs',
     )

@@ -28,10 +28,17 @@ def build(bld):
             'AP_ServoRelayEvents',
             'AP_SpdHgtControl',
             'AP_TECS',
+            'AP_InertialNav',
+            'AC_WPNav',
+            'AC_AttitudeControl',
+            'AP_Motors',
+            'AC_PID'
         ],
+        use='mavlink',
     )
 
     ardupilotwaf.program(
         bld,
+        program_name='arduplane',
         use=vehicle + '_libs',
     )

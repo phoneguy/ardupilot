@@ -24,6 +24,7 @@
 #include <SITL/SIM_JSBSim.h>
 #include <SITL/SIM_Tracker.h>
 #include <SITL/SIM_Balloon.h>
+#include <SITL/SIM_FlightAxis.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -76,6 +77,7 @@ static const struct {
     { "rover",              SimRover::create },
     { "crrcsim",            CRRCSim::create },
     { "jsbsim",             JSBSim::create },
+    { "flightaxis",         FlightAxis::create },
     { "gazebo",             Gazebo::create },
     { "last_letter",        last_letter::create },
     { "tracker",            Tracker::create },
@@ -161,7 +163,7 @@ void SITL_State::_parse_command_line(int argc, char * const argv[])
             _framerate = (unsigned)atoi(gopt.optarg);
             break;
         case 'C':
-            HALSITL::SITLUARTDriver::_console = true;
+            HALSITL::UARTDriver::_console = true;
             break;
         case 'I': {
             _instance = atoi(gopt.optarg);
