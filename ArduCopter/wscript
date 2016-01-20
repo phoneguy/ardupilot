@@ -33,9 +33,11 @@ def build(bld):
             'AP_Relay',
             'AP_ServoRelayEvents',
         ],
+        use='mavlink',
     )
 
     ardupilotwaf.program(
         bld,
+        program_name='arducopter',
         use=vehicle + '_libs',
     )
