@@ -7,7 +7,7 @@
 extern const AP_HAL::HAL& hal;
 
 const char* AnalogSource_IIO::analog_sources[IIO_ANALOG_IN_COUNT] = {
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
     "in_voltage0_raw",
     "in_voltage1_raw",
     "in_voltage2_raw",
@@ -115,7 +115,7 @@ float AnalogSource_IIO::read_latest()
 
     memset(sbuf, 0, sizeof(sbuf));
     pread(_pin_fd, sbuf, sizeof(sbuf)-1, 0);
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
     _latest = atoi(sbuf) * BBB_VOLTAGE_SCALING;
 #else
     _latest = atoi(sbuf);

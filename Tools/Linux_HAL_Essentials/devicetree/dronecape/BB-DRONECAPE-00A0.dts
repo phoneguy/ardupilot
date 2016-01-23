@@ -56,8 +56,12 @@
         "P9.26", 	/* can1: dcan1_tx */
         		
 	/* Proto Cape Leds */
-	"P9.15",	/* capeled1: gpio1[16] */
-	"P9.25",	/* capeled2: gpio3[21] todo: must disable hdmi audio clock input */
+	"P9.15",	/* gpio1[16]: cape led 1 */
+	"P9.25",	/* gpio3[21]: cape led 2 todo: must disable hdmi audio clock input for this pin */
+
+        "P9.39",	// AIN0
+	"P9.40",	// AIN1
+	"P9.37",	// AIN2
 
         /* Hardware in use */
         "pru1",
@@ -67,7 +71,8 @@
         "uart5",
         "can1",
 	"gpio1_16",
-	"gpio3_21";
+	"gpio3_21",
+        "tscadc";
 
     fragment@0 {
         target = <&am33xx_pinmux>;
@@ -133,13 +138,13 @@
                 >;
             };
 
-	    bb_pinmode_P9_15_0x17: pinmux_bb_pinmode_P9_15_0x17 {
+	    bb_gpio1_16_pins: pinmux_bb_gpio1_16_pins {
                 pinctrl-single,pins = <
 		    0x040 0x17
 		>;
             };
 	    
-            bb_pinmode_P9_25_0x17: pinmux_bb_pinmode_P9_25_0x17 {
+            bb_gpio3_21_pins: pinmux_bb_gpio3_21_pins {
                 pinctrl-single,pins = <
 		    0x1ac 0x17
 		>;
@@ -227,11 +232,11 @@
     fragment@7 {
         target = <&ocp>;
         __overlay__ {
-            bs_pinmode_P9_15_0x17_pinmux {
+            bb_gpio1_16_pinmux {
                 compatible = "bone-pinmux-helper";
                 status = "okay";
                 pinctrl-names = "default";
-                pinctrl-0 = <&bs_pinmode_P9_15_0x17>;
+                pinctrl-0 = <&bb_gpio1_16>;
             };
         };
     };
@@ -239,12 +244,23 @@
     fragment@8 {
         target = <&ocp>;
         __overlay__ {
-            bs_pinmode_P9_25_0x17_pinmux {
+            bb_gpio3_21_pinmux {
                 compatible = "bone-pinmux-helper";
                 status = "okay";
                 pinctrl-names = "default";
-                pinctrl-0 = <&bs_pinmode_P9_25_0x17>;
+                pinctrl-0 = <&bb_gpio3_21>;
             };
         };
+    };
+
+    fragment@9 {
+		target = <&tscadc>;
+		__overlay__ {
+
+			status = "okay";
+			adc {
+				ti,adc-channels = <0 1 2>;
+            };
+    	};
     };
 };
