@@ -55,13 +55,19 @@
         "P9.24", 	/* can1: dcan1_rx */
         "P9.26", 	/* can1: dcan1_tx */
         		
+	/* Proto Cape Leds */
+	"P9.15",	/* capeled1: gpio1[16] */
+	"P9.25",	/* capeled2: gpio3[21] todo: must disable hdmi audio clock input */
+
         /* Hardware in use */
         "pru1",
         "spi1",
         "uart2",
         "uart4",
         "uart5",
-        "can1";
+        "can1",
+	"gpio1_16",
+	"gpio3_21";
 
     fragment@0 {
         target = <&am33xx_pinmux>;
@@ -125,6 +131,18 @@
                     0x180 0x12  /* d_can1_tx, SLEWCTRL_FAST | INPUT_PULLUP | MODE2 */
                     0x184 0x32  /* d_can1_rx, SLEWCTRL_FAST | RECV_ENABLE | INPUT_PULLUP | MODE2 */
                 >;
+            };
+
+	    bb_pinmode_P9_15_0x17: pinmux_bb_pinmode_P9_15_0x17 {
+                pinctrl-single,pins = <
+		    0x040 0x17
+		>;
+            };
+	    
+            bb_pinmode_P9_25_0x17: pinmux_bb_pinmode_P9_25_0x17 {
+                pinctrl-single,pins = <
+		    0x1ac 0x17
+		>;
             };
 
         };
@@ -206,4 +224,27 @@
         };
     };
 
+    fragment@7 {
+        target = <&ocp>;
+        __overlay__ {
+            bs_pinmode_P9_15_0x17_pinmux {
+                compatible = "bone-pinmux-helper";
+                status = "okay";
+                pinctrl-names = "default";
+                pinctrl-0 = <&bs_pinmode_P9_15_0x17>;
+            };
+        };
+    };
+
+    fragment@8 {
+        target = <&ocp>;
+        __overlay__ {
+            bs_pinmode_P9_25_0x17_pinmux {
+                compatible = "bone-pinmux-helper";
+                status = "okay";
+                pinctrl-names = "default";
+                pinctrl-0 = <&bs_pinmode_P9_25_0x17>;
+            };
+        };
+    };
 };
