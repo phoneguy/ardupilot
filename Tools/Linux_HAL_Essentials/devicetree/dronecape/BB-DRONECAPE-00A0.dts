@@ -62,6 +62,10 @@
         "P9.39",	// AIN0
 	"P9.40",	// AIN1
 	"P9.37",	// AIN2
+        "P9.38",	// AIN3
+	"P9.33",	// AIN4
+	"P9.36",	// AIN5
+	"P9.35",	// AIN6
 
         /* Hardware in use */
         "pru1",
@@ -232,11 +236,11 @@
     fragment@7 {
         target = <&ocp>;
         __overlay__ {
-            bb_gpio1_16_pinmux {
+            pinmux_bb_gpio1_16 {
                 compatible = "bone-pinmux-helper";
                 status = "okay";
                 pinctrl-names = "default";
-                pinctrl-0 = <&bb_gpio1_16>;
+                pinctrl-0 = <&bb_gpio1_16_pins>;
             };
         };
     };
@@ -244,11 +248,11 @@
     fragment@8 {
         target = <&ocp>;
         __overlay__ {
-            bb_gpio3_21_pinmux {
+            pinmux_bb_gpio3_21 {
                 compatible = "bone-pinmux-helper";
                 status = "okay";
                 pinctrl-names = "default";
-                pinctrl-0 = <&bb_gpio3_21>;
+                pinctrl-0 = <&bb_gpio3_21_pins>;
             };
         };
     };
@@ -259,7 +263,7 @@
 
 			status = "okay";
 			adc {
-				ti,adc-channels = <0 1 2>;
+				ti,adc-channels = <0 1 2 3 4 5 6>;
             };
     	};
     };

@@ -4,7 +4,7 @@ all: BB-DRONECAPE-00A0.dtbo
 	dtc -O dtb -o $@ -b 0 -@ $<
 
 install:
-	cp *.dtbo /lib/firmware
+	sudo cp *.dtbo /lib/firmware
 
 clean:
 	rm -f *.dtbo
