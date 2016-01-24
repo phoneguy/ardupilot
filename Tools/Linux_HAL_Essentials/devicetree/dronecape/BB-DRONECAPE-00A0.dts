@@ -55,7 +55,7 @@
         "P9.24", 	/* can1: dcan1_rx */
         "P9.26", 	/* can1: dcan1_tx */
         		
-	/* Proto Cape Leds */
+	/* DRONECAPE Leds */
 	"P9.15",	/* gpio1[16]: cape led 1 */
 	"P9.25",	/* gpio3[21]: cape led 2 todo: must disable hdmi audio clock input for this pin */
 
