@@ -53,7 +53,8 @@ P9.30 SPI1_MOSI | MOSI / SD1 | OUT | 3.3 Volt
 P9.31 SPI1_SCLK | SCLK / SCL | OUT | 3.3 Volt
 P9.42 MS5611_CS | MS5611_CS | OUT | 3.3 Volt
 
-### UART2 MAVLink ESP2866 or 2nd GPS
+
+### UART2 GPS or other low power serial device less than 250 ma
 Baudrate 57600, 8, n, 1
 
 BBB | Radio | I/O | Remark
@@ -90,8 +91,8 @@ BBB | I/O | Remark
 P9.24 RX | IN | 3.3 Volt 
 P9.26 TX | OUT | 3.3 Volt
 
-### Sound (PWM)
 
-BBB | Speaker | Remark
------------- | ------------- | ------------- 
-P8.36 | PWM | Use a power amplifier
+### Cape Leds
+--------------------------------------------
+P9.25    Capeled1    Arm status
+P9.15	 Capeled2    GPS status
