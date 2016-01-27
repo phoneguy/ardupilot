@@ -38,7 +38,11 @@
         "P9.30",	/* spi1: spi1_d1, SPI1_MOSI */
         "P9.28",	/* spi1: spi1_cs0, MPU9250 CS0 */
         "P9.42A",	/* spi1: spi1_cs1, MS5611 CS1 */
-		
+
+	 /* the pin header uses */
+         "P9.20",        /* i2c2_sda */
+         "P9.19",        /* i2c2_scl */
+
         /* UART2 GPS */
         "P9.22",	/* uart2: uart2_rxd */
         "P9.21",	/* uart2: uart2_txd */
@@ -56,8 +60,8 @@
         "P9.26", 	/* can1: dcan1_tx */
         		
 	/* DRONECAPE Leds */
-	"P9.15",	/* gpio1[16]: cape led 1 */
-	"P9.25",	/* gpio3[21]: cape led 2 todo: must disable hdmi audio clock input for this pin */
+	"P9.15",	/* gpio1[16]: gpio48: cape led 1 */
+	"P9.25",	/* gpio3[21]: gpio117: cape led 2 todo: must disable hdmi audio clock input for this pin */
 
         "P9.39",	// AIN0
 	"P9.40",	// AIN1
@@ -69,6 +73,7 @@
 
         /* Hardware in use */
         "pru1",
+	"i2c2",
         "spi1",
         "uart2",
         "uart4",
@@ -113,6 +118,13 @@
                     0x164 0x12	/* ecap0_in_pwm0_out.spi1_cs1, MODE2 | OUTPUT_PULLUP | MS5611 CS1 P9_42 */
                 >;
             };
+
+            bb_i2c2_pins: pinmux_bb_i2c2_pins {
+                pinctrl-single,pins = <
+                    0x178 0x73    // spi0_d1.i2c2_sda,  SLEWCTRL_SLOW | INPUT_PULLUP | MODE3
+                    0x17c 0x73    // spi0_cs0.i2c2_scl, SLEWCTRL_SLOW | INPUT_PULLUP | MODE3
+                >;
+                        };            
 
             bb_uart2_pins: pinmux_bb_uart2_pins {
                 pinctrl-single,pins = <
@@ -195,6 +207,21 @@
     };
 
     fragment@3 {
+        target = <&i2c2>;    /* i2c2 is numbered correctly */
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&bb_i2c2_pins>;
+
+            /* this is the configuration part */
+            clock-frequency = <400000>;
+
+            #address-cells = <1>;
+            #size-cells = <0>;
+                };
+        };
+
+    fragment@4 {
         target = <&uart2>;
         __overlay__ {
             status = "okay";
@@ -203,7 +230,7 @@
         };
     };
 
-    fragment@4 {
+    fragment@5 {
         target = <&uart4>;
         __overlay__ {
             status = "okay";
@@ -212,7 +239,7 @@
         };
     };
 
-    fragment@5 {
+    fragment@6 {
         target = <&uart5>;
         __overlay__ {
             status = "okay";
@@ -221,7 +248,7 @@
         };
     };		
 
-    fragment@6 {
+    fragment@7 {
         target = <&dcan1>;
         __overlay__ {
              #address-cells = <1>;
@@ -233,7 +260,7 @@
         };
     };
 
-    fragment@7 {
+    fragment@8 {
         target = <&ocp>;
         __overlay__ {
             pinmux_bb_gpio1_16 {
@@ -245,7 +272,7 @@
         };
     };
 
-    fragment@8 {
+    fragment@9 {
         target = <&ocp>;
         __overlay__ {
             pinmux_bb_gpio3_21 {
@@ -257,7 +284,7 @@
         };
     };
 
-    fragment@9 {
+    fragment@10 {
 		target = <&tscadc>;
 		__overlay__ {
 

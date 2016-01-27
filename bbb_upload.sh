@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+
+# make bbb and copy to deploy directory
+# copy over to beaglebone to /home/debian/bin
+
 #rm -rf deploy
 mkdir deploy
 git checkout bbb-mpu9250
@@ -15,4 +20,4 @@ cp Tools/Linux_HAL_Essentials/devicetree/dronecape/BB-DRONECAPE-00A0.dtbo deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/README.md deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/startup.sh deploy
 
-scp ~/ardupilot/deploy/*.* debian@192.168.2.30:~
+scp ~/ardupilot/deploy/*.* debian@192.168.2.30:~/bin
