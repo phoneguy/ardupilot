@@ -23,6 +23,7 @@ cp Tools/Linux_HAL_Essentials/devicetree/dronecape/am335x-boneblack-dronecape.dt
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/BB-DRONECAPE-00A0.dtbo deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/README.md deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/startup.sh deploy
+cp Tools/Linux_HAL_Essentials/devicetree/dronecape/install.sh deploy
 
 # copy over to beaglebone
 # default password is    temppwd
