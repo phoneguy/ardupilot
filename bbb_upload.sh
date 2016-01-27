@@ -15,7 +15,7 @@ cp ArduCopter/ArduCopter.elf deploy
 cp ArduPlane/ArduPlane.elf deploy
 cp APMrover2/APMrover2.elf deploy
 cp AntennaTracker/AntennaTracker.elf deploy
-cp Tools/Linux_HAL_Essentials/devicetree/dronecape/install_ardupilot.sh deploy
+cp Tools/Linux_HAL_Essentials/devicetree/dronecape/switch-vehicle.sh deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/BB-DRONECAPE-00A0.dtbo deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/README.md deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/startup.sh deploy
