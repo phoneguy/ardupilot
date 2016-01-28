@@ -27,4 +27,4 @@ cp Tools/Linux_HAL_Essentials/devicetree/dronecape/install.sh deploy
 
 # copy over to beaglebone
 # default password is    temppwd
-scp ~/ardupilot/deploy/*.* debian@192.168.2.30:~/bin
+scp ~/ardupilot/deploy/*.* debian@192.168.2.146:~/bin
