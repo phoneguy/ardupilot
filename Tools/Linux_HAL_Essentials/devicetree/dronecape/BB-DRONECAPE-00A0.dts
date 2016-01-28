@@ -39,9 +39,9 @@
         "P9.28",	/* spi1: spi1_cs0, MPU9250 CS0 */
         "P9.42A",	/* spi1: spi1_cs1, MS5611 CS1 */
 
-	 /* the pin header uses */
-         "P9.20",        /* i2c2_sda */
-         "P9.19",        /* i2c2_scl */
+	/* I2C-2 */
+        "P9.20",        /* i2c2_sda */
+        "P9.19",        /* i2c2_scl */
 
         /* UART2 GPS */
         "P9.22",	/* uart2: uart2_rxd */
