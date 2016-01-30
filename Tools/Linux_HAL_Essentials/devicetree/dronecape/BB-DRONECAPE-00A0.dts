@@ -60,8 +60,8 @@
         "P9.26", 	/* can1: dcan1_tx */
         		
 	/* DRONECAPE Leds */
-	"P9.15",	/* gpio1[16]: gpio48: cape led 1 */
-	"P9.25",	/* gpio3[21]: gpio117: cape led 2 todo: must disable hdmi audio clock input for this pin */
+	"P9.15",	/* gpio1[16]: gpio48: cape led 2 */
+	"P9.25",	/* gpio3[21]: gpio117: cape led 1 */
 
         "P9.39",	// AIN0
 	"P9.40",	// AIN1
@@ -156,13 +156,13 @@
 
 	    bb_gpio1_16_pins: pinmux_bb_gpio1_16_pins {
                 pinctrl-single,pins = <
-		    0x040 0x17
+		    0x040 0x27 /* MODE7 | OUTPUT_PULLDOWN */
 		>;
             };
 	    
             bb_gpio3_21_pins: pinmux_bb_gpio3_21_pins {
                 pinctrl-single,pins = <
-		    0x1ac 0x17
+		    0x1ac 0x27 /* MODE7 | OUTPUT_PULLDOWN */
 		>;
             };
 
@@ -285,12 +285,12 @@
     };
 
     fragment@10 {
-		target = <&tscadc>;
-		__overlay__ {
-
-			status = "okay";
-			adc {
-				ti,adc-channels = <0 1 2 3 4 5 6>;
+	target = <&tscadc>;
+	__overlay__ {
+	   status = "okay";
+	   adc {
+		ti,adc-channels = <0 1 2 3 4 5 6>;
+		/* ti,adc-channels = <0 1 2 >; */
             };
     	};
     };
