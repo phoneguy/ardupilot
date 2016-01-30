@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define IIO_ANALOG_IN_COUNT 8
+#define IIO_ANALOG_IN_COUNT 7
 #define IIO_ANALOG_IN_DIR "/sys/bus/iio/devices/iio:device0/"
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF
 // Note that echo BB-ADC cape should be loaded

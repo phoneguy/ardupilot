@@ -14,7 +14,7 @@ const char* AnalogSource_IIO::analog_sources[] = {
     "in_voltage4_raw",
     "in_voltage5_raw",
     "in_voltage6_raw",
-    "in_voltage7_raw",
+//    "in_voltage7_raw",
 };
 
 AnalogSource_IIO::AnalogSource_IIO(int16_t pin, float initial_value, float voltage_scaling) :
