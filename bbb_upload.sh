@@ -12,7 +12,7 @@ UPLOAD_DIR=~/bin
 # update git
 #rm -rf deploy
 mkdir deploy
-git checkout bbb-mpu9250
+#git checkout bbb-mpu9250
 git pull diydrones master
 git submodule update --init
 make clean
