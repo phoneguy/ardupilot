@@ -117,9 +117,20 @@ void AnalogSource_IIO::set_settle_time(uint16_t settle_time_ms)
 
 AnalogIn_IIO::AnalogIn_IIO()
 {}
+float AnalogIn_IIO::board_voltage(void)
+{
+    _vcc_pin_analog_source->set_pin(2);
+
+    //return 5.0;
+    return _vcc_pin_analog_source->voltage_average() * 2.0;
+}
 
 void AnalogIn_IIO::init()
-{}
+{
+    // set to analog in AIN2 pin
+    _vcc_pin_analog_source = channel(2);
+
+}
 
 
 AP_HAL::AnalogSource* AnalogIn_IIO::channel(int16_t pin) {
