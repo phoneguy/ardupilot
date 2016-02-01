@@ -1,21 +1,24 @@
 #!/bin/bash
 #
 
+##
 # make bbb and copy to deploy directory
-# copy over to beaglebone to /home/debian/bin
+# copy to beaglebone /home/debian/bin
+#
 
 LOCAL_ARDUPILOT_DIR=~/ardupilot
-UPLOAD_TARGET=192.168.2.30
-UPLOAD_USER=debian
-UPLOAD_DIR=~/bin
 
-# update git
-#rm -rf deploy
+UPLOAD_TARGET=192.168.2.30
+UPLOAD_USER=debian 		# default user, default password is temppwd
+UPLOAD_DIR=`~/bin` 		# /home/debian/bin
+
+# update git, create deploy dir, make and upload elfs and scripts
+rm -rf deploy
 mkdir deploy
-#git checkout bbb-mpu9250
+git checkout bbb-mpu9250
 git pull diydrones master
 git submodule update --init
-make clean
+#make clean
 make bbb -j4
 
 # copy to deploy dir
@@ -33,4 +36,4 @@ cp Tools/Linux_HAL_Essentials/devicetree/dronecape/switch-vehicle.sh deploy
 
 # copy over to beaglebone
 # default password is    temppwd
-scp ~/ardupilot/deploy/*.* debian@192.168.2.30:~/bin
+scp ~/ardupilot/deploy/*.* $UPLOAD_USER@$UPLOAD_TARGET:$UPLOAD_DIR
