@@ -147,7 +147,7 @@ enum HomeState {
 #define AP_PRODUCT_ID_PIXHAWK_FIRE_CAPE 0x102   // Linux with the PixHawk Fire Cape
 #define AP_PRODUCT_ID_MPU9250           0x103   // MPU9250
 #define AP_PRODUCT_ID_VRBRAIN           0x150   // VRBRAIN on NuttX
-
+#define AP_PRODUCT_ID_DROTEK10DOF       0x105   // Drotek 10dof with itg3200 bma180 bmp085 hmc5883
 /*
   Return true if value is between lower and upper bound inclusive.
   False otherwise.

@@ -1,4 +1,4 @@
-all: BB-BBBMINI-00A0.dtbo
+all: BB-DRONECAPE-00A0.dtbo
 
 %.dtbo: %.dts
 	dtc -O dtb -o $@ -b 0 -@ $<
