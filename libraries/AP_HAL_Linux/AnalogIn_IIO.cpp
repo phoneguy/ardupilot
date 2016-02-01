@@ -14,7 +14,7 @@ const char* AnalogSource_IIO::analog_sources[] = {
     "in_voltage4_raw",
     "in_voltage5_raw",
     "in_voltage6_raw",
-//    "in_voltage7_raw",
+    "in_voltage7_raw",
 };
 
 AnalogSource_IIO::AnalogSource_IIO(int16_t pin, float initial_value, float voltage_scaling) :
@@ -119,17 +119,15 @@ AnalogIn_IIO::AnalogIn_IIO()
 {}
 float AnalogIn_IIO::board_voltage(void)
 {
+    // set to AIN2 pin
     _vcc_pin_analog_source->set_pin(2);
 
-    //return 5.0;
     return _vcc_pin_analog_source->voltage_average() * 2.0;
 }
 
 void AnalogIn_IIO::init()
 {
-    // set to analog in AIN2 pin
     _vcc_pin_analog_source = channel(2);
-
 }
 
 

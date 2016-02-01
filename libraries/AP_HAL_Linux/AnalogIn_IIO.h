@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define IIO_ANALOG_IN_COUNT 7
+#define IIO_ANALOG_IN_COUNT 8
 #define IIO_ANALOG_IN_DIR "/sys/bus/iio/devices/iio:device0/"
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF
 // Note that echo BB-ADC cape should be loaded
@@ -52,8 +52,8 @@ public:
     void init();
     AP_HAL::AnalogSource* channel(int16_t n);
 
-    // we don't yet know how to get the board voltage
-    float board_voltage(void);// { return 0.0f; }
+    // AIN2 pin of beagleboneblack connected thru resistor divider to BEC
+    float board_voltage(void);
 
 protected:
     AP_HAL::AnalogSource *_vcc_pin_analog_source;
