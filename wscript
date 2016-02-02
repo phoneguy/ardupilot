@@ -11,7 +11,8 @@ import ardupilotwaf
 import boards
 
 from waflib import ConfigSet, Utils
-from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
+from waflib.Build import BuildContext
+import waflib.Context
 
 # TODO: implement a command 'waf help' that shows the basic tasks a
 # developer might want to do: e.g. how to configure a board, compile a
@@ -34,11 +35,13 @@ def init(ctx):
         return
 
     # define the variant build commands according to the board
-    for c in (BuildContext, CleanContext, InstallContext, UninstallContext, CheckContext):
-        class context(c):
-            variant = env.BOARD
+    for c in waflib.Context.classes:
+        if not issubclass(c, BuildContext):
+            continue
+        c.variant = env.BOARD
 
 def options(opt):
+    opt.load('ardupilotwaf')
     boards_names = boards.get_boards_names()
 
     opt.load('compiler_cxx compiler_c waf_unit_test python')
@@ -117,7 +120,12 @@ def list_boards(ctx):
     print(*boards.get_boards_names())
 
 def build(bld):
+    bld.load('ardupilotwaf')
     bld.load('gtest')
+
+    if bld.cmd == 'check-all':
+        bld.options.all_tests = True
+        bld.cmd = 'check'
 
     #generate mavlink headers
     bld(
@@ -137,11 +145,10 @@ def build(bld):
     # the tools and examples. This is the first step until the
     # dependency on the vehicles is reduced. Later we may consider
     # split into smaller pieces with well defined boundaries.
-    ardupilotwaf.vehicle_stlib(
-        bld,
+    bld.ap_stlib(
         name='ap',
         vehicle='UNKNOWN',
-        libraries=ardupilotwaf.get_all_libraries(bld),
+        libraries=bld.ap_get_all_libraries(),
         use='mavlink',
     )
     # TODO: Currently each vehicle also generate its own copy of the
@@ -184,10 +191,30 @@ def build(bld):
             bld.fatal('check: gtest library is required')
         bld.add_post_fun(ardupilotwaf.test_summary)
 
-class CheckContext(BuildContext):
-    '''executes tests after build'''
-    cmd = 'check'
+ardupilotwaf.build_command('check',
+    program_group_list='all',
+    doc='builds all programs and run tests',
+)
+ardupilotwaf.build_command('check-all',
+    program_group_list='all',
+    doc='shortcut for `waf check --alltests`',
+)
 
-copter = ardupilotwaf.build_shortcut(targets='bin/arducopter')
-plane = ardupilotwaf.build_shortcut(targets='bin/arduplane')
-rover = ardupilotwaf.build_shortcut(targets='bin/ardurover')
+ardupilotwaf.build_command('copter',
+    targets='bin/arducopter',
+    doc='builds arducopter',
+)
+ardupilotwaf.build_command('plane',
+    targets='bin/arduplane',
+    doc='builds arduplane',
+)
+ardupilotwaf.build_command('rover',
+    targets='bin/ardurover',
+    doc='builds ardurover',
+)
+
+for program_group in ('all', 'bin', 'tools', 'examples', 'tests', 'benchmarks'):
+    ardupilotwaf.build_command(program_group,
+        program_group_list=program_group,
+        doc='builds all programs of %s group' % program_group,
+    )

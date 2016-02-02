@@ -16,8 +16,9 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <AP_HAL/AP_HAL.h>
 #include "BlinkM_I2C.h"
+
+#include <AP_HAL/AP_HAL.h>
 
 #define BLINKM_ADDRESS     0x09
 #define BLINKM_GOTOCOLOR   0x6e // n

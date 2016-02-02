@@ -15,8 +15,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __BLINKM_I2C_H__
-#define __BLINKM_I2C_H__
+#pragma once
 
 #include "BlinkM.h"
 
@@ -26,5 +25,3 @@ protected:
     virtual bool hw_init(void);
     virtual bool hw_set_rgb(uint8_t r, uint8_t g, uint8_t b);
 };
-
-#endif // __BLINKM_I2C_H__

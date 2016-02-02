@@ -70,6 +70,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK(rpm_update,             10,    200),
     SCHED_TASK(airspeed_ratio_update,   1,   1000),
     SCHED_TASK(update_mount,           50,   1500),
+    SCHED_TASK(update_trigger,         50,   1500),
     SCHED_TASK(log_perf_info,         0.1,   1000),
     SCHED_TASK(compass_save,        0.016,   2500),
     SCHED_TASK(update_logging1,        10,   1700),
@@ -199,9 +200,21 @@ void Plane::update_mount(void)
 #if MOUNT == ENABLED
     camera_mount.update();
 #endif
+}
 
+/*
+  update camera trigger
+ */
+void Plane::update_trigger(void)
+{
 #if CAMERA == ENABLED
     camera.trigger_pic_cleanup();
+    if (camera.check_trigger_pin()) {
+        gcs_send_message(MSG_CAMERA_FEEDBACK);
+        if (should_log(MASK_LOG_CAMERA)) {
+            DataFlash.Log_Write_Camera(ahrs, gps, current_loc);
+        }
+    }    
 #endif
 }
 
@@ -866,6 +879,19 @@ void Plane::update_alt()
     geofence_check(true);
 
     update_flight_stage();
+
+    if (auto_throttle_mode && !throttle_suppressed) {        
+        SpdHgt_Controller->update_pitch_throttle(relative_target_altitude_cm(),
+                                                 target_airspeed_cm,
+                                                 flight_stage,
+                                                 auto_state.takeoff_pitch_cd,
+                                                 throttle_nudge,
+                                                 tecs_hgt_afe(),
+                                                 aerodynamic_load_factor);
+        if (should_log(MASK_LOG_TECS)) {
+            Log_Write_TECS_Tuning();
+        }
+    }
 }
 
 /*
@@ -906,17 +932,6 @@ void Plane::update_flight_stage(void)
             }
         } else {
             set_flight_stage(AP_SpdHgtControl::FLIGHT_NORMAL);
-        }
-
-        SpdHgt_Controller->update_pitch_throttle(relative_target_altitude_cm(),
-                                                 target_airspeed_cm,
-                                                 flight_stage,
-                                                 auto_state.takeoff_pitch_cd,
-                                                 throttle_nudge,
-                                                 tecs_hgt_afe(),
-                                                 aerodynamic_load_factor);
-        if (should_log(MASK_LOG_TECS)) {
-            Log_Write_TECS_Tuning();
         }
     } else if (control_mode == QSTABILIZE ||
                control_mode == QHOVER ||

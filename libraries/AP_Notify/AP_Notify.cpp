@@ -16,6 +16,22 @@
 
 #include "AP_Notify.h"
 
+#include "AP_BoardLED.h"
+#include "Buzzer.h"
+#include "Display_SSD1306_I2C.h"
+#include "ExternalLED.h"
+#include "NavioLED_I2C.h"
+#include "OreoLED_PX4.h"
+#include "RCOutputRGBLed.h"
+#include "ToneAlarm_Linux.h"
+#include "ToneAlarm_PX4.h"
+#include "ToshibaLED.h"
+#include "ToshibaLED_I2C.h"
+#include "ToshibaLED_PX4.h"
+#include "VRBoard_LED.h"
+#include "BlinkM.h"
+#include "BlinkM_I2C.h"
+
 // table of user settable parameters
 const AP_Param::GroupInfo AP_Notify::var_info[] = {
 
