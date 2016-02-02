@@ -190,7 +190,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     _gyro_instance = _imu.register_gyro(raw_sample_rate_hz);
     _accel_instance = _imu.register_accel(raw_sample_rate_hz);
 
-    _product_id = AP_PRODUCT_ID_DROTEK10DOF;
+//    _product_id = AP_PRODUCT_ID_DROTEK10DOF;
 
     return true;
 }
