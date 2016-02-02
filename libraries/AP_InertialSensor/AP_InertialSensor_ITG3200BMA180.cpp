@@ -74,7 +74,6 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
 // BMA180 ACC scaling for 16g 1.98 mg/LSB 14 bit mode
 // Result will be scaled to 1m/s/s
-
 #define BMA180_ACC_SCALE_M_S  (GRAVITY_MSS / 2303);
 
 /// Gyro ITG3205 register definitions

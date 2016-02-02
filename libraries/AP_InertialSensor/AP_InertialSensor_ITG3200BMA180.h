@@ -1,14 +1,13 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
-#ifndef __AP_INERTIAL_SENSOR_ITG3200BMA180_H__
-#define __AP_INERTIAL_SENSOR_ITG3200BMA180_H__
+#pragma once
 
 #include <AP_HAL/AP_HAL.h>
 #if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 
-#include "AP_InertialSensor.h"
 #include <Filter/Filter.h>
 #include <Filter/LowPassFilter2p.h>
+#include "AP_InertialSensor.h"
+#include "AP_InertialSensor_Backend.h"
 
 class AP_InertialSensor_ITG3200BMA180 : public AP_InertialSensor_Backend
 {
@@ -36,4 +35,3 @@ private:
     enum Rotation _default_rotation;
 };
 #endif
-#endif // __AP_INERTIAL_SENSOR_ITG3200BMA180_H__
