@@ -74,7 +74,7 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
 // BMA180 ACC scaling for 16g 1.98 mg/LSB 14 bit mode
 // Result will be scaled to 1m/s/s
-#define BMA180_ACC_SCALE_M_S  (GRAVITY_MSS / 2303);
+#define BMA180_ACC_SCALE_M_S  (GRAVITY_MSS / 512); // 16g mode
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_GYRO_ADDRESS       0x69
@@ -216,13 +216,21 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
     // Read ACC
     uint8_t buffer[6];
     uint32_t now = AP_HAL::micros();
+
     // This takes about 250us at 400kHz I2C speed
     if ((now - _last_accel_timestamp) >= raw_sample_interval_us
         && hal.i2c->readRegisters(BMA180_ADDRESS, BMA180_DATA, 6, buffer) == 0)
     {
-        int16_t y =  (((((int16_t)buffer[1]) << 8) | (buffer[0]) >> 2));    // chip X axis
-        int16_t x = -(((((int16_t)buffer[3]) << 8) | (buffer[2]) >> 2));    // chip Y axis
-        int16_t z =  (((((int16_t)buffer[5]) << 8) | (buffer[4]) >> 2));    // chip Z axis
+        int16_t y = ((int16_t)buffer[1] << 8 | buffer[0]);    // chip X axis
+        int16_t x = ((int16_t)buffer[3] << 8 | buffer[2]);    // chip Y axis
+        int16_t z = ((int16_t)buffer[5] << 8 | buffer[4]);    // chip Z axis
+
+	// drop 2 bits for 14 bit sample mode
+        y = (y / 4);
+        x = (x / 4);
+        z = (z / 4);
+        x = -x;
+
         Vector3f accel = Vector3f(x,y,z);
         // Adjust for chip scaling to get m/s/s
         accel *= BMA180_ACC_SCALE_M_S;
@@ -237,10 +245,12 @@ void AP_InertialSensor_ITG3200BMA180::accumulate(void)
     if ((now - _last_gyro_timestamp) >= raw_sample_interval_us
         && hal.i2c->readRegisters(ITG3200_GYRO_ADDRESS, ITG3200_GYRO_GYROX_H, 6, buffer) == 0)
     {
-        // See above re order of samples in buffer
-        int16_t y =  ((((int16_t)buffer[0]) << 8) | buffer[1]);    // chip X axis
-        int16_t x = -((((int16_t)buffer[2]) << 8) | buffer[3]);    // chip Y axis
-        int16_t z =  ((((int16_t)buffer[4]) << 8) | buffer[5]);    // chip Z axis
+        int16_t y = ((int16_t)buffer[0] << 8 | buffer[1]);    // chip X axis
+        int16_t x = ((int16_t)buffer[2] << 8 | buffer[3]);    // chip Y axis
+        int16_t z = ((int16_t)buffer[4] << 8 | buffer[5]);    // chip Z axis
+
+        x = -x;
+
         Vector3f gyro = Vector3f(x,y,z);
         // Adjust for chip scaling to get radians/sec
         gyro *= ITG3200_GYRO_SCALE_R_S;
