@@ -119,15 +119,18 @@ def collect_dirs_to_recurse(bld, globs, **kw):
 def list_boards(ctx):
     print(*boards.get_boards_names())
 
-def build(bld):
-    bld.load('ardupilotwaf')
-    bld.load('gtest')
-
+def _build_cmd_tweaks(bld):
     if bld.cmd == 'check-all':
         bld.options.all_tests = True
         bld.cmd = 'check'
 
-    #generate mavlink headers
+    if bld.cmd == 'check':
+        bld.options.clear_failed_tests = True
+        if not bld.env.HAS_GTEST:
+            bld.fatal('check: gtest library is required')
+        bld.add_post_fun(ardupilotwaf.test_summary)
+
+def _create_common_taskgens(bld):
     bld(
         features='mavgen',
         source='modules/mavlink/message_definitions/v1.0/ardupilotmega.xml',
@@ -151,45 +154,58 @@ def build(bld):
         libraries=bld.ap_get_all_libraries(),
         use='mavlink',
     )
-    # TODO: Currently each vehicle also generate its own copy of the
-    # libraries. Fix this, or at least reduce the amount of
-    # vehicle-dependent libraries.
-    vehicles = collect_dirs_to_recurse(bld, '*')
+
+def _build_recursion(bld):
+    common_dirs_patterns = [
+        # TODO: Currently each vehicle also generate its own copy of the
+        # libraries. Fix this, or at least reduce the amount of
+        # vehicle-dependent libraries.
+        '*',
+        'Tools/*',
+        'libraries/*/examples/*',
+        '**/tests',
+        '**/benchmarks',
+    ]
+
+    common_dirs_excl = [
+        'modules',
+        'libraries/AP_HAL_*',
+        'libraries/SITL',
+    ]
+
+    hal_dirs_patterns = [
+        'libraries/%s/**/tests',
+        'libraries/%s/**/benchmarks',
+        'libraries/%s/examples/*',
+    ]
+
+    dirs_to_recurse = collect_dirs_to_recurse(
+        bld,
+        common_dirs_patterns,
+        excl=common_dirs_excl,
+    )
+
+    for p in hal_dirs_patterns:
+        dirs_to_recurse += collect_dirs_to_recurse(
+            bld,
+            [p % l for l in bld.env.AP_LIBRARIES],
+        )
 
     # NOTE: we need to sort to ensure the repeated sources get the
     # same index, and random ordering of the filesystem doesn't cause
     # recompilation.
-    vehicles.sort()
+    dirs_to_recurse.sort()
 
-    tools = collect_dirs_to_recurse(bld, 'Tools/*')
-    examples = collect_dirs_to_recurse(bld,
-                                       'libraries/*/examples/*',
-                                       excl='libraries/AP_HAL_* libraries/SITL')
-
-    tests = collect_dirs_to_recurse(bld,
-                                    '**/tests',
-                                    excl='modules Tools libraries/AP_HAL_* libraries/SITL')
-    board_tests = ['libraries/%s/**/tests' % l for l in bld.env.AP_LIBRARIES]
-    tests.extend(collect_dirs_to_recurse(bld, board_tests))
-
-    benchmarks = collect_dirs_to_recurse(bld,
-                                         '**/benchmarks',
-                                         excl='modules Tools libraries/AP_HAL_* libraries/SITL')
-    board_benchmarks = ['libraries/%s/**/benchmarks' % l for l in bld.env.AP_LIBRARIES]
-    benchmarks.extend(collect_dirs_to_recurse(bld, board_benchmarks))
-
-    hal_examples = []
-    for l in bld.env.AP_LIBRARIES:
-        hal_examples.extend(collect_dirs_to_recurse(bld, 'libraries/' + l + '/examples/*'))
-
-    for d in vehicles + tools + examples + hal_examples + tests + benchmarks:
+    for d in dirs_to_recurse:
         bld.recurse(d)
 
-    if bld.cmd == 'check':
-        bld.options.clear_failed_tests = True
-        if not bld.env.HAS_GTEST:
-            bld.fatal('check: gtest library is required')
-        bld.add_post_fun(ardupilotwaf.test_summary)
+def build(bld):
+    bld.load('ardupilotwaf')
+    bld.load('gtest')
+
+    _build_cmd_tweaks(bld)
+    _create_common_taskgens(bld)
+    _build_recursion(bld)
 
 ardupilotwaf.build_command('check',
     program_group_list='all',
