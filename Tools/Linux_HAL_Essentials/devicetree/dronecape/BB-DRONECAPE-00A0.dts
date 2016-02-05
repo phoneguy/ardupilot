@@ -63,13 +63,17 @@
 	"P9.15",	/* gpio1[16]: gpio48: cape led 2 */
 	"P9.25",	/* gpio3[21]: gpio117: cape led 1 */
 
-        "P9.39",	// AIN0
-	"P9.40",	// AIN1
-	"P9.37",	// AIN2
-        "P9.38",	// AIN3
-	"P9.33",	// AIN4
-	"P9.36",	// AIN5
-	"P9.35",	// AIN6
+        /* AUX OUTPUTS-CAMERA TRIGGER, RELAY, PARACHUTE, EPM  */
+
+
+        /* ANALOG INPUTS */
+        "P9.39",	// AIN0 BATTERY
+	"P9.40",	// AIN1 CURRENT
+	"P9.37",	// AIN2 CAPE BOARD 5 VOLT POWER SUPPLY
+        "P9.38",	// AIN3 BATTERY2?
+	"P9.33",	// AIN4 CURRENT2?
+	"P9.36",	// AIN5 BATTERY TEMPERATURE?
+	"P9.35",	// AIN6 ANALOG AIRSPEED?
 
         /* Hardware in use */
         "pru1",
