@@ -320,11 +320,12 @@
 #define HAL_BOARD_LOG_DIRECTORY "/var/APM/logs"
 #define HAL_BOARD_TERRAIN_DIRECTORY "/var/APM/terrain"
 #define HAL_INS_DEFAULT HAL_INS_MPU9250
-#define HAL_BARO_DEFAULT HAL_BARO_BMP085//MS5611_SPI
+#define HAL_BARO_DEFAULT HAL_BARO_BMP085// MS5611_SPI
 #define HAL_COMPASS_DEFAULT HAL_COMPASS_AK8963_MPU9250
-#define HAL_GPIO_A_LED_PIN        117
-#define HAL_GPIO_B_LED_PIN        -1
-#define HAL_GPIO_C_LED_PIN        48
+#define HAL_SERIAL0_BAUD_DEFAULT 57600 // uartA on BBB for sik radios
+#define HAL_GPIO_A_LED_PIN        117 // arm status
+#define HAL_GPIO_B_LED_PIN        -1  // not used
+#define HAL_GPIO_C_LED_PIN        48  // gps status
 #define HAL_GPIO_LED_ON           HIGH
 #define HAL_GPIO_LED_OFF          LOW
 #define HAL_RCOUT_RGBLED_RED      8

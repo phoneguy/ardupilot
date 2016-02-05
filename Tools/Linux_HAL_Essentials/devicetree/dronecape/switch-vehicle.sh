@@ -29,7 +29,15 @@ then
     echo "			none"
     echo ""
     echo "example is: ./switch-vehicle.sh copter"
-    echo " "
+    echo""
+    echo "or to change serial ports use ./switch-vehicle.sh copter A B C D E"
+    echo "example is: ./switch-vehicle.sh copter ttyO4 ttyO5 0 0 ttyO2"
+    echo""
+    echo "rc.local will be updated with sudo /home/debian/bin/ArduCopter.elf -A /dev/ttyO4 -B /dev/ttyO5 -E /dev/ttyO2"
+    echo "or you can use tcp or udp"
+    echo "example is: ./switch-vehicle.sh copter udp:192.168.2.17:14550 ttyO2 ttyO4 0 0 -E ttyO5"
+    echo""
+
 exit 0
 fi
 
@@ -77,6 +85,6 @@ fi
     echo "sync disk"
     sync
     echo " "
-    echo "reboot to start Ardupilot"
+    echo "sudo reboot to start Ardupilot"
     echo " "
 
