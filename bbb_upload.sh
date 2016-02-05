@@ -8,9 +8,9 @@
 
 LOCAL_ARDUPILOT_DIR=~/ardupilot
 
-UPLOAD_TARGET=192.168.2.30
-UPLOAD_USER=debian 		# default user, default password is temppwd
-UPLOAD_DIR=/home/debian/bin 		# /home/debian/bin
+UPLOAD_TARGET=192.168.2.30      # beaglebone ip
+UPLOAD_USER=debian 		# default user is debian, default password is temppwd
+UPLOAD_DIR=/home/debian/bin 	# /home/debian/bin
 
 # update git, create deploy dir, make and upload elfs and scripts
 rm -rf deploy
@@ -18,7 +18,7 @@ mkdir deploy
 #git checkout bbb-mpu9250
 git pull diydrones master
 git submodule update --init
-#make clean
+make clean
 make bbb -j4
 
 # copy to deploy dir

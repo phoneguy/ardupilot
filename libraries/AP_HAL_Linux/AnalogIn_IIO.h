@@ -52,9 +52,10 @@ public:
     void init();
     AP_HAL::AnalogSource* channel(int16_t n);
 
-    // AIN2 pin of beagleboneblack connected thru resistor divider to BEC
+    // AIN2 pin of beagleboneblack connected thru resistor divider to BEC input
     float board_voltage(void);
 
 protected:
     AP_HAL::AnalogSource *_vcc_pin_analog_source;
+
 };
