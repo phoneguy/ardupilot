@@ -1,5 +1,5 @@
 TOOLCHAIN = NATIVE
-BOARD_LINUX_HOST = debian@192.168.2.146
+BOARD_LINUX_HOST = debian@192.168.2.7
 include $(MK_DIR)/find_tools.mk
 
 # Linux build is just the same as SITL for now

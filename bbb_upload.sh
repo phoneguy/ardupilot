@@ -16,7 +16,7 @@ UPLOAD_DIR=/home/debian/bin 	# /home/debian/bin
 rm -rf deploy
 mkdir deploy
 git submodule update --init
-#make clean
+make clean
 make bbb -j4
 
 # copy to deploy dir

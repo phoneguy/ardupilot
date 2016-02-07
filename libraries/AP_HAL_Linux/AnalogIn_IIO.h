@@ -54,6 +54,7 @@ public:
 
     // AIN2 pin of beagleboneblack connected thru resistor divider to BEC input
     float board_voltage(void);
+    // AIN3 pin of beagleboneblack connected to rc servo rail thru resistor divider
     float servorail_voltage(void);
 
 protected:

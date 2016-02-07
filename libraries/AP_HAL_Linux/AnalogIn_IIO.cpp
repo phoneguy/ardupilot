@@ -122,17 +122,13 @@ float AnalogIn_IIO::board_voltage(void)
 {
     // set to AIN2 pin
     _vcc_pin_analog_source->set_pin(2);
-
-    // 
     return _vcc_pin_analog_source->voltage_average() * 2.0;
 }
 
 float AnalogIn_IIO::servorail_voltage(void)
 {
-    // set to AIN2 pin
+    // set to AIN3 pin
     _svr_pin_analog_source->set_pin(3);
-
-    //
     return _svr_pin_analog_source->voltage_average() * 2.0;
 }
 
