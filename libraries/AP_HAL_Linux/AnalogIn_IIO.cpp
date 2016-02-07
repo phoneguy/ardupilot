@@ -129,6 +129,7 @@ float AnalogIn_IIO::board_voltage(void)
 
 void AnalogIn_IIO::init()
 {
+    // use AIN2 pin
     _vcc_pin_analog_source = channel(2);
 }
 
