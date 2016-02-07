@@ -54,8 +54,10 @@ public:
 
     // AIN2 pin of beagleboneblack connected thru resistor divider to BEC input
     float board_voltage(void);
+    float servorail_voltage(void);
 
 protected:
     AP_HAL::AnalogSource *_vcc_pin_analog_source;
+    AP_HAL::AnalogSource *_svr_pin_analog_source;
 
 };

@@ -127,10 +127,20 @@ float AnalogIn_IIO::board_voltage(void)
     return _vcc_pin_analog_source->voltage_average() * 2.0;
 }
 
+float AnalogIn_IIO::servorail_voltage(void)
+{
+    // set to AIN2 pin
+    _svr_pin_analog_source->set_pin(3);
+
+    //
+    return _svr_pin_analog_source->voltage_average() * 2.0;
+}
+
 void AnalogIn_IIO::init()
 {
     // use AIN2 pin
     _vcc_pin_analog_source = channel(2);
+    _svr_pin_analog_source = channel(3);
 }
 
 AP_HAL::AnalogSource* AnalogIn_IIO::channel(int16_t pin) {
