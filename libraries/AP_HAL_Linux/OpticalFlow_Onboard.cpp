@@ -105,7 +105,8 @@ void OpticalFlow_Onboard::init(AP_HAL::OpticalFlow::Gyro_Cb get_gyro)
 
         /* if V4L2_PIX_FMT_YUYV format is found we still iterate through
          * the vector since the other formats need no conversions. */
-        if (px_fmt == V4L2_PIX_FMT_YUYV) {
+//        if (px_fmt == V4L2_PIX_FMT_YUYV) {
+        if (px_fmt == V4L2_PIX_FMT_YUYV || px_fmt == V4L2_PIX_FMT_SPCA508) {
             _format = px_fmt;
         }
     }
@@ -117,7 +118,7 @@ void OpticalFlow_Onboard::init(AP_HAL::OpticalFlow::Gyro_Cb get_gyro)
     }
 
     if (_format != V4L2_PIX_FMT_NV12 && _format != V4L2_PIX_FMT_GREY &&
-        _format != V4L2_PIX_FMT_YUYV) {
+        _format != V4L2_PIX_FMT_YUYV && _format != V4L2_PIX_FMT_SPCA508) {
         AP_HAL::panic("OpticalFlow_Onboard: format not supported\n");
     }
 
@@ -239,7 +240,7 @@ void OpticalFlow_Onboard::_run_optflow()
     uint8_t *convert_buffer = NULL, *output_buffer = NULL;
     uint8_t qual;
 
-    if (_format == V4L2_PIX_FMT_YUYV) {
+    if (_format == V4L2_PIX_FMT_YUYV || _format == V4L2_PIX_FMT_SPCA508) {
         if (_shrink_by_software || _crop_by_software) {
             convert_buffer_size = _camera_output_width * _camera_output_height;
         } else {
@@ -301,7 +302,7 @@ void OpticalFlow_Onboard::_run_optflow()
             AP_HAL::panic("OpticalFlow_Onboard: couldn't get frame\n");
         }
 
-        if (_format == V4L2_PIX_FMT_YUYV) {
+        if (_format == V4L2_PIX_FMT_YUYV || _format == V4L2_PIX_FMT_SPCA508) {
             VideoIn::yuyv_to_grey((uint8_t *)video_frame.data,
                 convert_buffer_size * 2, convert_buffer);
 
