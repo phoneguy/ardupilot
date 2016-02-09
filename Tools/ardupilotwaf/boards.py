@@ -169,6 +169,15 @@ def bbbmini(env):
 
 define_board(bbbmini, 'bbbmini', 'linux')
 
+def bbb(env):
+    env.TOOLCHAIN = 'arm-linux-gnueabihf'
+
+    env.DEFINES.update(
+        CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BBB',
+    )
+
+define_board(bbb, 'bbb', 'linux')
+
 
 def pxf(env):
     env.TOOLCHAIN = 'arm-linux-gnueabihf'
