@@ -330,17 +330,11 @@ void Plane::one_second_loop()
     AP_Notify::flags.pre_arm_gps_check = true;
     AP_Notify::flags.armed = arming.is_armed() || arming.arming_required() == AP_Arming::NO;
 
-    crash_detection_update();
-
 #if AP_TERRAIN_AVAILABLE
     if (should_log(MASK_LOG_GPS)) {
         terrain.log_terrain_data(DataFlash);
     }
 #endif
-    // piggyback the status log entry on the MODE log entry flag
-    if (should_log(MASK_LOG_MODE)) {
-        Log_Write_Status();
-    }
 
     ins.set_raw_logging(should_log(MASK_LOG_IMU_RAW));
 }
@@ -913,7 +907,7 @@ void Plane::update_flight_stage(void)
                 set_flight_stage(AP_SpdHgtControl::FLIGHT_TAKEOFF);
             } else if (mission.get_current_nav_cmd().id == MAV_CMD_NAV_LAND) {
 
-                if ((g.land_abort_throttle_enable && channel_throttle->control_in > 95) ||
+                if ((g.land_abort_throttle_enable && channel_throttle->control_in >= 90) ||
                         auto_state.commanded_go_around ||
                         flight_stage == AP_SpdHgtControl::FLIGHT_LAND_ABORT){
                     // abort mode is sticky, it must complete while executing NAV_LAND
