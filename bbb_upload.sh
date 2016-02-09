@@ -4,7 +4,7 @@
 ##
 # make bbb and copy to deploy directory
 # copy to beaglebone /home/debian/bin
-#
+##
 
 LOCAL_ARDUPILOT_DIR=~/ardupilot
 
