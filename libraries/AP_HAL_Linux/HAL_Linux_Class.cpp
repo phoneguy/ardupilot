@@ -185,7 +185,6 @@ static Scheduler schedulerInstance;
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE ||\
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI ||\
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
-
 static OpticalFlow_Onboard opticalFlow;
 #else
 static Empty::OpticalFlow opticalFlow;
