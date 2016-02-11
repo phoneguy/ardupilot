@@ -34,8 +34,8 @@ then
     echo "example is: ./switch-vehicle.sh copter ttyO4 ttyO5 0 0 ttyO2"
     echo""
     echo "rc.local will be updated with sudo /home/debian/bin/ArduCopter.elf -A /dev/ttyO4 -B /dev/ttyO5 -E /dev/ttyO2"
-    echo "or you can use tcp or udp"
-    echo "example is: ./switch-vehicle.sh copter udp:192.168.2.17:14550 ttyO2 ttyO4 0 0 -E ttyO5"
+    echo "or you can use tcp or udp			A telem1       B gps1 E gps2"
+    echo "example is: ./switch-vehicle.sh copter udp:192.168.2.17:14550 ttyO5 ttyO2"
     echo""
 
 exit 0
@@ -46,28 +46,33 @@ if [ $1 == "copter" ]
         echo $1" vehicle type selected"
         echo " "
         sudo sed -i '/.elf/d' /etc/rc.local
-        sudo sed -i '/# B/a /home/debian/bin/ArduCopter.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+#        sudo sed -i '/# B/a /home/debian/bin/ArduCopter.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+#        sudo sed -i '/# B/a /home/debian/bin/ArduCopter.elf -A '$2' -B '$3' -E '$4' > /home/debian/startup.log &' /etc/rc.local
+        sudo sed -i '/# B/a /home/debian/bin/ArduCopter.elf '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9' > /home/debian/startup.log &' /etc/rc.local
 
 elif [ $1 == "plane" ]
     then
         echo $1" vehicle type selected"
         echo " "
         sudo sed -i '/.elf/d' /etc/rc.local
-        sudo sed -i '/# B/a home/debian/bin/ArduPlane.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+#        sudo sed -i '/# B/a home/debian/bin/ArduPlane.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+        sudo sed -i '/# B/a home/debian/bin/ArduPlane.elf -A '$2' -B '$3' -E '$4' > /home/debian/startup.log &' /etc/rc.local
 
 elif [ $1 == "rover" ]
     then
         echo $1" vehicle type selected"
         echo " "
         sudo sed -i '/.elf/d' /etc/rc.local
-        sudo sed -i '/# B/a /home/debian/bin/APMrover2.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+#        sudo sed -i '/# B/a /home/debian/bin/APMrover2.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+        sudo sed -i '/# B/a /home/debian/bin/APMrover2.elf -A '$2' -B '$3' -E '$4' > /home/debian/startup.log &' /etc/rc.local
 
 elif [ $1 == "antennatracker" ]
     then
         echo $1" vehicle type selected"
         echo " "
         sudo sed -i '/.elf/d' /etc/rc.local
-        sudo sed -i '/# B/a /home/debian/bin/AntennaTracker.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+#        sudo sed -i '/# B/a /home/debian/bin/AntennaTracker.elf -A /dev/ttyO4 -B /dev/ttyO2 -E /dev/ttyO5 > /home/debian/startup.log &' /etc/rc.local
+        sudo sed -i '/# B/a /home/debian/bin/AntennaTracker.elf -A '$2' -B '$3' -E '$4' > /home/debian/startup.log &' /etc/rc.local
 
 elif [ $1 == "none" ]
     then

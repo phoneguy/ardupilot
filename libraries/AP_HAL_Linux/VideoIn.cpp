@@ -189,7 +189,6 @@ bool VideoIn::set_format(uint32_t *width, uint32_t *height, uint32_t *format,
     fmt.fmt.pix.height = *height;
     fmt.fmt.pix.pixelformat = *format;
     fmt.fmt.pix.colorspace = V4L2_COLORSPACE_REC709;
-//    fmt.fmt.pix.colorspace = V4L2_COLORSPACE_SRGB; // SJH
 
     ret = ioctl(_fd, VIDIOC_S_FMT, &fmt);
     if (ret < 0) {
