@@ -1,17 +1,18 @@
 #!/bin/bash
 #
 
-##    upload-logs.sh
+##
+#     upload-logs.sh
 #     ardupilot log file upload to mission planner log directory
 #
-#
+##
 
 LOCAL_LOG_DIR=/var/APM/logs
-UPLOAD_TARGET=192.168.2.30
+UPLOAD_TARGET=192.168.2.2
 UPLOAD_USER=lynne
 UPLOAD_DIR=/home/lynne/missionplanner/logs
 
-echo "copying /var/APM/logs to missionplanner/logs on laptop..."
+echo "copying /var/APM/logs to missionplanner/logs on " $UPLOAD_TARGET
 sudo scp /var/APM/logs/*.bin $UPLOAD_USER@$UPLOAD_TARGET:$UPLOAD_DIR
 
 echo "deleting logs..."
