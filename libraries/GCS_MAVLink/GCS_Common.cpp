@@ -1230,7 +1230,7 @@ void GCS_MAVLINK::send_opticalflow(AP_AHRS_NavEKF &ahrs, const OpticalFlow &optf
     const Vector2f &flowRate = optflow.flowRate();
     const Vector2f &bodyRate = optflow.bodyRate();
     float hagl = 0;
-
+// sjh
     if (ahrs.have_inertial_nav()) {
         ahrs.get_NavEKF().getHAGL(hagl);
     }
