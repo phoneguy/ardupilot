@@ -67,13 +67,13 @@
 
 
         /* ANALOG INPUTS */
-        "P9.39",	// AIN0 BATTERY
-	"P9.40",	// AIN1 CURRENT
-	"P9.37",	// AIN2 CAPE BOARD 5 VOLT MONITOR?
-        "P9.38",	// AIN3 SERVO RAIL MONITOR?
-	"P9.33",	// AIN4 CURRENT2?
-	"P9.36",	// AIN5 BATTERY TEMPERATURE?
-	"P9.35",	// AIN6 ANALOG AIRSPEED?
+        "P9.39", // AIN0 BATT1
+	"P9.40", // AIN1 CURR1
+	"P9.37", // AIN2 BATT2 
+        "P9.38", // AIN3 BOARD VOLTAGE FROM BEC
+	"P9.33", // AIN4 SERVO RAIL VOLTAGE
+	"P9.36", // AIN5 ANALOG SONAR INPUT
+	"P9.35", // AIN6 ANALOG AIRSPEED INPUT
 
         /* Hardware in use */
         "pru1",
@@ -294,7 +294,6 @@
 	   status = "okay";
 	   adc {
 		ti,adc-channels = <0 1 2 3 4 5 6>;
-		/* ti,adc-channels = <0 1 2 >; */
             };
     	};
     };
