@@ -12,6 +12,7 @@
 
 ARDUPILOT_CONFIG=$(grep -A 1 "# B" /etc/rc.local | grep elf)
 
+clear
 if [ $# -eq 0 ]
 then
     echo "Ardupilot Vehicle Switcher"
@@ -19,7 +20,7 @@ then
     echo "Checking /etc/rc.local..."
     echo " "
     echo "Current setup is: "$ARDUPILOT_CONFIG
-    echo "                                           TELEM1    GPS1      TELEM2    GPS2  "
+    echo "                                           TELEM1     GPS1     TELEM2     GPS2  "
     echo "Usage: switch-vehicle.sh <vehicle type> -A <port> -B <port> -C <port> -E <port>"
     echo "select your vehicle:"
     echo "			copter"
@@ -28,8 +29,9 @@ then
     echo "			antennatracker"
     echo "			none"
     echo " "
-    echo "example is: ./switch-vehicle.sh copter -A /dev/ttyS4 -B /dev/ttyS5"
+    echo "example 1 is: ./switch-vehicle.sh copter -A /dev/ttyS4 -B /dev/ttyS5"
     echo " "
+    echo "example 2 is: ./switch-vehicle.sh copter -A udp:192.168.2.254:14550 -B /dev/ttyS5 -C /dev/ttyS4"
 
 exit 0
 fi
