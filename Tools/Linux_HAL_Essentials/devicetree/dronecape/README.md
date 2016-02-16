@@ -15,6 +15,7 @@ P9.01 DGND | GND | |
 P9.03 VDD_3V3 | VDD | |
 P8.15 RC_IN | RC Out | IN | 3.3 Volt (Spektrum / PPM-sum) 
 
+
 ### RCOutput
 BBB | ESC / Servo | I/O | Remark
 ------------ | ------------- | ------------- | -------------
@@ -31,6 +32,7 @@ P8.44 | RC_OUT_CH_9 | OUT | 3.3 Volt
 P8.43 | RC_OUT_CH_10 | OUT | 3.3 Volt
 P8.46 | RC_OUT_CH_11 | OUT | 3.3 Volt
 P8.45 | RC_OUT_CH_12 | OUT | 3.3 Volt
+
 
 ### IMU MPU-9250
 BBB | MPU-9250 | I/O | Remark
@@ -62,6 +64,7 @@ BBB | Radio | I/O | Remark
 P9.01 DGND | GND | 
 P9.22 TX | RADIO_RX | OUT | 3.3 Volt 
 P9.21 RX | RADIO_TX | IN | 3.3 Volt
+
 
 ### UART4 MAVLink radio module
 Baudrate 57600, 8, n, 1
