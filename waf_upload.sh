@@ -8,31 +8,46 @@
 # 	copy to beaglebone /home/debian/bin
 ##
 
-alias waf='/home/lynne/ardupilot/modules/waf/waf-light'
+#alias waf='~/ardupilot/modules/waf/waf-light'
 
-LOCAL_ARDUPILOT_DIR=~/ardupilot
-WAF=~/ardupilot/modules/waf/waf-light
-BUILD_TARGET=bbb
+LOCAL_ARDUPILOT_DIR=~/ardupilot       # where your ardupilot source is
 
+WAF=~/ardupilot/modules/waf/waf-light # wav location
+
+SOURCE_CODE=https://github.com/diydrones/ardupilot # ardupilot source
+SOURCE_BRANCH=master		# what branch to pull from
+BUILD_TARGET=bbb                # what target to build
 UPLOAD_TARGET=192.168.2.7       # beaglebone ip
 UPLOAD_USER=debian 		# default user is debian, default password is temppwd
 UPLOAD_DIR=/home/debian/bin 	# /home/debian/bin
+DEPLOY_DIR=~/ardupilot/deploy   # compiled files will be copied here for uploading
 
-# update git, create deploy dir, make and upload elfs and scripts
-rm -rf deploy
-mkdir deploy
+## update git, create deploy dir, make and upload elfs and scripts
+
+# delete and create files upload dir
+echo "Create upload dir: "
+rm -rf $DEPLOY_DIR
+mkdir $DEPLOY_DIR
 
 # update project
-git pull diydrones master
+echo "Pull from github.com/diydrones/ardupilot master branch: "
+git pull $SOURCE_CODE $SOURCE_BRANCH
+
+echo "Update submodules and init new ones: "
 git submodule update --init
 
-# build project
+# clean, configure and build project all
 $WAF distclean
 $WAF configure --board=$BUILD_TARGET
-$WAF bin -j4
+$WAF all -j4
+#$WAF bin -j4
 
 # copy to deploy dir
+echo "Copying files to to deploy dir: "
 cp build/$BUILD_TARGET/bin/* deploy
+cp -r build/$BUILD_TARGET/examples deploy
+cp -r build/$BUILD_TARGET/tools deploy
+cp -r build/$BUILD_TARGET/tests deploy
 
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/am335x-boneblack-dronecape.dtb deploy
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/BB-DRONECAPE-00A0.dtbo deploy
@@ -44,4 +59,5 @@ cp Tools/Linux_HAL_Essentials/devicetree/dronecape/switch-vehicle.sh deploy
 
 # copy over to beaglebone
 # default password is    temppwd
-scp $LOCAL_ARDUPILOT_DIR/deploy/* $UPLOAD_USER@$UPLOAD_TARGET:$UPLOAD_DIR
+echo "Uploading to beaglebone: "
+scp -r $LOCAL_ARDUPILOT_DIR/deploy/* $UPLOAD_USER@$UPLOAD_TARGET:$UPLOAD_DIR
