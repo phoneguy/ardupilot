@@ -8,18 +8,16 @@
 # 	copy to beaglebone /home/debian/bin
 ##
 
-#alias waf='~/ardupilot/modules/waf/waf-light'
-
 LOCAL_ARDUPILOT_DIR=~/ardupilot       # where your ardupilot source is
 
-WAF=~/ardupilot/modules/waf/waf-light # wav location
+WAF=~/ardupilot/modules/waf/waf-light # waf location
 
 SOURCE_CODE=https://github.com/diydrones/ardupilot # ardupilot source
-SOURCE_BRANCH=master		# what branch to pull from
+SOURCE_BRANCH=master            # what branch to pull from
 BUILD_TARGET=bbb                # what target to build
 UPLOAD_TARGET=192.168.2.7       # beaglebone ip
-UPLOAD_USER=debian 		# default user is debian, default password is temppwd
-UPLOAD_DIR=/home/debian/bin 	# /home/debian/bin
+UPLOAD_USER=debian              # default user is debian, default password is temppwd
+UPLOAD_DIR=/home/debian/bin     # /home/debian/bin
 DEPLOY_DIR=~/ardupilot/deploy   # compiled files will be copied here for uploading
 
 ## update git, create deploy dir, make and upload elfs and scripts
