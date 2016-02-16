@@ -188,9 +188,7 @@ bool VideoIn::set_format(uint32_t *width, uint32_t *height, uint32_t *format,
     fmt.fmt.pix.width = *width;
     fmt.fmt.pix.height = *height;
     fmt.fmt.pix.pixelformat = *format;
-//sjh
-//    fmt.fmt.pix.colorspace = V4L2_COLORSPACE_REC709;
-    fmt.fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
+    fmt.fmt.pix.colorspace = V4L2_COLORSPACE_REC709;
 
     ret = ioctl(_fd, VIDIOC_S_FMT, &fmt);
     if (ret < 0) {
@@ -228,7 +226,7 @@ bool VideoIn::set_crop(uint32_t left, uint32_t top,
     int ret;
 
 #if FLOWONBOARD_DEBUG
-hal.console->printf("Set crop to:  top:%u left:%u width:%u height:%u", top, left, width, height);
+hal.console->printf("DEBUG Set crop to:  top:%u left:%u width:%u height:%u ", top, left, width, height);
 #endif
 
     memset(&crop, 0, sizeof crop);
