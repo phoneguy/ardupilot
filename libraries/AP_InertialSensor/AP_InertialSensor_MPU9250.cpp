@@ -71,18 +71,11 @@ extern const AP_HAL::HAL &hal;
 #       define BITS_GYRO_YGYRO_SELFTEST                 0x40
 #       define BITS_GYRO_XGYRO_SELFTEST                 0x80
 #define MPUREG_ACCEL_CONFIG                             0x1C
-#define MPUREG_ACCEL_CONFIG_2                           0x1D
-#       define BIT_ACCEL_FCHOICE_B                              0x08    // used to bypass accelerometer DLPF and sets 4kHz rate (BW = 1.13kHz)
 #define MPUREG_MOT_THR                                  0x1F    // detection threshold for Motion interrupt generation.  Motion is detected when the absolute value of any of the accelerometer measurements exceeds this
 #define MPUREG_MOT_DUR                                  0x20    // duration counter threshold for Motion interrupt generation. The duration counter ticks at 1 kHz, therefore MOT_DUR has a unit of 1 LSB = 1 ms
 #define MPUREG_ZRMOT_THR                                0x21    // detection threshold for Zero Motion interrupt generation.
 #define MPUREG_ZRMOT_DUR                                0x22    // duration counter threshold for Zero Motion interrupt generation. The duration counter ticks at 16 Hz, therefore ZRMOT_DUR has a unit of 1 LSB = 64 ms.
 #define MPUREG_FIFO_EN                                  0x23
-#       define BIT_FIFO_ACCEL_OUT                               0x08
-#       define BIT_FIFO_GYRO_ZOUT                               0x10
-#       define BIT_FIFO_GYRO_YOUT                               0x20
-#       define BIT_FIFO_GYRO_XOUT                               0x40
-#       define BIT_FIFO_TEMP_OUT                                0x80
 #define MPUREG_INT_PIN_CFG                              0x37
 #       define BIT_INT_RD_CLEAR                                 0x10    // clear the interrupt when any read occurs
 #       define BIT_LATCH_INT_EN                                 0x20    // latch data ready pin
@@ -219,10 +212,10 @@ AP_InertialSensor_MPU9250::AP_InertialSensor_MPU9250(AP_InertialSensor &imu,
     , _default_rotation(ROTATION_ROLL_180_YAW_270)
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO
     , _default_rotation(ROTATION_NONE)
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2 || \
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2 ||\
       CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXFMINI
     , _default_rotation(ROTATION_YAW_270)
-#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI || \
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI ||\
       CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
     , _default_rotation(ROTATION_NONE)
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BH

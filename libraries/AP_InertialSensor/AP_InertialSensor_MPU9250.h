@@ -59,13 +59,6 @@ private:
                               enum bus_type bus_type,
                               uint8_t read_flag);
 
-    // use FIFO for accelerometer and gyroscope
-    bool _use_fifo;
-
-    // read only even accelerometer values, because of frequency difference
-    // (2 times) between accelerometer rate and sample rate
-    bool _fifo_count_even;
-
 #if MPU9250_DEBUG
     static void _dump_registers();
 #endif
