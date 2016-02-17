@@ -13,6 +13,7 @@
 #include "AP_InertialSensor.h"
 #include "AP_InertialSensor_Backend.h"
 #include "AP_InertialSensor_Flymaple.h"
+#include "AP_InertialSensor_ITG3200BMA180.h"
 #include "AP_InertialSensor_HIL.h"
 #include "AP_InertialSensor_L3G4200D.h"
 #include "AP_InertialSensor_LSM9DS0.h"
@@ -22,7 +23,6 @@
 #include "AP_InertialSensor_QURT.h"
 #include "AP_InertialSensor_SITL.h"
 #include "AP_InertialSensor_qflight.h"
-#include "AP_InertialSensor_ITG3200BMA180.h"
 
 /*
   enable TIMING_DEBUG to track down scheduling issues with the main
@@ -534,6 +534,8 @@ AP_InertialSensor::detect_backends(void)
     _add_backend(AP_InertialSensor_MPU9250::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME)));
 #elif HAL_INS_DEFAULT == HAL_INS_FLYMAPLE
     _add_backend(AP_InertialSensor_Flymaple::detect(*this));
+#elif HAL_INS_DEFAULT == HAL_INS_ITG3200BMA180
+    _add_backend(AP_InertialSensor_ITG3200BMA180::detect(*this));
 #elif HAL_INS_DEFAULT == HAL_INS_LSM9DS0
     _add_backend(AP_InertialSensor_LSM9DS0::probe(*this),
                  hal.spi->get_device(HAL_INS_LSM9DS0_A_NAME),
@@ -550,8 +552,6 @@ AP_InertialSensor::detect_backends(void)
     _add_backend(AP_InertialSensor_QFLIGHT::detect(*this));
 #elif HAL_INS_DEFAULT == HAL_INS_QURT
     _add_backend(AP_InertialSensor_QURT::detect(*this));
-#elif HAL_INS_DEFAULT == HAL_INS_ITG3200BMA180
-    _add_backend(AP_InertialSensor_ITG3200BMA180::detect(*this));
 #else
     #error Unrecognised HAL_INS_TYPE setting
 #endif
