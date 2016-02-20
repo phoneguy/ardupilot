@@ -9,6 +9,7 @@
 
 #define IIO_ANALOG_IN_COUNT 8
 #define IIO_ANALOG_IN_DIR "/sys/bus/iio/devices/iio:device0/"
+
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXF
 // Note that echo BB-ADC cape should be loaded
 #define IIO_VOLTAGE_SCALING 0.00142602816
@@ -17,9 +18,9 @@
 // sjh #define IIO_VOLTAGE_SCALING 10.0/30.0*1.8/4096.0
 //#define IIO_VOLTAGE_SCALING 1.0
 //                            R2 / (R1 + R2) * Vin
-#define IIO_VOLTAGE_SCALING (10.0/(10.0+2.2))*(1.8/4096.0)
-
-//#define IIO_VOLTAGE_SCALING 0.0792
+#define IIO_VOLTAGE_SCALING (10000.0/(10000.0+2146.0))*(1.8/4096.0)
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
+#define IIO_VOLTAGE_SCALING 2.0 / 1000
 #else
 #define IIO_VOLTAGE_SCALING 1.0
 #endif
@@ -58,8 +59,9 @@ public:
     void init();
     AP_HAL::AnalogSource* channel(int16_t n);
 
-    // AIN2 pin of beagleboneblack connected thru resistor divider to BEC input
+    // AIN5 pin of beagleboneblack connected thru resistor divider to BEC input
     float board_voltage(void);
+
     // AIN3 pin of beagleboneblack connected to rc servo rail thru resistor divider
     float servorail_voltage(void);
 
@@ -67,4 +69,6 @@ protected:
     AP_HAL::AnalogSource *_vcc_pin_analog_source;
     AP_HAL::AnalogSource *_svr_pin_analog_source;
 
+    // we don't yet know how to get the board voltage
+    // float board_voltage(void) { return 5.0f; }
 };
