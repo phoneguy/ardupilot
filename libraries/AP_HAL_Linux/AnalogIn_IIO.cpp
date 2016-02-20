@@ -121,20 +121,20 @@ AnalogIn_IIO::AnalogIn_IIO()
 float AnalogIn_IIO::board_voltage(void)
 {
     // set to AIN5 pin
-    _vcc_pin_analog_source->set_pin(2);
-    return _vcc_pin_analog_source->voltage_average() * 2.0;
+    _vcc_pin_analog_source->set_pin(5);
+    return _vcc_pin_analog_source->voltage_average();//sjh * 2.0;
 }
 
 float AnalogIn_IIO::servorail_voltage(void)
 {
     // set to AIN3 pin
     _svr_pin_analog_source->set_pin(3);
-    return _svr_pin_analog_source->voltage_average() * 2.0;
+    return _svr_pin_analog_source->voltage_average();//sjh * 2.0;
 }
 
 void AnalogIn_IIO::init()
 {
-    // use AIN5 pin
+    // use AIN3 for board voltage and AIN5 for servo rail voltage
     _vcc_pin_analog_source = channel(5);
     _svr_pin_analog_source = channel(3);
 }

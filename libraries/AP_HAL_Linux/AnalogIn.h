@@ -23,8 +23,8 @@ public:
     void init();
     AP_HAL::AnalogSource* channel(int16_t n);
 
-    // we don't yet know how to get the board voltage
-    //float board_voltage(void) { return 0.0f; }
-//    float board_voltage(void) { return 5.0f; }
+    // sjh we don't yet know how to get the board voltage
+    // float board_voltage(void) { return 0.0f; }
+    // float board_voltage(void) { return 5.0f; }
 
 };
