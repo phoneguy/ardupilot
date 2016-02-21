@@ -10,9 +10,10 @@
 #       2016-01
 ##
 
-ARDUPILOT_CONFIG=$(grep -A 1 "# B" /etc/rc.local | grep elf)
+ARDUPILOT_CONFIG=$(grep -A 1 "# B" /etc/rc.local | grep ardu)
 
 clear
+
 if [ $# -eq 0 ]
 then
     echo "Ardupilot Vehicle Switcher"
@@ -26,7 +27,6 @@ then
     echo "			plane"
     echo "			copter"
     echo "			rover"
-    echo "			antennatracker"
     echo "			none"
     echo " "
     echo "example 1 is: ./switch-vehicle.sh copter -A /dev/ttyS4 -B /dev/ttyS5"
@@ -57,30 +57,19 @@ elif [ $1 == "rover" ]
         sudo sed -i '/.elf/d' /etc/rc.local
         sudo sed -i '/# B/a /home/debian/bin/ardurover '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9' > /home/debian/startup.log &' /etc/rc.local
 
-elif [ $1 == "antennatracker" ]
-    then
-        echo $1" vehicle type selected"
-        echo " "
-        sudo sed -i '/.elf/d' /etc/rc.local
-        sudo sed -i '/# B/a /home/debian/bin/antennatracker '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9' > /home/debian/startup.log &' /etc/rc.local
-
 elif [ $1 == "none" ]
     then
         echo $1" vehicle type selected - Ardupilot removed from rc.local"
         echo " "
         sudo sed -i '/ardu/d' /etc/rc.local
-        sudo sed -i '/antenna/d' /etc/rc.local
-
-else
-echo "!invalid vehicle type! try again"
-exit 0
+    else
+        echo "!invalid vehicle type! try again"
+        exit 0
 fi
+
     echo "/etc/rc.local"
     cat /etc/rc.local
     echo " "
-    echo " "
-    echo "sync disk"
-    sync
     echo " "
     echo "sudo reboot to start Ardupilot"
     echo " "
