@@ -37,15 +37,15 @@ git submodule update --init
 # clean, configure and build project all
 $WAF distclean
 $WAF configure --board=$BUILD_TARGET
-$WAF all -j4
-#$WAF bin -j4
+#$WAF all -j4
+$WAF bin -j4
 
 # copy to deploy dir
 echo "Copying files to to deploy dir: "
 cp    build/$BUILD_TARGET/bin/* deploy
-cp -r build/$BUILD_TARGET/examples deploy
-cp -r build/$BUILD_TARGET/tools deploy
-cp -r build/$BUILD_TARGET/tests deploy
+#cp -r build/$BUILD_TARGET/examples deploy
+#cp -r build/$BUILD_TARGET/tools deploy
+#cp -r build/$BUILD_TARGET/tests deploy
 
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/*.* deploy
 #cp Tools/Linux_HAL_Essentials/devicetree/dronecape/am335x-boneblack-dronecape.dtb deploy

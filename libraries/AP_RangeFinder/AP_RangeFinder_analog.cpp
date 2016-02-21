@@ -76,7 +76,8 @@ void AP_RangeFinder_analog::update_voltage(void)
    if (ranger._ratiometric[state.instance]) {
        state.voltage_mv = source->voltage_average_ratiometric() * 1000U;
    } else {
-       state.voltage_mv = source->voltage_average() * 1000U;
+//sjh       state.voltage_mv = source->voltage_average() * 1000U;
+       state.voltage_mv = source->read_latest() * 1000U;
    }
 }
 
@@ -115,7 +116,7 @@ void AP_RangeFinder_analog::update(void)
     if (dist_m < 0) {
         dist_m = 0;
     }
-    state.distance_cm = dist_m * 100.0f;  
+    state.distance_cm = dist_m * 100.0f;
 
     // update range_valid state based on distance measured
     update_status();
