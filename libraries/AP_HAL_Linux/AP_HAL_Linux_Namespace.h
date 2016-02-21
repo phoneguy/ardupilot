@@ -1,11 +1,11 @@
-
-#ifndef __AP_HAL_LINUX_NAMESPACE_H__
-#define __AP_HAL_LINUX_NAMESPACE_H__
+#pragma once
 
 namespace Linux {
     class UARTDriver;
     class SPIUARTDriver;
     class RPIOUARTDriver;
+    class I2CDevice;
+    class I2CDeviceManager;
     class I2CDriver;
     class SPIDeviceManager;
     class SPIDeviceDriver;
@@ -55,6 +55,3 @@ namespace Linux {
     class Flow_PX4;
     class Perf_Lttng;
 }
-
-#endif // __AP_HAL_LINUX_NAMESPACE_H__
-

@@ -5,6 +5,7 @@
 #if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 #include <Filter/Filter.h>
 #include <Filter/LowPassFilter2p.h>
+
 #include "AP_InertialSensor.h"
 #include "AP_InertialSensor_Backend.h"
 
