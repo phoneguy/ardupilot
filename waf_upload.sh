@@ -17,7 +17,7 @@ SOURCE_BRANCH=master            # what branch to pull from
 BUILD_TARGET=bbb                # what target to build
 UPLOAD_TARGET=192.168.2.7       # beaglebone ip
 UPLOAD_USER=debian              # default user is debian, default password is temppwd
-UPLOAD_DIR=/home/debian/bin     # /home/debian/bin
+UPLOAD_DIR=/home/debian/bin     # /home/debian/bin on beaglebone
 DEPLOY_DIR=~/ardupilot/deploy   # compiled files will be copied here for uploading
 
 ## update git, create deploy dir, make and upload elfs and scripts
@@ -34,7 +34,7 @@ git pull $SOURCE_CODE $SOURCE_BRANCH
 echo "Update submodules and init new ones: "
 git submodule update --init
 
-# clean, configure and build project all
+# clean, configure and build project
 $WAF distclean
 $WAF configure --board=$BUILD_TARGET
 #$WAF all -j4
@@ -42,7 +42,8 @@ $WAF bin -j4
 
 # copy to deploy dir
 echo "Copying files to to deploy dir: "
-cp    build/$BUILD_TARGET/bin/* deploy
+cp build/$BUILD_TARGET/bin/* deploy
+
 #cp -r build/$BUILD_TARGET/examples deploy
 #cp -r build/$BUILD_TARGET/tools deploy
 #cp -r build/$BUILD_TARGET/tests deploy

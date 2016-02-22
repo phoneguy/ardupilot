@@ -19,7 +19,7 @@ void loop (void)
     }
     hal.console->printf("[%u %.3f] ",
 			  (unsigned)pin, v);
-    pin = (pin+1) % 16;
+    pin = (pin+1) % 8;
     ch->set_pin(pin);
     hal.scheduler->delay(100);
 }
