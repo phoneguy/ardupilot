@@ -25,7 +25,6 @@
 #include "quaternion.h"
 #include "polygon.h"
 #include "edc.h"
-#include "float.h"
 #include <AP_Param/AP_Param.h>
 
 #ifndef M_PI_F
@@ -292,6 +291,4 @@ inline uint32_t usec_to_hz(uint32_t usec)
     return USEC_PER_SEC / usec;
 }
 
-#undef INLINE
 #endif // AP_MATH_H
-
