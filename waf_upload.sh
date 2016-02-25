@@ -35,8 +35,8 @@ echo "Update submodules and init new ones: "
 #git submodule update --init
 
 # clean, configure and build project
-#$WAF distclean
-#$WAF configure --board=$BUILD_TARGET
+$WAF distclean
+$WAF configure --board=$BUILD_TARGET
 #$WAF all -j4
 $WAF bin -j4
 
