@@ -4,7 +4,7 @@
 ##
 #     upload-logs.sh
 #     ardupilot log file upload to mission planner log directory
-#
+#     jan-2016 stevenharsanyi@gmail.com
 ##
 
 LOCAL_LOG_DIR=/var/APM/logs

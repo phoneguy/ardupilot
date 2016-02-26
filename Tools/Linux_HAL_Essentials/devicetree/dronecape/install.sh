@@ -3,14 +3,22 @@
 ##
 #	beaglebone ardupilot install.sh script
 #	this script updates the system, installs firmware files
-#
+#       jan-2016 stevenharsanyi@gmail.com
 ##
 
 echo "Update software: "
 sudo apt-get update && sudo apt-get upgrade -y
 
 echo " Install software: "
-sudo apt-get install -y cpufrequtils g++ gawk git make ti-pru-cgt-installer device-tree-compiler screen python python-dev python-pip
+sudo apt-get install -y python python-dev
+sudo apt-get install -y cpufrequtils g++ gawk git make ti-pru-cgt-installer device-tree-compiler screen
+
+echo "Install Mavlink and Droneapi:"
+sudo pip install mavproxy
+sudo pip install droneapi
+
+echo "Update Timezone:"
+sudo dpkg-reconfigure tzdata
 
 echo "Update /opt/scripts: "
 cd /opt/scripts && sudo git pull
@@ -21,11 +29,8 @@ cd /opt/scripts && sudo git pull
 echo "Change to /home/debian/bin: "
 cd /home/debian/bin
 
-echo "Install Mavlink and Droneapi:"
-sudo pip install mavlink droneapi
-
-#echo "copying file to /boot/dtbs/"$(uname -r)
-#sudo cp am335x-boneblack-dronecape.dtb /boot/dtbs/$(uname -r)
+echo "copying file to /boot/dtbs/"$(uname -r)
+sudo cp am335x-boneblack-dronecape.dtb /boot/dtbs/$(uname -r)
 
 echo "Add DRONECAPE DTB to uEnv.txt: "
 sudo sed -i 's/#dtb=$/dtb=am335x-boneblack-dronecape.dtb/' /boot/uEnv.txt

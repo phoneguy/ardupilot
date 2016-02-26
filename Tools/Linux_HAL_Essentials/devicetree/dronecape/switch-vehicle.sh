@@ -7,7 +7,7 @@
 #       to start ardupilot at boot
 #
 #       by stevenharsanyi@gmail.com
-#       2016-01
+#       jan-2016
 ##
 
 ARDUPILOT_CONFIG=$(grep -A 1 "# B" /etc/rc.local | grep ardu)
@@ -40,21 +40,21 @@ if [ $1 == "copter" ]
     then
         echo $1" vehicle type selected"
         echo " "
-        sudo sed -i '/.elf/d' /etc/rc.local
+        sudo sed -i '/ardu/d' /etc/rc.local
         sudo sed -i '/# B/a /home/debian/bin/arducopter '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9' > /home/debian/startup.log &' /etc/rc.local
 
 elif [ $1 == "plane" ]
     then
         echo $1" vehicle type selected"
         echo " "
-        sudo sed -i '/.elf/d' /etc/rc.local
+        sudo sed -i '/ardu/d' /etc/rc.local
         sudo sed -i '/# B/a /home/debian/bin/arduplane '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9' > /home/debian/startup.log &' /etc/rc.local
 
 elif [ $1 == "rover" ]
     then
         echo $1" vehicle type selected"
         echo " "
-        sudo sed -i '/.elf/d' /etc/rc.local
+        sudo sed -i '/ardu/d' /etc/rc.local
         sudo sed -i '/# B/a /home/debian/bin/ardurover '$2' '$3' '$4' '$5' '$6' '$7' '$8' '$9' > /home/debian/startup.log &' /etc/rc.local
 
 elif [ $1 == "none" ]
@@ -67,7 +67,7 @@ elif [ $1 == "none" ]
         exit 0
 fi
 
-    echo "/etc/rc.local"
+    echo "/etc/rc.local updated:"
     cat /etc/rc.local
     echo " "
     echo " "

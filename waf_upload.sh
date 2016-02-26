@@ -6,6 +6,7 @@
 #
 # 	make bbb with waf and copy to deploy directory
 # 	copy to beaglebone /home/debian/bin
+#
 ##
 
 LOCAL_ARDUPILOT_DIR=~/ardupilot       # where your ardupilot source is
