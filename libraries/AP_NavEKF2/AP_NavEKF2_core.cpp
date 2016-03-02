@@ -298,7 +298,6 @@ bool NavEKF2_core::InitialiseFilterBootstrap(void)
         pitch = asinf(initAccVec.x);
 
         // calculate initial roll angle
-        //roll = -asinf(initAccVec.y / cosf(pitch));
         roll = atan2f(-initAccVec.y , -initAccVec.z);
     }
 

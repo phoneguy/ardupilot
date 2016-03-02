@@ -7,15 +7,18 @@
 ##
 
 echo "Update software: "
-sudo apt-get update && sudo apt-get upgrade -y
+sudo apt-get update -y && sudo apt-get upgrade -y
 
 echo " Install software: "
 sudo apt-get install -y python python-dev
 sudo apt-get install -y cpufrequtils g++ gawk git make ti-pru-cgt-installer device-tree-compiler screen
+sleep 2
 
 echo "Install Mavlink and Droneapi:"
 sudo pip install mavproxy
+sleep 1
 sudo pip install droneapi
+sleep 1
 
 echo "Update Timezone:"
 sudo dpkg-reconfigure tzdata
@@ -30,16 +33,18 @@ echo "Change to /home/debian/bin: "
 cd /home/debian/bin
 
 echo "copying file to /boot/dtbs/"$(uname -r)
-sudo cp am335x-boneblack-dronecape.dtb /boot/dtbs/$(uname -r)
+sudo cp am335x-boneblack-dronecape.dtb /boot/dtbs/$(uname -r)/
 
 echo "Add DRONECAPE DTB to uEnv.txt: "
 sudo sed -i 's/#dtb=$/dtb=am335x-boneblack-dronecape.dtb/' /boot/uEnv.txt
 
 echo "Copying file to /lib/firmware"
-sudo cp BB-DRONECAPE-00A0.dtbo /lib/firmware
+sudo cp BB-DRONECAPE-00A0.dtbo /lib/firmware/
+ls -la /lib/firmware
 
 echo "Add DRONECAPE DTBO to uEnv.txt: "
 sudo sed -i 's/#cape_enable=bone_capemgr.enable_partno=/cape_enable=bone_capemgr.enable_partno=BB-DRONECAPE/g' /boot/uEnv.txt 
+cat /boot/uEnv.txt
 
 echo "Adjusting the BBB clock: "
 sudo sed -i 's/GOVERNOR="ondemand"/GOVERNOR="performance"/g' /etc/init.d/cpufrequtils
@@ -57,32 +62,31 @@ sudo sed -i 's/GOVERNOR="ondemand"/GOVERNOR="performance"/g' /etc/init.d/cpufreq
 #//Build and install overlays:
 #//./install.sh
 
-echo "Clone ArduPilot code:"
-cd /home/debian
-git clone https://github.com/phoneguy/ardupilot ~/ardupilot
+#echo "Clone ArduPilot code:"
+#cd /home/debian
+#git clone https://github.com/phoneguy/ardupilot ~/ardupilot
 
-echo "Change to ardupilot dir: "
-cd ardupilot
+#echo "Change to ardupilot dir: "
+#cd ardupilot
 
-echo "Checkout bbb branch: "
-git checkout bbb
+#echo "Checkout bbb branch: "
+#git checkout bbb
 
-echo "Init and update submodules: "
-git submodule update --init
+#echo "Init and update submodules: "
+#git submodule update --init
 
-echo "Change dir to rangefinderpru: "
-cd /home/debian/ardupilot/Tools/Linux_HAL_Essentials/pru/rangefinderpru
+#echo "Change dir to rangefinderpru: "
+#cd /home/debian/ardupilot/Tools/Linux_HAL_Essentials/pru/rangefinderpru
 
-echo "Build Rangefinder firmware: "
-make
+#echo "Build Rangefinder firmware: "
+#make
 
-echo "Install Rangefinder firmware: "
-sudo make install
+#echo "Install Rangefinder firmware: "
+#sudo make install
 
 cd /home/debian
 
 echo "Your BeagleBone is now ready to use. "
-echo " "
-echo " You must sudo reboot to complete install"
+echo "run switch-vehicle.sh to have your vehicle start at boot. "
+echo " You must sudo reboot to complete install."
 echo ""
-
