@@ -29,9 +29,14 @@ then
     echo "			rover"
     echo "			none"
     echo " "
+    echo "Console telemetry and single GPS "
     echo "example 1 is: ./switch-vehicle.sh copter -A /dev/ttyS4 -B /dev/ttyS5"
     echo " "
-    echo "example 2 is: ./switch-vehicle.sh copter -A udp:192.168.2.254:14550 -B /dev/ttyS5 -C /dev/ttyS4"
+    echo "Dual GPS "
+    echo "example 2 is: ./switch-vehicle.sh copter -A udp:192.168.2.254:14550 -B /dev/ttyS5 -E /dev/ttyS4"
+    echo " "
+    echo "Broadcast udp to any client"
+    echo "example 3 is: ./switch-vehicle.sh copter -A udp:192.168.2.255:14550:bcast -B /dev/ttyS5"
 
 exit 0
 fi
