@@ -10,7 +10,6 @@
 ##
 
 LOCAL_ARDUPILOT_DIR=~/ardupilot       # where your ardupilot source is
-
 WAF=~/ardupilot/modules/waf/waf-light # waf location
 
 SOURCE_CODE=https://github.com/diydrones/ardupilot # ardupilot source
@@ -30,14 +29,14 @@ mkdir $DEPLOY_DIR
 
 # update project
 echo "Pull from github.com/diydrones/ardupilot master branch: "
-#git pull $SOURCE_CODE $SOURCE_BRANCH
+git pull $SOURCE_CODE $SOURCE_BRANCH
 
 echo "Update submodules and init new ones: "
-#git submodule update --init
+git submodule update --init
 
 # clean, configure and build project
-#$WAF distclean
-#$WAF configure --board=$BUILD_TARGET
+$WAF distclean
+$WAF configure --board=$BUILD_TARGET
 #$WAF all -j4
 $WAF bin -j4
 
@@ -51,6 +50,11 @@ cp -r build/$BUILD_TARGET/examples deploy
 cp -r build/$BUILD_TARGET/tools deploy
 cp -r build/$BUILD_TARGET/tests deploy
 
+# rebuild dts sourcefile
+cd Tools/Linux_HAL_Essentials/devicetree/dronecape/ && make clean && make
+cd $LOCAL_ARDUPILOT_DIR
+
+# copy all to deploy dir
 cp Tools/Linux_HAL_Essentials/devicetree/dronecape/*.* deploy
 #cp Tools/Linux_HAL_Essentials/devicetree/dronecape/am335x-boneblack-dronecape.dtb deploy
 #cp Tools/Linux_HAL_Essentials/devicetree/dronecape/BB-DRONECAPE-00A0.dtbo deploy
