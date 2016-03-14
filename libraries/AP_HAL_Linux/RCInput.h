@@ -2,7 +2,7 @@
 
 #include "AP_HAL_Linux.h"
 
-#define LINUX_RC_INPUT_NUM_CHANNELS 16
+#define LINUX_RC_INPUT_NUM_CHANNELS 8 //16
 
 class Linux::RCInput : public AP_HAL::RCInput {
 public:
