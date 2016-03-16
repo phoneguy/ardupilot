@@ -76,13 +76,13 @@ void AP_RangeFinder_analog::update_voltage(void)
    if (ranger._ratiometric[state.instance]) {
        state.voltage_mv = source->voltage_average_ratiometric() * 1000U;
    } else {
-//sjh       state.voltage_mv = source->voltage_average() * 1000U;
-       state.voltage_mv = source->read_latest() * 1000U;
+       state.voltage_mv = source->voltage_average() * 1000U;
+//       state.voltage_mv = source->read_latest() * 1000U;
    }
 }
 
 /*
-  update distance_cm 
+  update distance_cm
  */
 void AP_RangeFinder_analog::update(void)
 {
@@ -98,7 +98,7 @@ void AP_RangeFinder_analog::update(void)
     case RangeFinder::FUNCTION_LINEAR:
         dist_m = (v - offset) * scaling;
         break;
-	  
+
     case RangeFinder::FUNCTION_INVERTED:
         dist_m = (offset - v) * scaling;
         break;

@@ -122,16 +122,16 @@ float AnalogIn_IIO::board_voltage(void)
 {
     // set to AIN5 pin
     _vcc_pin_analog_source->set_pin(IIO_VCC_PIN);
-//    return _vcc_pin_analog_source->voltage_average() * 5.67;
-    return _vcc_pin_analog_source->read_latest() * 5.67; // calibrate with V in / V divider
+    return _vcc_pin_analog_source->voltage_average() * 5.67;
+//    return _vcc_pin_analog_source->read_latest() * 5.67; // calibrate with V in / V divider
 }
 
 float AnalogIn_IIO::servorail_voltage(void)
 {
     // set to AIN3 pin
     _svr_pin_analog_source->set_pin(IIO_SVR_PIN);
-//    return _svr_pin_analog_source->voltage_average()* 4.17;
-    return _svr_pin_analog_source->read_latest() * 4.17;
+    return _svr_pin_analog_source->voltage_average()* 4.17;
+//    return _svr_pin_analog_source->read_latest() * 4.17;
 }
 
 void AnalogIn_IIO::init()
