@@ -28,17 +28,17 @@ rm -rf $DEPLOY_DIR
 mkdir $DEPLOY_DIR
 
 # update project
-#echo "Pull from github.com/diydrones/ardupilot master branch: "
-#git pull $SOURCE_CODE $SOURCE_BRANCH
+echo "Pull from github.com/diydrones/ardupilot master branch: "
+git pull $SOURCE_CODE $SOURCE_BRANCH
 
-#echo "Update submodules and init new ones: "
-#git submodule update --init
+echo "Update submodules and init new ones: "
+git submodule update --init
 
 # clean, configure and build project
-#$WAF distclean
-#$WAF configure --board=$BUILD_TARGET
-#$WAF all -j4
-$WAF bin -j4
+$WAF distclean
+$WAF configure --board=$BUILD_TARGET
+$WAF all -j4
+#$WAF bin -j4
 
 # copy to deploy dir
 echo "Copying files to to deploy dir: "

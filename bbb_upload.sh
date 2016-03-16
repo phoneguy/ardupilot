@@ -16,7 +16,7 @@ UPLOAD_DIR=/home/debian/bin 	# /home/debian/bin
 rm -rf deploy
 mkdir deploy
 git pull diydrones master
-git submodule update --init
+git submodule update --recursive --init
 make clean
 make bbb -j4
 
