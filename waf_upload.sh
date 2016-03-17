@@ -37,8 +37,8 @@ git submodule update --recursive --init
 # clean, configure and build project
 $WAF distclean
 $WAF configure --board=$BUILD_TARGET
-#$WAF all -j4
-$WAF bin -j4
+$WAF all -j4
+#$WAF bin -j4
 
 # copy to deploy dir
 echo "Copying files to to deploy dir: "
