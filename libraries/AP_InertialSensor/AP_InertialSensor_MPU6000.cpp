@@ -191,7 +191,7 @@ extern const AP_HAL::HAL& hal;
 
 #define MPU6000_SAMPLE_SIZE 14
 
-#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BH || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
+#if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BH// || CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
 #define MPU6000_MAX_FIFO_SAMPLES 6
 #else
 #define MPU6000_MAX_FIFO_SAMPLES 3
@@ -355,12 +355,12 @@ void AP_InertialSensor_MPU6000::start()
     hal.scheduler->delay(1);
 
     // configure interrupt to fire when new data arrives
-    _register_write(MPUREG_INT_ENABLE, BIT_RAW_RDY_EN);
-    hal.scheduler->delay(1);
+//sjh    _register_write(MPUREG_INT_ENABLE, BIT_RAW_RDY_EN);
+//    hal.scheduler->delay(1);
 
     // clear interrupt on any read, and hold the data ready pin high
     // until we clear the interrupt
-    _register_write(MPUREG_INT_PIN_CFG, BIT_INT_RD_CLEAR | BIT_LATCH_INT_EN);
+//    _register_write(MPUREG_INT_PIN_CFG, BIT_INT_RD_CLEAR | BIT_LATCH_INT_EN);
 
     // now that we have initialised, we set the bus speed to high
     _dev->set_speed(AP_HAL::Device::SPEED_HIGH);

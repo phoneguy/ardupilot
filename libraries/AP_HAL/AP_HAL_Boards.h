@@ -360,9 +360,9 @@
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBB
 #define HAL_BOARD_LOG_DIRECTORY "/var/APM/logs"
 #define HAL_BOARD_TERRAIN_DIRECTORY "/var/APM/terrain"
-//#define HAL_INS_DEFAULT HAL_INS_MPU9250_SPI
+#define HAL_INS_DEFAULT HAL_INS_MPU9250_SPI
 #define HAL_INS_MPU9250_NAME "mpu9250"
-#define HAL_INS_DEFAULT HAL_INS_MPU60XX_I2C
+//#define HAL_INS_DEFAULT HAL_INS_MPU60XX_I2C
 #define HAL_INS_MPU60x0_I2C_BUS 2
 #define HAL_INS_MPU60x0_I2C_ADDR 0x68
 #define HAL_BARO_DEFAULT HAL_BARO_BMP085// MS5611_SPI
@@ -393,7 +393,7 @@
 /* Suyin CH0316 .3 MP board camera 640x480 320x240 160x120
  * focal length 2.2 mm, pixel size 5.6 um
  * 240x240 crop rescaled to 64x64 */
-#define HAL_FLOW_PX4_FOCAL_LENGTH_MILLIPX (3.5 / (2.1 * 2.0 * 240 / 64))
+//#define HAL_FLOW_PX4_FOCAL_LENGTH_MILLIPX (3.5 / (2.1 * 2.0 * 240 / 64))
 //#define HAL_FLOW_PX4_FOCAL_LENGTH_MILLIPX (5.6 / (2.2 * 2.0 * 240 / 64))
 /* 1.3 MP board camera 1280x1024 640x480 320x240
  * focal length 2.4, pixel size 1.75 um
@@ -402,7 +402,7 @@
 /* ELP-USBFHD01M-L21
  * focal length 2.1 mm, pixel size 3 um
  * 240x240 crop rescaled to 64x64 */
-//#define HAL_FLOW_PX4_FOCAL_LENGTH_MILLIPX (3.0 / (2.1 * 2.0 * 240 / 64))
+#define HAL_FLOW_PX4_FOCAL_LENGTH_MILLIPX (3.0 / (2.1 * 2.0 * 240 / 64))
 //#define HAL_PARAM_DEFAULTS_PATH "/etc/ardpilot/arducopter.parm"
 
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BH
