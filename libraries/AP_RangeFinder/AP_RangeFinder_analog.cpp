@@ -76,8 +76,9 @@ void AP_RangeFinder_analog::update_voltage(void)
    if (ranger._ratiometric[state.instance]) {
        state.voltage_mv = source->voltage_average_ratiometric() * 1000U;
    } else {
-       state.voltage_mv = source->voltage_average() * 1000U;
+//     state.voltage_mv = source->voltage_average() * 1000U;
 //       state.voltage_mv = source->read_latest() * 1000U;
+       state.voltage_mv = source->read_average() * 1000U;
    }
 }
 
