@@ -393,7 +393,6 @@
 /* Suyin CH0316 .3 MP board camera 640x480 320x240 160x120
  * focal length 2.2 mm, pixel size 5.6 um
  * 240x240 crop rescaled to 64x64 */
-//#define HAL_FLOW_PX4_FOCAL_LENGTH_MILLIPX (3.5 / (2.1 * 2.0 * 240 / 64))
 //#define HAL_FLOW_PX4_FOCAL_LENGTH_MILLIPX (5.6 / (2.2 * 2.0 * 240 / 64))
 /* 1.3 MP board camera 1280x1024 640x480 320x240
  * focal length 2.4, pixel size 1.75 um
