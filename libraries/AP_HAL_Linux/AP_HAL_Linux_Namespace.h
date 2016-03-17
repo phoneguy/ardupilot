@@ -1,6 +1,4 @@
-
-#ifndef __AP_HAL_LINUX_NAMESPACE_H__
-#define __AP_HAL_LINUX_NAMESPACE_H__
+#pragma once
 
 namespace Linux {
     class UARTDriver;
@@ -30,6 +28,7 @@ namespace Linux {
     class RCInput_AioPRU;
     class RCInput_RPI;
     class RCInput_Raspilot;
+    class RCInput_Navio2;
     class RCInput_ZYNQ;
     class RCInput_UART;
     class RCInput_UDP;
@@ -57,6 +56,3 @@ namespace Linux {
     class Flow_PX4;
     class Perf_Lttng;
 }
-
-#endif // __AP_HAL_LINUX_NAMESPACE_H__
-

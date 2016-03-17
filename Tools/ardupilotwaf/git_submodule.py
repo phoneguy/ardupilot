@@ -40,25 +40,28 @@ import os.path
 
 class update_submodule(Task.Task):
     color = 'BLUE'
-    run_str = '${GIT} -C ${SRC_ROOT} submodule update --init -- ${SUBMODULE_PATH}'
+    run_str = '${GIT} -C ${SRC_ROOT} submodule update --recursive --init -- ${SUBMODULE_PATH}'
 
     def runnable_status(self):
         e = self.env.get_flat
-        cmd = e('GIT'), '-C', e('SRC_ROOT'), 'submodule', 'status', '--', e('SUBMODULE_PATH')
+        cmd = e('GIT'), '-C', e('SRC_ROOT'), 'submodule', 'status', '--recursive', '--', e('SUBMODULE_PATH')
         out = self.generator.bld.cmd_and_log(cmd, quiet=Context.BOTH)
 
         # git submodule status uses a blank prefix for submodules that are up
         # to date
-        if out[0] != ' ':
-            return Task.RUN_ME
+        for line in out.splitlines():
+            if line[0] != ' ':
+                return Task.RUN_ME
 
         return Task.SKIP_ME
 
     def uid(self):
         if not hasattr(self, 'uid_'):
             m = Utils.md5()
-            m.update(self.__class__.__name__)
-            m.update(self.env.get_flat('SUBMODULE_PATH'))
+            def u(s):
+                m.update(s.encode('utf-8'))
+            u(self.__class__.__name__)
+            u(self.env.get_flat('SUBMODULE_PATH'))
             self.uid_ = m.digest()
 
         return self.uid_
@@ -100,3 +103,10 @@ def git_submodule(bld, git_submodule, **kw):
     kw['features'].append('git_submodule')
 
     return bld(**kw)
+
+@conf
+def git_submodule_head_hash(self, name):
+    module_node = self.srcnode.make_node(os.path.join('modules', name))
+    cmd = self.env.get_flat('GIT'), '-C', module_node.abspath(), 'rev-parse', 'HEAD'
+    out = self.cmd_and_log(cmd, quiet=Context.BOTH)
+    return out.strip()

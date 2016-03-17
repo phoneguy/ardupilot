@@ -1,7 +1,4 @@
-
-
-#ifndef __AP_HAL_PX4_STORAGE_H__
-#define __AP_HAL_PX4_STORAGE_H__
+#pragma once
 
 #include <AP_HAL/AP_HAL.h>
 #include "AP_HAL_PX4_Namespace.h"
@@ -37,6 +34,9 @@ private:
     void _upgrade_to_mtd(void);
     uint32_t _mtd_signature(void);
     void _mtd_write_signature(void);
-};
 
-#endif // __AP_HAL_PX4_STORAGE_H__
+#if defined (CONFIG_ARCH_BOARD_PX4FMU_V4)
+    irqstate_t irq_state;
+#endif
+    void bus_lock(bool lock);
+};

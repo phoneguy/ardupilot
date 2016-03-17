@@ -18,9 +18,7 @@
  *  - Relative ease of tuning through use of intuitive time constant, trim rate and damping parameters and the use
  *    of easy to measure aircraft performance data
  */
-
-#ifndef AP_TECS_H
-#define AP_TECS_H
+#pragma once
 
 #include <AP_Math/AP_Math.h>
 #include <AP_AHRS/AP_AHRS.h>
@@ -148,9 +146,13 @@ private:
     AP_Float _timeConst;
     AP_Float _landTimeConst;
     AP_Float _ptchDamp;
+    AP_Float _land_pitch_damp;
     AP_Float _landDamp;
     AP_Float _thrDamp;
+    AP_Float _land_throttle_damp;
     AP_Float _integGain;
+    AP_Float _integGain_takeoff;
+    AP_Float _integGain_land;
     AP_Float _vertAccLim;
     AP_Float _rollComp;
     AP_Float _spdWeight;
@@ -317,6 +319,9 @@ private:
     // Update Demanded Throttle Non-Airspeed
     void _update_throttle_option(int16_t throttle_nudge);
 
+    // get integral gain which is flight_stage dependent
+    float _get_i_gain(void);
+
     // Detect Bad Descent
     void _detect_bad_descent(void);
 
@@ -341,5 +346,3 @@ private:
 
 #define TECS_LOG_FORMAT(msg) { msg, sizeof(AP_TECS::log_TECS_Tuning),	\
 							   "TECS", "Qffffffffffff", "TimeUS,h,dh,h_dem,dh_dem,sp_dem,sp,dsp,ith,iph,th,ph,dsp_dem" }
-
-#endif //AP_TECS_H

@@ -31,6 +31,7 @@
 #include "VRBoard_LED.h"
 #include "BlinkM.h"
 #include "BlinkM_I2C.h"
+#include "DiscreteRGBLed.h"
 
 // table of user settable parameters
 const AP_Param::GroupInfo AP_Notify::var_info[] = {
@@ -77,10 +78,13 @@ struct AP_Notify::notify_events_type AP_Notify::events;
     NotifyDevice *AP_Notify::_devices[] = {&boardled, &toshibaled, &externalled, &buzzer};
 #elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
     #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO
-        AP_BoardLED boardled;
         NavioLED_I2C navioled;
         ToshibaLED_I2C toshibaled;
-        NotifyDevice *AP_Notify::_devices[] = {&boardled, &navioled, &toshibaled};
+        NotifyDevice *AP_Notify::_devices[] = {&navioled, &toshibaled};
+    #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIO2
+        DiscreteRGBLed navioled(4, 27, 6, false);
+        ToshibaLED_I2C toshibaled;
+        NotifyDevice *AP_Notify::_devices[] = {&navioled, &toshibaled};
     #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI
         Display_SSD1306_I2C display;
         NotifyDevice *AP_Notify::_devices[] = {&display};
@@ -89,7 +93,8 @@ struct AP_Notify::notify_events_type AP_Notify::events;
         ToneAlarm_Linux tonealarm;
         NotifyDevice *AP_Notify::_devices[] = {&toshibaled, &tonealarm};
     #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
-        NotifyDevice *AP_Notify::_devices[0];
+        RCOutputRGBLedOff led(15, 13, 14, 255);
+        NotifyDevice *AP_Notify::_devices[] = { &led };
     #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2 || \
       CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXFMINI
         AP_BoardLED boardled;
