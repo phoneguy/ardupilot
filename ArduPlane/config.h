@@ -19,6 +19,7 @@
 //
 // - Try to keep this file organised in the same order as APM_Config.h.example
 //
+#pragma once
 
 #include "defines.h"
 
@@ -26,15 +27,7 @@
 /// DO NOT EDIT THIS INCLUDE - if you want to make a local change, make that
 /// change in your local copy of APM_Config.h.
 ///
-#ifdef USE_CMAKE_APM_CONFIG
- #include "APM_Config_cmake.h" // <== Prefer cmake config if it exists
-#else
- #include "APM_Config.h" // <== THIS INCLUDE, DO NOT EDIT IT. EVER.
-#endif
-///
-/// DO NOT EDIT THIS INCLUDE - if you want to make a local change, make that
-/// change in your local copy of APM_Config.h.
-///
+#include "APM_Config.h"
 
 // Just so that it's completely clear...
 #define ENABLED                 1

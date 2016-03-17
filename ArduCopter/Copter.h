@@ -1,7 +1,5 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
-#ifndef _COPTER_H
-#define _COPTER_H
+#pragma once
 
 #define THISFIRMWARE "APM:Copter V3.4-dev"
 #define FIRMWARE_VERSION 3,4,0,FIRMWARE_VERSION_TYPE_DEV
@@ -88,6 +86,18 @@
 #include <AP_BattMonitor/AP_BattMonitor.h>     // Battery monitor library
 #include <AP_BoardConfig/AP_BoardConfig.h>     // board configuration library
 #include <AP_Frsky_Telem/AP_Frsky_Telem.h>
+#include <AP_LandingGear/AP_LandingGear.h>     // Landing Gear library
+#include <AP_Terrain/AP_Terrain.h>
+#include <AP_ADSB/AP_ADSB.h>
+#include <AP_RPM/AP_RPM.h>
+#include <AC_InputManager/AC_InputManager.h>        // Pilot input handling library
+#include <AC_InputManager/AC_InputManager_Heli.h>   // Heli specific pilot input handling library
+
+// Configuration
+#include "defines.h"
+#include "config.h"
+
+// libraries which are dependent on #defines in defines.h and/or config.h
 #if SPRAYER == ENABLED
 #include <AC_Sprayer/AC_Sprayer.h>         // crop sprayer library
 #endif
@@ -97,20 +107,10 @@
 #if PARACHUTE == ENABLED
 #include <AP_Parachute/AP_Parachute.h>       // Parachute release library
 #endif
-#include <AP_LandingGear/AP_LandingGear.h>     // Landing Gear library
-#include <AP_Terrain/AP_Terrain.h>
-#include <AP_ADSB/AP_ADSB.h>
-#include <AP_RPM/AP_RPM.h>
 #if PRECISION_LANDING == ENABLED
 #include <AC_PrecLand/AC_PrecLand.h>
 #include <AP_IRLock/AP_IRLock.h>
 #endif
-#include <AC_InputManager/AC_InputManager.h>        // Pilot input handling library
-#include <AC_InputManager/AC_InputManager_Heli.h>   // Heli specific pilot input handling library
-
-// Configuration
-#include "defines.h"
-#include "config.h"
 
 // Local modules
 #include "Parameters.h"
@@ -373,6 +373,12 @@ private:
     // Flip
     Vector3f flip_orig_attitude;         // original copter attitude before flip
 
+    // Throw
+    bool throw_early_exit_interlock = true; // value of the throttle interlock that must be restored when exiting throw mode early
+    bool throw_flight_commenced = false;    // true when the throw has been detected and the motors and control loops are running
+    uint32_t throw_free_fall_start_ms = 0;  // system time free fall was detected
+    float throw_free_fall_start_velz = 0.0f;// vertical velocity when free fall was detected
+
     // Battery Sensors
     AP_BattMonitor battery;
 
@@ -631,7 +637,6 @@ private:
     void send_rpm(mavlink_channel_t chan);
     void rpm_update();
     void send_pid_tuning(mavlink_channel_t chan);
-    void send_statustext(mavlink_channel_t chan);
     bool telemetry_delayed(mavlink_channel_t chan);
     void gcs_send_message(enum ap_message id);
     void gcs_send_mission_item_reached_message(uint16_t mission_index);
@@ -800,6 +805,14 @@ private:
     void poshold_get_wind_comp_lean_angles(int16_t &roll_angle, int16_t &pitch_angle);
     void poshold_roll_controller_to_pilot_override();
     void poshold_pitch_controller_to_pilot_override();
+
+    // Throw to launch functionality
+    bool throw_init(bool ignore_checks);
+    void throw_exit();
+    void throw_run();
+    bool throw_detected();
+    bool throw_attitude_good();
+    bool throw_height_good();
 
     bool rtl_init(bool ignore_checks);
     void rtl_run();
@@ -1053,5 +1066,3 @@ extern Copter copter;
 
 using AP_HAL::millis;
 using AP_HAL::micros;
-
-#endif // _COPTER_H_

@@ -45,6 +45,8 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @Description: calibrated ground pressure in Pascals
     // @Units: pascals
     // @Increment: 1
+    // @ReadOnly: True
+    // @Volatile: True
     AP_GROUPINFO("ABS_PRESS", 2, AP_Baro, sensors[0].ground_pressure, 0),
 
     // @Param: TEMP
@@ -52,6 +54,8 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @Description: calibrated ground temperature in degrees Celsius
     // @Units: degrees celsius
     // @Increment: 1
+    // @ReadOnly: True
+    // @Volatile: True
     AP_GROUPINFO("TEMP", 3, AP_Baro, sensors[0].ground_temperature, 0),
 
     // index 4 reserved for old AP_Int8 version in legacy FRAM
@@ -363,7 +367,8 @@ void AP_Baro::update(void)
     for (uint8_t i=0; i<_num_sensors; i++) {
         if (sensors[i].healthy) {
             // update altitude calculation
-            if (is_zero(sensors[i].ground_pressure)) {
+            float ground_pressure = sensors[i].ground_pressure;
+            if (is_zero(ground_pressure) || isnan(ground_pressure) || isinf(ground_pressure)) {
                 sensors[i].ground_pressure = sensors[i].pressure;
             }
             float altitude = get_altitude_difference(sensors[i].ground_pressure, sensors[i].pressure);

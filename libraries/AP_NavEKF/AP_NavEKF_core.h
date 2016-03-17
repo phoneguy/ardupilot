@@ -17,9 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#ifndef AP_NavEKF_core
-#define AP_NavEKF_core
+#pragma once
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_NavEKF/AP_NavEKF.h>
@@ -35,8 +33,7 @@
 #define OPT_MATHS
 #endif
 
-// #define MATH_CHECK_INDEXES 1
-// #define EKF_DISABLE_INTERRUPTS 1
+#define EKF_DISABLE_INTERRUPTS 0
 
 #include <AP_Math/vectorN.h>
 
@@ -58,7 +55,7 @@ public:
     friend class NavEKF;
     
     typedef float ftype;
-#if defined(MATH_CHECK_INDEXES) && (MATH_CHECK_INDEXES == 1)
+#if MATH_CHECK_INDEXES
     typedef VectorN<ftype,2> Vector2;
     typedef VectorN<ftype,3> Vector3;
     typedef VectorN<ftype,4> Vector4;
@@ -876,5 +873,3 @@ private:
     // vehicle specific initial gyro bias uncertainty
     float InitialGyroBiasUncertainty(void) const;
 };
-
-#endif // AP_NavEKF_core

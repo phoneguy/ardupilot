@@ -18,9 +18,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#ifndef AP_NavEKF2_Tuning
-#define AP_NavEKF2_Tuning
+#pragma once
 
 #include <AP_Math/AP_Math.h>
 #include <AP_Param/AP_Param.h>
@@ -311,7 +309,7 @@ private:
     AP_Int8 _gpsCheck;              // Bitmask controlling which preflight GPS checks are bypassed
     AP_Int8 _imuMask;               // Bitmask of IMUs to instantiate EKF2 for
     AP_Int16 _gpsCheckScaler;       // Percentage increase to be applied to GPS pre-flight accuracy and drift thresholds
-    AP_Float _noaidHorizVelNoise;   // horizontal velocity measurement noise assuned when synthesised zero velocity measurements are used to constrain attitude drift : m/s
+    AP_Float _noaidHorizNoise;      // horizontal position measurement noise assumed when synthesised zero position measurements are used to constrain attitude drift : m
 
     // Tuning parameters
     const float gpsNEVelVarAccScale;    // Scale factor applied to NE velocity measurement variance due to manoeuvre acceleration
@@ -341,5 +339,3 @@ private:
     const uint8_t gndGradientSigma;     // RMS terrain gradient percentage assumed by the terrain height estimation
     const uint8_t fusionTimeStep_ms;    // The minimum time interval between covariance predictions and measurement fusions in msec
 };
-
-#endif //AP_NavEKF2

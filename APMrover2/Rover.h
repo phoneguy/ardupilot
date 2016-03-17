@@ -16,9 +16,7 @@
 /* 
    main Rover class, containing all vehicle specific state
 */
-
-#ifndef _ROVER_H_
-#define _ROVER_H_
+#pragma once
 
 #define THISFIRMWARE "ArduRover v2.51-beta"
 #define FIRMWARE_VERSION 2,51,0,FIRMWARE_VERSION_TYPE_BETA
@@ -154,7 +152,7 @@ private:
 #endif
 
     // Arming/Disarming mangement class
-    AP_Arming arming {ahrs, barometer, compass, home_is_set};
+    AP_Arming arming {ahrs, barometer, compass, battery, home_is_set};
 
     AP_L1_Control L1_controller;
 
@@ -407,7 +405,6 @@ private:
     void send_pid_tuning(mavlink_channel_t chan);
     void send_rangefinder(mavlink_channel_t chan);
     void send_current_waypoint(mavlink_channel_t chan);
-    void send_statustext(mavlink_channel_t chan);
     bool telemetry_delayed(mavlink_channel_t chan);
     void gcs_send_message(enum ap_message id);
     void gcs_send_mission_item_reached_message(uint16_t mission_index);
@@ -565,5 +562,3 @@ extern Rover rover;
 
 using AP_HAL::millis;
 using AP_HAL::micros;
-
-#endif // _ROVER_H_
