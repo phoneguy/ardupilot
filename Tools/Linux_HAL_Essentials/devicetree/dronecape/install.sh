@@ -11,13 +11,16 @@ sudo apt-get update -y && sudo apt-get upgrade -y
 
 echo " Install software: "
 sudo apt-get install -y python python-dev
-sudo apt-get install -y cpufrequtils g++ gawk git make ti-pru-cgt-installer device-tree-compiler screen
-sleep 2
+sleep 1
+sudo apt-get install -y cpufrequtils g++ gawk git make
+sleep 1
+sudo apt-get install ti-pru-cgt-installer device-tree-compiler screen
+sleep 1
 
 echo "Install Mavlink and Droneapi:"
-sudo pip install mavproxy
+sudo pip install mavproxy droneapi dronekit
 sleep 1
-sudo pip install droneapi
+sudo pip install cherrypy
 sleep 1
 
 echo "Update Timezone:"
@@ -27,16 +30,16 @@ echo "Update /opt/scripts: "
 cd /opt/scripts && sudo git pull
 
 #echo "Install RT Kernel: "
-#sudo /opt/scripts/tools/update_kernel.sh --bone-rt-kernel --lts-4_1
+#sudo /opt/scripts/tools/update_kernel.sh --bone-rt-kernel --lts-4_4
 
 echo "Change to /home/debian/bin: "
 cd /home/debian/bin
 
-echo "copying file to /boot/dtbs/"$(uname -r)
-sudo cp am335x-boneblack-dronecape.dtb /boot/dtbs/$(uname -r)/
+#echo "copying file to /boot/dtbs/"$(uname -r)
+#sudo cp am335x-boneblack-dronecape.dtb /boot/dtbs/$(uname -r)/
 
-echo "Add DRONECAPE DTB to uEnv.txt: "
-sudo sed -i 's/#dtb=$/dtb=am335x-boneblack-dronecape.dtb/' /boot/uEnv.txt
+#echo "Add DRONECAPE DTB to uEnv.txt: "
+#sudo sed -i 's/#dtb=$/dtb=am335x-boneblack-dronecape.dtb/' /boot/uEnv.txt
 
 echo "Copying file to /lib/firmware"
 sudo cp BB-DRONECAPE-00A0.dtbo /lib/firmware/
