@@ -241,15 +241,6 @@ class zynq(linux):
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_ZYNQ',
         )
 
-class bbb(linux):
-    def configure_env(self, cfg, env):
-        super(bbb, self).configure_env(cfg, env)
-
-        env.TOOLCHAIN = 'arm-linux-gnueabihf'
-        env.DEFINES.update(
-            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BBB',
-        )
-
 class bbbmini(linux):
     toolchain = 'arm-linux-gnueabihf'
 
@@ -258,6 +249,16 @@ class bbbmini(linux):
 
         env.DEFINES.update(
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BBBMINI',
+        )
+
+class bbb(linux):
+    toolchain = 'arm-linux-gnueabihf'
+
+    def configure_env(self, cfg, env):
+        super(bbb, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BBB',
         )
 
 class pxf(linux):
