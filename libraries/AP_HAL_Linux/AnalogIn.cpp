@@ -14,11 +14,13 @@ float AnalogSource::read_average() {
 }
 
 float AnalogSource::voltage_average() {
-    return 5.0 * _v / 1024.0;
+//    return 5.0 * _v / 1024.0;
+    return 1.8 * _v / 4096;
 }
 
 float AnalogSource::voltage_latest() {
-    return 5.0 * _v / 1024.0;
+//    return 5.0 * _v / 1024.0;
+    return 1.8 * _v / 4096;
 }
 
 float AnalogSource::read_latest() {
