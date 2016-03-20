@@ -12,9 +12,9 @@ UPLOAD_TARGET=192.168.2.2
 UPLOAD_USER=lynne
 UPLOAD_DIR=/home/lynne/missionplanner/logs
 
-echo "copying /var/APM/logs to missionplanner/logs on " $UPLOAD_TARGET
-sudo scp /var/APM/logs/*.bin $UPLOAD_USER@$UPLOAD_TARGET:$UPLOAD_DIR
+echo "copying" $LOCAL_LOG_DIR " to " $UPLOAD_DIR
+sudo scp $LOCAL_LOG_DIR/*.bin $UPLOAD_USER@$UPLOAD_TARGET:$UPLOAD_DIR
 
 echo "deleting logs..."
-sudo rm -rf /var/APM/logs/*.*
+sudo rm -rf $LOCAL_LOG_DIR/*.*
 
