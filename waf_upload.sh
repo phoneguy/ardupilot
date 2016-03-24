@@ -35,10 +35,10 @@ echo "Update submodules and init new ones: "
 #git submodule update --recursive --init
 
 # clean, configure and build project
-$WAF distclean
-$WAF configure --board=$BUILD_TARGET
+#$WAF distclean
+#$WAF configure --board=$BUILD_TARGET
 #$WAF all -j4
-$WAF bin -j4
+#$WAF bin -j4
 #$WAF copter -j4
 #$WAF rover -j4
 
