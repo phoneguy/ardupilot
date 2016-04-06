@@ -15,9 +15,9 @@ UPLOAD_DIR=/home/debian/bin 	# /home/debian/bin
 # update git, create deploy dir, make and upload elfs and scripts
 rm -rf deploy
 mkdir deploy
-git pull diydrones master
-git submodule update --recursive --init
-make clean
+#git pull diydrones master
+#git submodule update --recursive --init
+#make clean
 make bbb -j4
 
 # copy to deploy dir
