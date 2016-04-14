@@ -33,7 +33,10 @@
 #ifdef CONFIG_ARCH_BOARD_PX4FMU_V1
 #define BOARD_PWM_COUNT_DEFAULT 2
 #define BOARD_SER1_RTSCTS_DEFAULT 0 // no flow control on UART5 on FMUv1
-#else
+#elif CONFIG_ARCH_BOARD_PX4FMU_V4
+#define BOARD_PWM_COUNT_DEFAULT 6
+#define BOARD_SER1_RTSCTS_DEFAULT 2
+#else // V2
 #define BOARD_PWM_COUNT_DEFAULT 4
 #define BOARD_SER1_RTSCTS_DEFAULT 2
 #endif
@@ -191,13 +194,15 @@ void AP_BoardConfig::init()
         if (ret != 0) {
             hal.console->printf("UAVCAN: failed to start servers\n");
         } else {
+            uint32_t start_wait_ms = AP_HAL::millis();
             fd = open("/dev/uavcan/esc", 0); // design flaw of uavcan driver, this should be /dev/uavcan/node one day
             if (fd == -1) {
                 AP_HAL::panic("Configuration invalid - unable to open /dev/uavcan/esc");
             }
 
             // delay startup, UAVCAN still discovering nodes
-            while (ioctl(fd, UAVCAN_IOCG_NODEID_INPROGRESS,0) == OK) {
+            while (ioctl(fd, UAVCAN_IOCG_NODEID_INPROGRESS,0) == OK &&
+                   AP_HAL::millis() - start_wait_ms < 7000) {
                 hal.scheduler->delay(500);
             }
             hal.console->printf("UAVCAN: node discovery complete\n");
