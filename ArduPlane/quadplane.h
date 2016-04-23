@@ -42,7 +42,7 @@ public:
         return available() && assisted_flight;
     }
     
-    bool handle_do_vtol_transition(const mavlink_command_long_t &packet);
+    bool handle_do_vtol_transition(enum MAV_VTOL_STATE state);
 
     bool do_vtol_takeoff(const AP_Mission::Mission_Command& cmd);
     bool do_vtol_land(const AP_Mission::Mission_Command& cmd);
@@ -59,6 +59,13 @@ public:
         return last_throttle * 0.1f;
     }
 
+    // return desired forward throttle percentage
+    int8_t forward_throttle_pct(void);        
+    float get_weathervane_yaw_rate_cds(void);
+
+    // see if we are flying from vtol point of view
+    bool is_flying_vtol(void);
+    
     struct PACKED log_QControl_Tuning {
         LOG_PACKET_HEADER;
         uint64_t time_us;
@@ -170,6 +177,20 @@ private:
     
     AP_Int8 enable;
     AP_Int8 transition_pitch_max;
+
+    struct {
+        AP_Float gain;
+        float integrator;
+        uint32_t lastt_ms;
+        int8_t last_pct;
+    } vel_forward;
+
+    struct {
+        AP_Float gain;
+        AP_Float min_roll;
+        uint32_t last_pilot_input_ms;
+        float last_output;
+    } weathervane;
     
     bool initialised;
     
@@ -213,6 +234,7 @@ private:
         int32_t yaw_cd;
         float speed_scale;
         Vector2f target_velocity;
+        float max_speed;
     } land;
 
     enum frame_class {
@@ -220,6 +242,7 @@ private:
         FRAME_CLASS_HEXA=1,
         FRAME_CLASS_OCTA=2,
         FRAME_CLASS_OCTAQUAD=3,
+        FRAME_CLASS_Y6=4,
     };
 
     struct {

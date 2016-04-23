@@ -426,7 +426,11 @@ void Plane::set_mode(enum FlightMode mode)
 
     case AUTO:
         auto_throttle_mode = true;
-        auto_state.vtol_mode = false;
+        if (quadplane.available() && quadplane.enable == 2) {
+            auto_state.vtol_mode = true;
+        } else {
+            auto_state.vtol_mode = false;
+        }
         next_WP_loc = prev_WP_loc = current_loc;
         // start or resume the mission, based on MIS_AUTORESET
         mission.start_or_resume();
@@ -632,10 +636,12 @@ void Plane::update_notify()
 
 void Plane::resetPerfData(void) 
 {
-    mainLoop_count                  = 0;
-    G_Dt_max                        = 0;
-    G_Dt_min                        = 0;
-    perf_mon_timer                  = millis();
+    perf.mainLoop_count = 0;
+    perf.G_Dt_max       = 0;
+    perf.G_Dt_min       = 0;
+    perf.num_long       = 0;
+    perf.start_ms       = millis();
+    perf.last_log_dropped = DataFlash.num_dropped();
 }
 
 
