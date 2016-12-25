@@ -775,6 +775,9 @@ AP_InertialSensor::detect_backends(void)
         hal.console->printf("MPU9250: External IMU not detected\n");
     }
 */
+
+    _add_backend(AP_InertialSensor_Invensense::probe(*this, hal.i2c_mgr->get_device(HAL_INS_MPU60x0_I2C_BUS, HAL_INS_MPU60x0_I2C_ADDR)));
+
 #elif HAL_INS_DEFAULT == HAL_INS_AERO
     auto *backend = AP_InertialSensor_BMI160::probe(*this,
                                                     hal.spi->get_device("bmi160"));
