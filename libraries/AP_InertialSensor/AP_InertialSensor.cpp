@@ -14,6 +14,7 @@
 #include "AP_InertialSensor_Backend.h"
 #include "AP_InertialSensor_HIL.h"
 #include "AP_InertialSensor_L3G4200D.h"
+#include "AP_InertialSensor_ITG3200BMA180.h"
 #include "AP_InertialSensor_LSM9DS0.h"
 #include "AP_InertialSensor_Invensense.h"
 #include "AP_InertialSensor_PX4.h"
@@ -783,6 +784,17 @@ AP_InertialSensor::detect_backends(void)
     } else {
         hal.console->printf("MPU6050: External IMU not detected\n");
     }
+
+/*
+    _add_backend(AP_InertialSensor_ITG3200BMA180::probe(*this, hal.i2c_mgr->get_device(HAL_INS_ITG3200_I2C_BUS, HAL_INS_ITG3200_I2C_ADDR),//));
+                                                        hal.i2c_mgr->get_device(HAL_INS_BMA180_I2C_BUS, HAL_INS_BMA180_I2C_ADDR)));
+    if (backend) {
+        _add_backend(backend);
+        hal.console->printf("ITG3200BMA180: External IMU detected\n");
+    } else {
+        hal.console->printf("ITG3200BMA180: External IMU not detected\n");
+    }
+*/
 
 #elif HAL_INS_DEFAULT == HAL_INS_AERO
     auto *backend = AP_InertialSensor_BMI160::probe(*this,
