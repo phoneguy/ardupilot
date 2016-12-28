@@ -761,13 +761,14 @@ AP_InertialSensor::detect_backends(void)
     _add_backend(AP_InertialSensor_QURT::detect(*this));
 #elif HAL_INS_DEFAULT == HAL_INS_BBBMINI
     AP_InertialSensor_Backend *backend = AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME));
+/*
     if (backend) {
         _add_backend(backend);
         hal.console->printf("MPU9250: Onboard IMU detected\n");
     } else {
         hal.console->printf("MPU9250: Onboard IMU not detected\n");
     }
-
+*/
 /*    backend = AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME_EXT));
     if (backend) {
         _add_backend(backend);
@@ -776,7 +777,7 @@ AP_InertialSensor::detect_backends(void)
         hal.console->printf("MPU9250: External IMU not detected\n");
     }
 */
-
+/*
     _add_backend(AP_InertialSensor_Invensense::probe(*this, hal.i2c_mgr->get_device(HAL_INS_MPU60x0_I2C_BUS, HAL_INS_MPU60x0_I2C_ADDR)));
     if (backend) {
         _add_backend(backend);
@@ -784,17 +785,17 @@ AP_InertialSensor::detect_backends(void)
     } else {
         hal.console->printf("MPU6050: External IMU not detected\n");
     }
+*/
 
-/*
-    _add_backend(AP_InertialSensor_ITG3200BMA180::probe(*this, hal.i2c_mgr->get_device(HAL_INS_ITG3200_I2C_BUS, HAL_INS_ITG3200_I2C_ADDR),//));
+    _add_backend(AP_InertialSensor_ITG3200BMA180::probe(*this, hal.i2c_mgr->get_device(HAL_INS_ITG3200_I2C_BUS, HAL_INS_ITG3200_I2C_ADDR),
                                                         hal.i2c_mgr->get_device(HAL_INS_BMA180_I2C_BUS, HAL_INS_BMA180_I2C_ADDR)));
     if (backend) {
         _add_backend(backend);
-        hal.console->printf("ITG3200BMA180: External IMU detected\n");
+        hal.console->printf("ITG3200-BMA180: External IMU detected\n");
     } else {
-        hal.console->printf("ITG3200BMA180: External IMU not detected\n");
+        hal.console->printf("ITG3200-BMA180: External IMU not detected\n");
     }
-*/
+
 
 #elif HAL_INS_DEFAULT == HAL_INS_AERO
     auto *backend = AP_InertialSensor_BMI160::probe(*this,
