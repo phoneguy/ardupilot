@@ -69,11 +69,10 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 
 // BMA180 accelerometer scaling
 // Result will be scaled to 1m/s/s
-// BMA180 in Full resolution mode (any g scaling) is 256 counts/g, so scale by 9.81/256 = 0.038320312
-//#define BMA180_ACCELEROMETER_SCALE_M_S    (GRAVITY_MSS / 256.0f)
 // BMA180 ACC scaling for 16g 1.98 mg/LSB 14 bit mode
 // Result will be scaled to 1m/s/s
-#define BMA180_ACCELEROMETER_SCALE_M_S  (GRAVITY_MSS / 256.0f); // 16g mode
+//#define BMA180_ACCELEROMETER_SCALE_M_S  (GRAVITY_MSS / 256.0f); // 16g mode
+#define BMA180_ACCELEROMETER_SCALE_M_S  (GRAVITY_MSS / 512.0f); // 16g mode
 
 /// Gyro ITG3205 register definitions
 #define ITG3200_I2C_ADDRESS        0x69
@@ -90,12 +89,12 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 // ITG3200 Gyroscope scaling
 // running at 2000 DPS full range, 16 bit signed data, datasheet
 // specifies 70 mdps per bit
-//#define ITG3200_GYRO_SCALE_R_S (DEG_TO_RAD * 70.0f * 0.001f)
+#define ITG3200_GYRO_SCALE_R_S (DEG_TO_RAD * 70.0f * 0.001f)
 
 // ITG3200 Gyroscope scaling
 // ITG3200 is 14.375 LSB degrees/sec with FS_SEL=3
 // Result wil be radians/sec
-#define ITG3200_GYRO_SCALE_R_S (1.0f / 14.375f) * (3.1415926f / 180.0f)
+//#define ITG3200_GYRO_SCALE_R_S (1.0f / 14.375f) * (3.1415926f / 180.0f)
 
 // constructor
 AP_InertialSensor_ITG3200BMA180::AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu,
@@ -133,7 +132,7 @@ AP_InertialSensor_Backend *AP_InertialSensor_ITG3200BMA180::probe(AP_InertialSen
 
 bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 {
-    if (!_devacc->get_semaphore()->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
+    if (!_devgyro->get_semaphore()->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
         return false;
     }
 
@@ -211,11 +210,12 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
  */
 void AP_InertialSensor_ITG3200BMA180::start(void)
 {
-    _accel_instance = _imu.register_accel(800, _devacc->get_bus_id_devtype(DEVTYPE_ACC_BMA180));
     _gyro_instance = _imu.register_gyro(800, _devgyro->get_bus_id_devtype(DEVTYPE_GYR_ITG3200));
+    _accel_instance = _imu.register_accel(800, _devacc->get_bus_id_devtype(DEVTYPE_ACC_BMA180));
 
     // start the timer process to read samples
-    _devacc->register_periodic_callback(1250, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate, bool));
+    _devgyro->register_periodic_callback(800, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_gyr, bool));
+    _devacc->register_periodic_callback(800, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_acc, bool));
 }
 
 /*
@@ -230,49 +230,45 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
 }
 
 // Accumulate values from accels and gyros
-bool AP_InertialSensor_ITG3200BMA180::_accumulate(void)
+bool AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
 {
     uint8_t buffer[6];
-    uint32_t now = AP_HAL::micros();
+    // IMU mounted Roll 180
+    _devgyro->read_registers(ITG3200_REG_GYRO_DATA, buffer, 6);
+        int16_t y =  ((int16_t)buffer[0] << 8 | buffer[1]); // chip X axis
+        int16_t x = -((int16_t)buffer[2] << 8 | buffer[3]); // chip Y axis
+        int16_t z =  ((int16_t)buffer[4] << 8 | buffer[5]); // chip Z axis
 
-    // This takes about 250us at 400kHz I2C speed
-    if ((now - _last_gyro_timestamp) >= raw_sample_interval_us
-        && _devgyro->read_registers(ITG3200_REG_GYRO_DATA, buffer, 6) == 0)
-    {
-        int16_t y = ((int16_t)buffer[0] << 8 | buffer[1]); // chip X axis
-        int16_t x = ((int16_t)buffer[2] << 8 | buffer[3]); // chip Y axis
-        int16_t z = ((int16_t)buffer[4] << 8 | buffer[5]); // chip Z axis
-
-        x = -x;
         Vector3f gyro = Vector3f(x, y, z);
-        // Adjust for chip scaling to get radians/sec
+
+// Adjust for chip scaling to get radians/sec
         gyro *= ITG3200_GYRO_SCALE_R_S;
         _rotate_and_correct_gyro(_gyro_instance, gyro);
         _notify_new_gyro_raw_sample(_gyro_instance, gyro);
-        _last_gyro_timestamp = now;
-    }
 
-    // This takes about 250us at 400kHz I2C speed
-    if ((now - _last_accel_timestamp) >= raw_sample_interval_us
-        && _devacc->read_registers(BMA180_REG_DATA, buffer, 6) == 0)
-    {
-        int16_t y = ((int16_t)buffer[1] << 8 | buffer[0]); // chip X axis
-        int16_t x = ((int16_t)buffer[3] << 8 | buffer[2]); // chip Y axis
-        int16_t z = ((int16_t)buffer[5] << 8 | buffer[4]); // chip Z axis
+    return true;
+}
+
+bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
+{
+    uint8_t buffer[6];
+    // IMU mounted Roll 180
+    _devacc->read_registers(BMA180_REG_DATA, buffer, 6);
+        int16_t y =  ((int16_t)buffer[1] << 8 | buffer[0]); // chip X axis
+        int16_t x = -((int16_t)buffer[3] << 8 | buffer[2]); // chip Y axis
+        int16_t z =  ((int16_t)buffer[5] << 8 | buffer[4]); // chip Z axis
 
 	// drop 2 bits for 14 bit sample mode
         y = (y / 4);
         x = (x / 4);
         z = (z / 4);
-        x = -x;
 
         Vector3f accel = Vector3f(x,y,z);
+
         // Adjust for chip scaling to get m/s/s
         accel *= BMA180_ACCELEROMETER_SCALE_M_S;
         _rotate_and_correct_accel(_accel_instance, accel);
         _notify_new_accel_raw_sample(_accel_instance, accel);
-        _last_accel_timestamp = now;
-    }
 
     return true;
 }

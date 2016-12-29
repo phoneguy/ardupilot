@@ -14,14 +14,14 @@ class AP_InertialSensor_ITG3200BMA180 : public AP_InertialSensor_Backend
 {
 public:
     AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu,
-                               AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc,
-                               AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro);
+                               AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro,
+                               AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc);
     virtual ~AP_InertialSensor_ITG3200BMA180();
 
     // probe the sensors on I2C bus
     static AP_InertialSensor_Backend *probe(AP_InertialSensor &imu,
-                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc,
-                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro);
+                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro,
+                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc);
 
     /* update accel and gyro state */
     bool update() override;
@@ -30,16 +30,15 @@ public:
 
 private:
     bool _init_sensor();
-    bool _accumulate();
+    bool _accumulate_gyr();
+    bool _accumulate_acc();
 
-    AP_HAL::OwnPtr<AP_HAL::I2CDevice> _devacc;
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _devgyro;
+    AP_HAL::OwnPtr<AP_HAL::I2CDevice> _devacc;
 
     // gyro and accel instances
     uint8_t _gyro_instance;
     uint8_t _accel_instance;
 
-    uint32_t _last_gyro_timestamp;
-    uint32_t _last_accel_timestamp;
 };
 #endif
