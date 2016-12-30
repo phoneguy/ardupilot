@@ -4,9 +4,6 @@
 #if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
 
 #include <AP_HAL/I2CDevice.h>
-//#include <Filter/Filter.h>
-//#include <Filter/LowPassFilter2p.h>
-
 #include "AP_InertialSensor.h"
 #include "AP_InertialSensor_Backend.h"
 
@@ -18,12 +15,12 @@ public:
                                AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc);
     virtual ~AP_InertialSensor_ITG3200BMA180();
 
-    // probe the sensors on I2C bus
+    // Probe the sensors on I2C bus
     static AP_InertialSensor_Backend *probe(AP_InertialSensor &imu,
                                             AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro,
                                             AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc);
 
-    /* update accel and gyro state */
+    // Update accel and gyro state
     bool update() override;
 
     void start(void) override;
@@ -36,7 +33,7 @@ private:
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _devgyro;
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _devacc;
 
-    // gyro and accel instances
+    // Gyro and accel instances
     uint8_t _gyro_instance;
     uint8_t _accel_instance;
 
