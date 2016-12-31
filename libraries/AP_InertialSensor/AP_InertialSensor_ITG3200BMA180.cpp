@@ -128,7 +128,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     // Reset sensor
     _devacc->write_register(BMA180_REG_RESET, 0xb6);
-    hal.scheduler->delay(5);
+    hal.scheduler->delay(10);
 
     _devacc->read_registers(BMA180_REG_CHIP_ID, &data, 1);
     if (data != BMA180_REG_CHIPID) {
@@ -171,7 +171,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.console->printf("ITG3200: Sensor detected\n");
 
     _devgyro->write_register(ITG3200_REG_PWR_MGM, 0x00);
-    hal.scheduler->delay(1);
+    hal.scheduler->delay(10);
 
     // Sample rate divider: with 8kHz internal clock (see ITG3200_GYRO_DLPF_FS),
     // get 500Hz sample rate, 2 samples
