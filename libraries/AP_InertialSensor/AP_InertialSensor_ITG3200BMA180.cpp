@@ -125,8 +125,8 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     uint8_t data;
 
     // Reset sensor
-    _devacc->write_register(BMA180_REG_RESET, 0xb6);
-    hal.scheduler->delay(10);
+    _devacc->write_register(BMA180_REG_RESET, 0xb6); // Reset chip
+    hal.scheduler->delay(10); // Datasheet says 10ms for next eeprom write
 
     _devacc->read_registers(BMA180_REG_CHIP_ID, &data, 1);
     if (data != BMA180_REG_CHIPID) {
@@ -135,31 +135,31 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     hal.console->printf("BMA180: Sensor detected\n");
 
     _devacc->write_register(BMA180_REG_PWR, 1<<4);      // Enable writing to eeprom
+    hal.scheduler->delay(10);
 
-    hal.scheduler->delay(5);
-
-    _devacc->read_registers(BMA180_REG_BW, &control, 1);
+    _devacc->read_registers(BMA180_REG_BW, &control, 1);// Read eeprom
     control = control & 0x0F;                           // Save tcs register
     control = control | (BMA180_BW_600 << 4);           // Set low pass filter to
-    _devacc->write_register(BMA180_REG_BW, control);
 
-    hal.scheduler->delay(5);
+    _devacc->write_register(BMA180_REG_BW, control);    // Write data to eeprom
+    hal.scheduler->delay(10);
 
     _devacc->read_registers(BMA180_REG_TCO_Z, &control, 1);
     control = control & 0xFC;                           // Save tco_z register
     control = control | 0x00;                           // Set mode_config to 0
-    _devacc->write_register(BMA180_REG_TCO_Z, control);
 
-    hal.scheduler->delay(5);
+    _devacc->write_register(BMA180_REG_TCO_Z, control);
+    hal.scheduler->delay(10);
 
     _devacc->read_registers(BMA180_REG_RANGE, &control, 1);
     control = control & 0xF1;                           // Save offset_x and smp_skip register
     control = control | (BMA180_RANGE_16G << 1);        // Set range to
-    _devacc->write_register(BMA180_REG_RANGE, control);
 
-    hal.scheduler->delay(5);
+    _devacc->write_register(BMA180_REG_RANGE, control);
+    hal.scheduler->delay(10);
 
     _devacc->write_register(BMA180_REG_PWR, 0 << 4);    // Disable writing to eeprom
+    hal.scheduler->delay(10);
 
     // Init the gyro
     _devgyro->read_registers(ITG3200_REG_WHO_AM_I, &data, 1);
