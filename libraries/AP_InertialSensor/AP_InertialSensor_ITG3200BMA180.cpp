@@ -203,7 +203,6 @@ void AP_InertialSensor_ITG3200BMA180::start(void)
     _devacc->register_periodic_callback(raw_sample_interval_us, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_acc, bool));
 }
 
-
 // Copy filtered data to the frontend
 bool AP_InertialSensor_ITG3200BMA180::update(void)
 {
@@ -219,11 +218,14 @@ bool AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
     uint8_t buffer[6];
     // IMU mounted Roll 180
     _devgyro->read_registers(ITG3200_REG_GYRO_DATA, buffer, 6);
-        int16_t y =  ((int16_t)buffer[0] << 8 | buffer[1]); // Chip X axis
-        int16_t x = -((int16_t)buffer[2] << 8 | buffer[3]); // Chip Y axis
+        int16_t x =  ((int16_t)buffer[0] << 8 | buffer[1]); // Chip X axis
+        int16_t y =  ((int16_t)buffer[2] << 8 | buffer[3]); // Chip Y axis
         int16_t z =  ((int16_t)buffer[4] << 8 | buffer[5]); // Chip Z axis
 
         Vector3f gyro = Vector3f(x, y, z);
+
+        //gyro.rotate(ROTATION_ROLL_180_YAW_270);
+        gyro.rotate(ROTATION_YAW_90);
 
     // Adjust for chip scaling to get radians/sec
     gyro *= ITG3200_GYRO_SCALE_R_S;
@@ -238,8 +240,8 @@ bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
     uint8_t buffer[6];
     // IMU mounted Roll 180
     _devacc->read_registers(BMA180_REG_DATA, buffer, 6);
-        int16_t y =  ((int16_t)buffer[1] << 8 | buffer[0]); // Chip X axis
-        int16_t x = -((int16_t)buffer[3] << 8 | buffer[2]); // Chip Y axis
+        int16_t x =  ((int16_t)buffer[1] << 8 | buffer[0]); // Chip X axis
+        int16_t y =  ((int16_t)buffer[3] << 8 | buffer[2]); // Chip Y axis
         int16_t z =  ((int16_t)buffer[5] << 8 | buffer[4]); // Chip Z axis
 
 	// Drop 2 bits for 14 bit sample mode
@@ -248,6 +250,9 @@ bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
         z = (z / 4);
 
         Vector3f accel = Vector3f(x,y,z);
+
+        //accel.rotate(ROTATION_ROLL_180_YAW_270);
+        accel.rotate(ROTATION_YAW_90);
 
     // Adjust for chip scaling to get m/s/s
     accel *= BMA180_ACCELEROMETER_SCALE_M_S;
