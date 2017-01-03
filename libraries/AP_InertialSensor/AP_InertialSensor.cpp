@@ -778,8 +778,8 @@ AP_InertialSensor::detect_backends(void)
 //                                                               hal.i2c_mgr->get_device(HAL_INS_BMA180_I2C_BUS, HAL_INS_BMA180_I2C_ADDR)));
     _add_backend(AP_InertialSensor_ITG3200BMA180::probe(*this, hal.i2c_mgr->get_device(HAL_INS_ITG3200_I2C_BUS, HAL_INS_ITG3200_I2C_ADDR),
 							       hal.i2c_mgr->get_device(HAL_INS_BMA180_I2C_BUS, HAL_INS_BMA180_I2C_ADDR),
-                                                                                       HAL_INS_DEFAULT_ROTATION,
-                                                                                       HAL_INS_DEFAULT_ROTATION));
+                                                                                       HAL_INS_ITG3200_ROTATION,
+                                                                                       HAL_INS_BMA180_ROTATION));
 //
 #elif HAL_INS_DEFAULT == HAL_INS_AERO
     auto *backend = AP_InertialSensor_BMI160::probe(*this,
