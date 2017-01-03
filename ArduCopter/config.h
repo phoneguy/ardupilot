@@ -642,7 +642,7 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-// Fence, Rally and Terrain defaults
+// Fence, Rally and Terrain and AC_Avoidance defaults
 //
 
 // Enable/disable Fence
@@ -656,9 +656,21 @@
 
 #ifndef AC_TERRAIN
  #define AC_TERRAIN ENABLED
- #if !AC_RALLY
-  #error Terrain relies on Rally which is disabled
- #endif
+#endif
+
+#if AC_TERRAIN && !AC_RALLY
+ #error Terrain relies on Rally which is disabled
+#endif
+
+#ifndef AC_AVOID_ENABLED
+ #define AC_AVOID_ENABLED   ENABLED
+#endif
+
+#if AC_AVOID_ENABLED && !PROXIMITY_ENABLED
+  #error AC_Avoidance relies on PROXIMITY_ENABLED which is disabled
+#endif
+#if AC_AVOID_ENABLED && !AC_FENCE
+  #error AC_Avoidance relies on AC_FENCE which is disabled
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
