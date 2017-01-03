@@ -10,25 +10,30 @@
 class AP_InertialSensor_ITG3200BMA180 : public AP_InertialSensor_Backend
 {
 public:
-    AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu,
-                               AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro,
-                               AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc);
     virtual ~AP_InertialSensor_ITG3200BMA180();
-
-    // Probe the sensors on I2C bus
-    static AP_InertialSensor_Backend *probe(AP_InertialSensor &imu,
-                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro,
-                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc);
-
     // Update accel and gyro state
+    void start(void) override;
     bool update() override;
 
-    void start(void) override;
+    static AP_InertialSensor_Backend *probe(AP_InertialSensor &imu,
+		                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro,
+                		            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc,
+                               		    enum Rotation rotation_g = ROTATION_NONE,
+                                            enum Rotation rotation_a = ROTATION_NONE);
 
 private:
+    // Probe the sensors on I2C bus
+    AP_InertialSensor_ITG3200BMA180(AP_InertialSensor &imu,
+                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devgyro,
+                                            AP_HAL::OwnPtr<AP_HAL::I2CDevice> devacc,
+                                            enum Rotation rotation_g,
+                                            enum Rotation rotation_a);
     bool _init_sensor();
     bool _accumulate_gyr();
     bool _accumulate_acc();
+
+    enum Rotation _rotation_g;
+    enum Rotation _rotation_a;
 
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _devgyro;
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _devacc;
@@ -36,6 +41,5 @@ private:
     // Gyro and accel instances
     uint8_t _gyro_instance;
     uint8_t _accel_instance;
-
 };
 #endif
