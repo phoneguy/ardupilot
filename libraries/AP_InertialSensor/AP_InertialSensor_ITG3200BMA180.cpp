@@ -67,13 +67,13 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
 #define BMA180_ACCELEROMETER_SCALE_M_S  (16 * GRAVITY_MSS) / 8192.0f; // 16g mode
 
 /// Gyro ITG3200 register definitions
-#define ITG3200_I2C_ADDRESS    0x69
-#define ITG3200_REG_WHO_AM_I   0x00
-#define ITG3200_REG_XOUT_H     0x1d
-#define ITG3200_REG_PWR_MGM    0x3e
-#define ITG3200_REG_SMPLRT_DIV 0x15
-#define ITG3200_REG_DLPF_FS    0x16
-#define ITG3200_REG_INT_CFG    0x17
+#define ITG3200_I2C_ADDRESS         0x69
+#define ITG3200_REG_WHO_AM_I        0x00
+#define ITG3200_REG_GYRO_XOUT_H     0x1d
+#define ITG3200_REG_PWR_MGM         0x3e
+#define ITG3200_REG_SMPLRT_DIV      0x15
+#define ITG3200_REG_DLPF_FS         0x16
+#define ITG3200_REG_INT_CFG         0x17
 
 // ITG3200 Gyroscope scaling
 // running at 2000 DPS full range, 16 bit signed data
@@ -145,7 +145,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 
     _devacc->read_registers(BMA180_REG_BW, &control, 1);// Read eeprom
     control = control & 0x0F;                           // Save tcs register
-    control = control | (BMA180_BW_600 << 4);           // Set low pass filter to
+    control = control | (BMA180_BW_20 << 4);           // Set low pass filter to
     _devacc->write_register(BMA180_REG_BW, control);    // Write data to eeprom
     hal.scheduler->delay(5);
 
@@ -170,22 +170,17 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
     }
     hal.console->printf("ITG3200: Sensor detected\n");
 
-    _devgyro->write_register(ITG3200_REG_PWR_MGM, 0x00);
+    // Hard reset gyro
+    _devgyro->write_register(ITG3200_REG_PWR_MGM, 0x80);
     hal.scheduler->delay(10);
 
-    // Sample rate divider: with 8kHz internal clock (see ITG3200_GYRO_DLPF_FS),
-    // get 500Hz sample rate, 2 samples
-    _devgyro->write_register(ITG3200_REG_SMPLRT_DIV, 0x0f);
-    hal.scheduler->delay(1);
-
     // 2000 degrees/sec, 256Hz LPF, 8kHz internal sample rate
-    // This is the least amount of filtering we can configure for this device
     _devgyro->write_register(ITG3200_REG_DLPF_FS, 0x18);
-    hal.scheduler->delay(1);
+    hal.scheduler->delay(5);
 
-    // No interrupts
-    _devgyro->write_register(ITG3200_REG_INT_CFG, 0x00);
-    hal.scheduler->delay(1);
+    // Clock select z gyro axis
+    _devgyro->write_register(ITG3200_REG_PWR_MGM, 0x03);
+    hal.scheduler->delay(100);
 
     _devacc->get_semaphore()->give();
 
@@ -195,7 +190,7 @@ bool AP_InertialSensor_ITG3200BMA180::_init_sensor(void)
 // Startup the sensors
 void AP_InertialSensor_ITG3200BMA180::start(void)
 {
-    _gyro_instance = _imu.register_gyro(raw_sample_rate_hz, _devgyro->get_bus_id_devtype(DEVTYPE_GYR_ITG3200));
+    _gyro_instance = _imu.register_gyro(raw_sample_rate_hz,  _devgyro->get_bus_id_devtype(DEVTYPE_GYR_ITG3200));
     _accel_instance = _imu.register_accel(raw_sample_rate_hz, _devacc->get_bus_id_devtype(DEVTYPE_ACC_BMA180));
 
     // Set rotation orientation
@@ -204,7 +199,7 @@ void AP_InertialSensor_ITG3200BMA180::start(void)
 
     // Start the timer process to read samples
     _devgyro->register_periodic_callback(raw_sample_interval_us, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_gyr, bool));
-    _devacc->register_periodic_callback(raw_sample_interval_us, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_acc, bool));
+    _devacc->register_periodic_callback(raw_sample_interval_us,  FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_acc, bool));
 }
 
 // Copy filtered data to the frontend
@@ -219,17 +214,18 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
 // Accumulate values from accels and gyros
 bool AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
 {
-    uint8_t buffer[6];
+    uint8_t gyr_buf[6];
 
-    _devgyro->read_registers(ITG3200_REG_XOUT_H, buffer, 6);
-        int16_t x = ((int16_t)buffer[0] << 8 | buffer[1]);
-        int16_t y = ((int16_t)buffer[2] << 8 | buffer[3]);
-        int16_t z = ((int16_t)buffer[4] << 8 | buffer[5]);
+    _devgyro->read_registers(ITG3200_REG_GYRO_XOUT_H, gyr_buf, 6);
+        int16_t x = ((int16_t)gyr_buf[0] << 8 | gyr_buf[1]);
+        int16_t y = ((int16_t)gyr_buf[2] << 8 | gyr_buf[3]);
+        int16_t z = ((int16_t)gyr_buf[4] << 8 | gyr_buf[5]);
 
     Vector3f gyro = Vector3f(x, y, z);
 
     // Adjust for chip scaling to get radians/sec
     gyro *= ITG3200_GYRO_SCALE_R_S;
+
     _rotate_and_correct_gyro(_gyro_instance, gyro);
     _notify_new_gyro_raw_sample(_gyro_instance, gyro);
 
@@ -238,12 +234,12 @@ bool AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
 
 bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
 {
-    uint8_t buffer[6];
+    uint8_t acc_buf[6];
 
-    _devacc->read_registers(BMA180_REG_LSB_OUT, buffer, 6);
-        int16_t x = ((int16_t)buffer[1] << 8 | buffer[0]);
-        int16_t y = ((int16_t)buffer[3] << 8 | buffer[2]);
-        int16_t z = ((int16_t)buffer[5] << 8 | buffer[4]);
+    _devacc->read_registers(BMA180_REG_LSB_OUT, acc_buf, 6);
+        int16_t x = ((int16_t)acc_buf[1] << 8 | acc_buf[0]);
+        int16_t y = ((int16_t)acc_buf[3] << 8 | acc_buf[2]);
+        int16_t z = ((int16_t)acc_buf[5] << 8 | acc_buf[4]);
 
     // Drop 2 bits for 14 bit sample mode
     x = (x / 4);
@@ -254,6 +250,7 @@ bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
 
     // Adjust for chip scaling to get m/s/s
     accel *= BMA180_ACCELEROMETER_SCALE_M_S;
+
     _rotate_and_correct_accel(_accel_instance, accel);
     _notify_new_accel_raw_sample(_accel_instance, accel);
 
