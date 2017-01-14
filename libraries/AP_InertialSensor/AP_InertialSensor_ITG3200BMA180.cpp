@@ -198,8 +198,8 @@ void AP_InertialSensor_ITG3200BMA180::start(void)
     set_accel_orientation(_accel_instance, _rotation_a);
 
     // Start the timer process to read samples
-    _devgyro->register_periodic_callback(raw_sample_interval_us, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_gyr, bool));
-    _devacc->register_periodic_callback(raw_sample_interval_us,  FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_acc, bool));
+    _devgyro->register_periodic_callback(raw_sample_interval_us, FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_gyr, void));
+    _devacc->register_periodic_callback(raw_sample_interval_us,  FUNCTOR_BIND_MEMBER(&AP_InertialSensor_ITG3200BMA180::_accumulate_acc, void));
 }
 
 // Copy filtered data to the frontend
@@ -212,7 +212,8 @@ bool AP_InertialSensor_ITG3200BMA180::update(void)
 }
 
 // Accumulate values from accels and gyros
-bool AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
+//bool AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
+void AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
 {
     uint8_t gyr_buf[6];
 
@@ -228,11 +229,10 @@ bool AP_InertialSensor_ITG3200BMA180::_accumulate_gyr(void)
 
     _rotate_and_correct_gyro(_gyro_instance, gyro);
     _notify_new_gyro_raw_sample(_gyro_instance, gyro);
-
-    return true;
 }
 
-bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
+//bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
+void AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
 {
     uint8_t acc_buf[6];
 
@@ -253,8 +253,6 @@ bool AP_InertialSensor_ITG3200BMA180::_accumulate_acc(void)
 
     _rotate_and_correct_accel(_accel_instance, accel);
     _notify_new_accel_raw_sample(_accel_instance, accel);
-
-    return true;
 }
 
 #endif

@@ -29,8 +29,8 @@ private:
                                             enum Rotation rotation_g,
                                             enum Rotation rotation_a);
     bool _init_sensor();
-    bool _accumulate_gyr();
-    bool _accumulate_acc();
+    void _accumulate_gyr();
+    void _accumulate_acc();
 
     enum Rotation _rotation_g;
     enum Rotation _rotation_a;
