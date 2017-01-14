@@ -11,7 +11,7 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
 
     // @Group: M_
     // @Path: ../libraries/AP_Motors/AP_MotorsMulticopter.cpp
-    AP_SUBGROUPPTR(motors, "M_", 2, QuadPlane, AP_MOTORS_CLASS),
+    AP_SUBGROUPPTR(motors, "M_", 2, QuadPlane, AP_MotorsMulticopter),
 
     // 3 ~ 8 were used by quadplane attitude control PIDs
 
@@ -354,7 +354,7 @@ QuadPlane::QuadPlane(AP_AHRS_NavEKF &_ahrs) :
 void QuadPlane::setup_default_channels(uint8_t num_motors)
 {
     for (uint8_t i=0; i<num_motors; i++) {
-        RC_Channel_aux::set_aux_channel_default((RC_Channel_aux::Aux_servo_function_t)(RC_Channel_aux::k_motor1+i), CH_5+i);
+        SRV_Channels::set_aux_channel_default((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_motor1+i), CH_5+i);
     }
 }
     
@@ -369,7 +369,8 @@ bool QuadPlane::setup(void)
     }
     float loop_delta_t = 1.0 / plane.scheduler.get_loop_rate_hz();
 
-#if FRAME_CONFIG != TRI_FRAME
+    enum AP_Motors::motor_frame_class motor_class;
+    
     /*
       cope with upgrade from old AP_Motors values for frame_class
      */
@@ -397,7 +398,6 @@ bool QuadPlane::setup(void)
         }
         frame_class.set_and_save(new_value);
     }
-#endif
     
     if (hal.util->available_memory() <
         4096 + sizeof(*motors) + sizeof(*attitude_control) + sizeof(*pos_control) + sizeof(*wp_nav)) {
@@ -405,20 +405,13 @@ bool QuadPlane::setup(void)
         goto failed;
     }
 
-#if FRAME_CONFIG == TRI_FRAME
-    RC_Channel_aux::set_aux_channel_default(RC_Channel_aux::k_motor1, CH_5);
-    RC_Channel_aux::set_aux_channel_default(RC_Channel_aux::k_motor2, CH_6);
-    RC_Channel_aux::set_aux_channel_default(RC_Channel_aux::k_motor4, CH_8);
-    RC_Channel_aux::set_aux_channel_default(RC_Channel_aux::k_motor7, CH_11);
-    frame_class.set(AP_Motors::MOTOR_FRAME_TRI);
-    motors = new AP_MOTORS_CLASS(plane.scheduler.get_loop_rate_hz());
-#else
     /*
       dynamically allocate the key objects for quadplane. This ensures
       that the objects don't affect the vehicle unless enabled and
       also saves memory when not in use
      */
-    switch ((enum AP_Motors::motor_frame_class)frame_class.get()) {
+    motor_class = (enum AP_Motors::motor_frame_class)frame_class.get();
+    switch (motor_class) {
     case AP_Motors::MOTOR_FRAME_QUAD:
         setup_default_channels(4);
         break;
@@ -432,12 +425,21 @@ bool QuadPlane::setup(void)
     case AP_Motors::MOTOR_FRAME_Y6:
         setup_default_channels(7);
         break;
+    case AP_Motors::MOTOR_FRAME_TRI:
+        SRV_Channels::set_default_function(CH_5, SRV_Channel::k_motor1);
+        SRV_Channels::set_default_function(CH_6, SRV_Channel::k_motor2);
+        SRV_Channels::set_default_function(CH_8, SRV_Channel::k_motor4);
+        SRV_Channels::set_default_function(CH_11, SRV_Channel::k_motor7);
+        break;
     default:
         hal.console->printf("Unknown frame class %u\n", (unsigned)frame_class.get());
         goto failed;
     }
-    motors = new AP_MotorsMatrix(plane.scheduler.get_loop_rate_hz());
-#endif // AP_MOTORS_CLASS
+    if (motor_class == AP_Motors::MOTOR_FRAME_TRI) {
+        motors = new AP_MotorsTri(plane.scheduler.get_loop_rate_hz());
+    } else {
+        motors = new AP_MotorsMatrix(plane.scheduler.get_loop_rate_hz());
+    }
     const static char *strUnableToAllocate = "Unable to allocate";
     if (!motors) {
         hal.console->printf("%s motors\n", strUnableToAllocate);
@@ -477,12 +479,9 @@ bool QuadPlane::setup(void)
     // setup the trim of any motors used by AP_Motors so px4io
     // failsafe will disable motors
     for (uint8_t i=0; i<8; i++) {
-        RC_Channel_aux::Aux_servo_function_t func = (RC_Channel_aux::Aux_servo_function_t)(RC_Channel_aux::k_motor1+i);
-        RC_Channel_aux::set_servo_failsafe_pwm(func, thr_min_pwm);
-        uint8_t chan;
-        if (RC_Channel_aux::find_channel(func, chan)) {
-            RC_Channel::rc_channel(chan)->set_radio_trim(thr_min_pwm);
-        }
+        SRV_Channel::Aux_servo_function_t func = (SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_motor1+i);
+        SRV_Channels::set_failsafe_pwm(func, thr_min_pwm);
+        SRV_Channels::set_trim_to_pwm_for(func, thr_min_pwm);
     }
 
 #if HAVE_PX4_MIXER

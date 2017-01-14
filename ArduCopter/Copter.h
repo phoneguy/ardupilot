@@ -326,21 +326,13 @@ private:
     } sensor_health;
 
     // Motor Output
-#if FRAME_CONFIG == QUAD_FRAME || FRAME_CONFIG == HEXA_FRAME || FRAME_CONFIG == Y6_FRAME || FRAME_CONFIG == OCTA_FRAME || FRAME_CONFIG == OCTA_QUAD_FRAME
- #define MOTOR_CLASS AP_MotorsMatrix
-#elif FRAME_CONFIG == TRI_FRAME
- #define MOTOR_CLASS AP_MotorsTri
-#elif FRAME_CONFIG == HELI_FRAME
+#if FRAME_CONFIG == HELI_FRAME
  #define MOTOR_CLASS AP_MotorsHeli_Single
-#elif FRAME_CONFIG == SINGLE_FRAME
- #define MOTOR_CLASS AP_MotorsSingle
-#elif FRAME_CONFIG == COAX_FRAME
- #define MOTOR_CLASS AP_MotorsCoax
 #else
- #error Unrecognised frame type
+ #define MOTOR_CLASS AP_MotorsMulticopter
 #endif
 
-    MOTOR_CLASS motors;
+    MOTOR_CLASS *motors;
 
     // GPS variables
     // Sometimes we need to remove the scaling for distance calcs
@@ -491,14 +483,10 @@ private:
 
     // Attitude, Position and Waypoint navigation objects
     // To-Do: move inertial nav up or other navigation variables down here
-#if FRAME_CONFIG == HELI_FRAME
-    AC_AttitudeControl_Heli attitude_control;
-#else
-    AC_AttitudeControl_Multi attitude_control;
-#endif
-    AC_PosControl pos_control;
-    AC_WPNav wp_nav;
-    AC_Circle circle_nav;
+    AC_AttitudeControl *attitude_control;
+    AC_PosControl *pos_control;
+    AC_WPNav *wp_nav;
+    AC_Circle *circle_nav;
 
     // Performance monitoring
     int16_t pmTest1;
@@ -620,6 +608,9 @@ private:
         float takeoff_alt_cm;
     } gndeffect_state;
 
+    // set when we are upgrading parameters from 3.4
+    bool upgrading_frame_params;
+    
     static const AP_Scheduler::Task scheduler_tasks[];
     static const AP_Param::Info var_info[];
     static const struct LogStructure log_structure[];
@@ -688,13 +679,12 @@ private:
     void gcs_send_deferred(void);
     void send_heartbeat(mavlink_channel_t chan);
     void send_attitude(mavlink_channel_t chan);
-    void send_limits_status(mavlink_channel_t chan);
+    void send_fence_status(mavlink_channel_t chan);
     void send_extended_status1(mavlink_channel_t chan);
     void send_location(mavlink_channel_t chan);
     void send_nav_controller_output(mavlink_channel_t chan);
     void send_simstate(mavlink_channel_t chan);
     void send_hwstatus(mavlink_channel_t chan);
-    void send_servo_out(mavlink_channel_t chan);
     void send_vfr_hud(mavlink_channel_t chan);
     void send_current_waypoint(mavlink_channel_t chan);
     void send_rangefinder(mavlink_channel_t chan);
@@ -1069,7 +1059,7 @@ private:
     bool check_if_auxsw_mode_used(uint8_t auxsw_mode_check);
     bool check_duplicate_auxsw(void);
     void reset_control_switch();
-    uint8_t read_3pos_switch(int16_t radio_in);
+    uint8_t read_3pos_switch(uint8_t chan);
     void read_aux_switches();
     void init_aux_switches();
     void init_aux_switch_function(int8_t ch_option, uint8_t ch_flag);
@@ -1086,6 +1076,7 @@ private:
     void check_usb_mux(void);
     bool should_log(uint32_t mask);
     void set_default_frame_class();
+    void allocate_motors(void);
     uint8_t get_frame_mav_type();
     const char* get_frame_string();
     bool current_mode_has_user_takeoff(bool must_navigate);

@@ -24,6 +24,7 @@
 #define ASCALAR(v, name, def) { copter.aparm.v.vtype, name, Parameters::k_param_ ## v, (const void *)&copter.aparm.v, {def_value : def} }
 #define GGROUP(v, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## v, &copter.g.v, {group_info : class::var_info} }
 #define GOBJECT(v, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## v, (const void *)&copter.v, {group_info : class::var_info} }
+#define GOBJECTPTR(v, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## v, (const void *)&copter.v, {group_info : class::var_info}, AP_PARAM_FLAG_POINTER }
 #define GOBJECTN(v, pname, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## pname, (const void *)&copter.v, {group_info : class::var_info} }
 
 const AP_Param::Info Copter::var_info[] = {
@@ -513,56 +514,6 @@ const AP_Param::Info Copter::var_info[] = {
     // @User: Advanced
     GSCALAR(fs_crash_check, "FS_CRASH_CHECK",    1),
 
-    // RC channel
-    //-----------
-    // @Group: RC1_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
-    GGROUP(rc_1,    "RC1_", RC_Channel),
-    // @Group: RC2_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
-    GGROUP(rc_2,    "RC2_", RC_Channel),
-    // @Group: RC3_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
-    GGROUP(rc_3,    "RC3_", RC_Channel),
-    // @Group: RC4_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
-    GGROUP(rc_4,    "RC4_", RC_Channel),
-    // @Group: RC5_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_5,    "RC5_", RC_Channel_aux),
-    // @Group: RC6_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_6,    "RC6_", RC_Channel_aux),
-    // @Group: RC7_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_7,    "RC7_", RC_Channel_aux),
-    // @Group: RC8_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_8,    "RC8_", RC_Channel_aux),
-
-    // @Group: RC9_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_9,                    "RC9_", RC_Channel_aux),
-
-    // @Group: RC10_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_10,                    "RC10_", RC_Channel_aux),
-    // @Group: RC11_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_11,                    "RC11_", RC_Channel_aux),
-
-    // @Group: RC12_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_12,                   "RC12_", RC_Channel_aux),
-
-    // @Group: RC13_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_13,                   "RC13_", RC_Channel_aux),
-
-    // @Group: RC14_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp,../libraries/RC_Channel/RC_Channel_aux.cpp
-    GGROUP(rc_14,                   "RC14_", RC_Channel_aux),
-
     // @Param: RC_SPEED
     // @DisplayName: ESC Update Speed
     // @Description: This is the speed in Hertz that your ESCs will receive updates
@@ -733,23 +684,23 @@ const AP_Param::Info Copter::var_info[] = {
 
     // @Group: WPNAV_
     // @Path: ../libraries/AC_WPNav/AC_WPNav.cpp
-    GOBJECT(wp_nav, "WPNAV_",       AC_WPNav),
+    GOBJECTPTR(wp_nav, "WPNAV_",       AC_WPNav),
 
     // @Group: CIRCLE_
     // @Path: ../libraries/AC_WPNav/AC_Circle.cpp
-    GOBJECT(circle_nav, "CIRCLE_",  AC_Circle),
+    GOBJECTPTR(circle_nav, "CIRCLE_",  AC_Circle),
 
-#if FRAME_CONFIG == HELI_FRAME
-    GOBJECT(attitude_control, "ATC_", AC_AttitudeControl_Heli),
-#else
     // @Group: ATC_
-    // @Path: ../libraries/AC_AttitudeControl/AC_AttitudeControl.cpp,../libraries/AC_AttitudeControl/AC_AttitudeControl_Multi.cpp
-    GOBJECT(attitude_control, "ATC_", AC_AttitudeControl_Multi),
+    // @Path: ../libraries/AC_AttitudeControl/AC_AttitudeControl.cpp,../libraries/AC_AttitudeControl/AC_AttitudeControl_Multi.cpp,,../libraries/AC_AttitudeControl/AC_AttitudeControl_Heli.cpp
+#if FRAME_CONFIG == HELI_FRAME
+    GOBJECTPTR(attitude_control, "ATC_", AC_AttitudeControl_Heli),
+#else
+    GOBJECTPTR(attitude_control, "ATC_", AC_AttitudeControl_Multi),
 #endif
-
+    
     // @Group: POSCON_
     // @Path: ../libraries/AC_AttitudeControl/AC_PosControl.cpp
-    GOBJECT(pos_control, "PSC", AC_PosControl),
+    GOBJECTPTR(pos_control, "PSC", AC_PosControl),
 
     // @Group: SR0_
     // @Path: GCS_Mavlink.cpp
@@ -832,22 +783,12 @@ const AP_Param::Info Copter::var_info[] = {
 
 #if FRAME_CONFIG == HELI_FRAME
     // @Group: H_
-    // @Path: ../libraries/AP_Motors/AP_MotorsHeli_Single.cpp
-    GOBJECT(motors, "H_",           AP_MotorsHeli_Single),
-
-#elif FRAME_CONFIG == SINGLE_FRAME
-    GOBJECT(motors, "MOT_",           AP_MotorsSingle),
-
-#elif FRAME_CONFIG == COAX_FRAME
-    GOBJECT(motors, "MOT_",           AP_MotorsCoax),
-
-#elif FRAME_CONFIG == TRI_FRAME
-    GOBJECT(motors, "MOT_",           AP_MotorsTri),
-
+    // @Path: ../libraries/AP_Motors/AP_MotorsHeli_Single.cpp,../libraries/AP_Motors/AP_MotorsHeli.cpp
+    GOBJECTPTR(motors, "H_",           AP_MotorsHeli_Single),
 #else
     // @Group: MOT_
     // @Path: ../libraries/AP_Motors/AP_MotorsMulticopter.cpp
-    GOBJECT(motors, "MOT_",         AP_MotorsMulticopter),
+    GOBJECTPTR(motors, "MOT_",         AP_MotorsMulticopter),
 #endif
 
     // @Group: RCMAP_
@@ -1052,6 +993,14 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("FRAME_CLASS", 15, ParametersG2, frame_class, 0),
 
+    // @Group: SERVO
+    // @Path: ../libraries/SRV_Channel/SRV_Channel.cpp
+    AP_SUBGROUPINFO(servo_channels, "SERVO", 16, ParametersG2, SRV_Channels),
+
+    // @Group: RC
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    AP_SUBGROUPINFO(rc_channels, "RC", 17, ParametersG2, RC_Channels),
+    
     AP_GROUPEND
 };
 
@@ -1065,7 +1014,7 @@ ParametersG2::ParametersG2(void)
     , proximity(copter.serial_manager)
 #endif
 #if ADVANCED_FAILSAFE == ENABLED
-     ,afs(copter.mission, copter.barometer, copter.gps, copter.rcmap)
+    ,afs(copter.mission, copter.barometer, copter.gps, copter.rcmap)
 #endif
 {
     AP_Param::setup_object_defaults(this, var_info);
@@ -1122,7 +1071,7 @@ void Copter::load_parameters(void)
 
     uint32_t before = micros();
     // Load all auto-loaded EEPROM variables
-    AP_Param::load_all();
+    AP_Param::load_all(false);
     AP_Param::convert_old_parameters(&conversion_table[0], ARRAY_SIZE(conversion_table));
     cliSerial->printf("load_all took %uus\n", (unsigned)(micros() - before));
 
@@ -1134,7 +1083,7 @@ void Copter::load_parameters(void)
 void Copter::convert_pid_parameters(void)
 {
     // conversion info
-    AP_Param::ConversionInfo pid_conversion_info[] = {
+    const AP_Param::ConversionInfo pid_conversion_info[] = {
         { Parameters::k_param_pid_rate_roll, 0, AP_PARAM_FLOAT, "ATC_RAT_RLL_P" },
         { Parameters::k_param_pid_rate_roll, 1, AP_PARAM_FLOAT, "ATC_RAT_RLL_I" },
         { Parameters::k_param_pid_rate_roll, 2, AP_PARAM_FLOAT, "ATC_RAT_RLL_D" },
@@ -1150,7 +1099,7 @@ void Copter::convert_pid_parameters(void)
         { Parameters::k_param_pid_rate_yaw  , 4, AP_PARAM_FLOAT, "ATC_RAT_YAW_VFF" },
 #endif
     };
-    AP_Param::ConversionInfo imax_conversion_info[] = {
+    const AP_Param::ConversionInfo imax_conversion_info[] = {
         { Parameters::k_param_pid_rate_roll,  5, AP_PARAM_FLOAT, "ATC_RAT_RLL_IMAX" },
         { Parameters::k_param_pid_rate_pitch, 5, AP_PARAM_FLOAT, "ATC_RAT_PIT_IMAX" },
         { Parameters::k_param_pid_rate_yaw,   5, AP_PARAM_FLOAT, "ATC_RAT_YAW_IMAX" },
@@ -1160,7 +1109,7 @@ void Copter::convert_pid_parameters(void)
         { Parameters::k_param_pid_rate_yaw,   7, AP_PARAM_FLOAT, "ATC_RAT_YAW_ILMI" },
 #endif
     };
-    AP_Param::ConversionInfo angle_and_filt_conversion_info[] = {
+    const AP_Param::ConversionInfo angle_and_filt_conversion_info[] = {
         { Parameters::k_param_p_stabilize_roll, 0, AP_PARAM_FLOAT, "ATC_ANG_RLL_P" },
         { Parameters::k_param_p_stabilize_pitch, 0, AP_PARAM_FLOAT, "ATC_ANG_PIT_P" },
         { Parameters::k_param_p_stabilize_yaw, 0, AP_PARAM_FLOAT, "ATC_ANG_YAW_P" },
@@ -1168,7 +1117,7 @@ void Copter::convert_pid_parameters(void)
         { Parameters::k_param_pid_rate_pitch, 6, AP_PARAM_FLOAT, "ATC_RAT_PIT_FILT" },
         { Parameters::k_param_pid_rate_yaw, 6, AP_PARAM_FLOAT, "ATC_RAT_YAW_FILT" }
     };
-    AP_Param::ConversionInfo throttle_conversion_info[] = {
+    const AP_Param::ConversionInfo throttle_conversion_info[] = {
         { Parameters::k_param_throttle_min, 0, AP_PARAM_FLOAT, "MOT_SPIN_MIN" },
         { Parameters::k_param_throttle_mid, 0, AP_PARAM_FLOAT, "MOT_THST_HOVER" }
     };
@@ -1177,7 +1126,7 @@ void Copter::convert_pid_parameters(void)
     // and motor libraries switch to accept inputs in -1 to +1 range instead of -4500 ~ +4500
     float pid_scaler = 1.27f;
 
-#if FRAME_CONFIG == QUAD_FRAME || FRAME_CONFIG == HEXA_FRAME || FRAME_CONFIG == Y6_FRAME  || FRAME_CONFIG == OCTA_FRAME || FRAME_CONFIG == OCTA_QUAD_FRAME
+#if FRAME_CONFIG != HELI_FRAME
     // Multicopter x-frame gains are 40% lower because -1 or +1 input to motors now results in maximum rotation
     if (g.frame_type == AP_Motors::MOTOR_FRAME_TYPE_X || g.frame_type == AP_Motors::MOTOR_FRAME_TYPE_V || g.frame_type == AP_Motors::MOTOR_FRAME_TYPE_H) {
         pid_scaler = 0.9f;
@@ -1203,5 +1152,19 @@ void Copter::convert_pid_parameters(void)
     table_size = ARRAY_SIZE(throttle_conversion_info);
     for (uint8_t i=0; i<table_size; i++) {
         AP_Param::convert_old_parameter(&throttle_conversion_info[i], 0.001f);
+    }
+
+    const uint8_t old_rc_keys[14] = { Parameters::k_param_rc_1_old,  Parameters::k_param_rc_2_old,
+                                      Parameters::k_param_rc_3_old,  Parameters::k_param_rc_4_old,
+                                      Parameters::k_param_rc_5_old,  Parameters::k_param_rc_6_old,
+                                      Parameters::k_param_rc_7_old,  Parameters::k_param_rc_8_old,
+                                      Parameters::k_param_rc_9_old,  Parameters::k_param_rc_10_old,
+                                      Parameters::k_param_rc_11_old, Parameters::k_param_rc_12_old,
+                                      Parameters::k_param_rc_13_old, Parameters::k_param_rc_14_old };
+    const uint16_t old_aux_chan_mask = 0x3FF0;
+    // note that we don't pass in rcmap as we don't want output channel functions changed based on rcmap
+    if (SRV_Channels::upgrade_parameters(old_rc_keys, old_aux_chan_mask, nullptr)) {
+        // the rest needs to be done after motors allocation
+        upgrading_frame_params = true;
     }
 }
