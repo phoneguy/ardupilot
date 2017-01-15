@@ -42,6 +42,7 @@
 extern const AP_HAL::HAL& hal;
 
 using namespace Linux;
+#define FLOWONBOARD_DEBUG 1
 
 bool VideoIn::get_frame(Frame &frame)
 {
@@ -222,6 +223,10 @@ bool VideoIn::set_crop(uint32_t left, uint32_t top,
 {
     struct v4l2_crop crop;
     int ret;
+
+#if FLOWONBOARD_DEBUG
+hal.console->printf("DEBUG Set crop to:  top:%u left:%u width:%u height:%u ", top, left, width, height);
+#endif
 
     memset(&crop, 0, sizeof crop);
     crop.c.top = top;

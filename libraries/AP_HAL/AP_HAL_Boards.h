@@ -69,6 +69,7 @@
 #define HAL_INS_QURT        16
 #define HAL_INS_BBBMINI     17
 #define HAL_INS_AERO        18
+#define HAL_INS_ITG3200BMA180 19
 
 /* Barometer driver types */
 #define HAL_BARO_BMP085      1

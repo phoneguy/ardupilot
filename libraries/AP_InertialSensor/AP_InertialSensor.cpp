@@ -14,6 +14,7 @@
 #include "AP_InertialSensor_Backend.h"
 #include "AP_InertialSensor_HIL.h"
 #include "AP_InertialSensor_L3G4200D.h"
+#include "AP_InertialSensor_ITG3200BMA180.h"
 #include "AP_InertialSensor_LSM9DS0.h"
 #include "AP_InertialSensor_Invensense.h"
 #include "AP_InertialSensor_PX4.h"
@@ -759,21 +760,23 @@ AP_InertialSensor::detect_backends(void)
 #elif HAL_INS_DEFAULT == HAL_INS_QURT
     _add_backend(AP_InertialSensor_QURT::detect(*this));
 #elif HAL_INS_DEFAULT == HAL_INS_BBBMINI
-    AP_InertialSensor_Backend *backend = AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME));
+/*    AP_InertialSensor_Backend *backend = AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME));
     if (backend) {
         _add_backend(backend);
         hal.console->printf("MPU9250: Onboard IMU detected\n");
     } else {
         hal.console->printf("MPU9250: Onboard IMU not detected\n");
     }
-
-    backend = AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME_EXT));
-    if (backend) {
-        _add_backend(backend);
-        hal.console->printf("MPU9250: External IMU detected\n");
-    } else {
-        hal.console->printf("MPU9250: External IMU not detected\n");
-    }
+*/
+//    _add_backend(AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME)));
+//    _add_backend(AP_InertialSensor_Invensense::probe(*this, hal.spi->get_device(HAL_INS_MPU9250_NAME_EXT));
+    _add_backend(AP_InertialSensor_Invensense::probe(*this,
+                                                     hal.i2c_mgr->get_device(HAL_INS_MPU60x0_I2C_BUS, HAL_INS_MPU60x0_I2C_ADDR)));
+    _add_backend(AP_InertialSensor_ITG3200BMA180::probe(*this,
+                                                        hal.i2c_mgr->get_device(HAL_INS_ITG3200_I2C_BUS, HAL_INS_ITG3200_I2C_ADDR),
+							hal.i2c_mgr->get_device(HAL_INS_BMA180_I2C_BUS, HAL_INS_BMA180_I2C_ADDR),
+                                                                                ROTATION_YAW_90,
+                                                                                ROTATION_YAW_90));
 #elif HAL_INS_DEFAULT == HAL_INS_AERO
     auto *backend = AP_InertialSensor_BMI160::probe(*this,
                                                     hal.spi->get_device("bmi160"));
