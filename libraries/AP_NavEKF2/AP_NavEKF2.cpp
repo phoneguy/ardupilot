@@ -1,111 +1,114 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
 #include <AP_HAL/AP_HAL.h>
 #if HAL_CPU_CLASS >= HAL_CPU_CLASS_150
 
 #include "AP_NavEKF2_core.h"
 #include <AP_Vehicle/AP_Vehicle.h>
 #include <GCS_MAVLink/GCS.h>
+#include <DataFlash/DataFlash.h>
 
 /*
   parameter defaults for different types of vehicle. The
   APM_BUILD_DIRECTORY is taken from the main vehicle directory name
   where the code is built.
  */
-#if APM_BUILD_TYPE(APM_BUILD_ArduCopter)
+#if APM_BUILD_TYPE(APM_BUILD_ArduCopter) || APM_BUILD_TYPE(APM_BUILD_Replay)
 // copter defaults
-#define VELNE_NOISE_DEFAULT     0.5f
-#define VELD_NOISE_DEFAULT      0.7f
-#define POSNE_NOISE_DEFAULT     1.0f
-#define ALT_NOISE_DEFAULT       5.0f
-#define MAG_NOISE_DEFAULT       0.05f
-#define GYRO_PNOISE_DEFAULT     0.001f
-#define ACC_PNOISE_DEFAULT      0.25f
-#define GBIAS_PNOISE_DEFAULT    7.0E-05f
-#define ABIAS_PNOISE_DEFAULT    1.0E-04f
-#define MAG_PNOISE_DEFAULT      2.5E-02f
-#define VEL_GATE_DEFAULT        200
-#define POS_GATE_DEFAULT        300
-#define HGT_GATE_DEFAULT        300
-#define MAG_GATE_DEFAULT        300
+#define VELNE_M_NSE_DEFAULT     0.5f
+#define VELD_M_NSE_DEFAULT      0.7f
+#define POSNE_M_NSE_DEFAULT     1.0f
+#define ALT_M_NSE_DEFAULT       3.0f
+#define MAG_M_NSE_DEFAULT       0.05f
+#define GYRO_P_NSE_DEFAULT      3.0E-02f
+#define ACC_P_NSE_DEFAULT       6.0E-01f
+#define GBIAS_P_NSE_DEFAULT     1.0E-04f
+#define GSCALE_P_NSE_DEFAULT    5.0E-04f
+#define ABIAS_P_NSE_DEFAULT     5.0E-03f
+#define MAGB_P_NSE_DEFAULT      1.0E-04f
+#define MAGE_P_NSE_DEFAULT      1.0E-03f
+#define VEL_I_GATE_DEFAULT      500
+#define POS_I_GATE_DEFAULT      500
+#define HGT_I_GATE_DEFAULT      500
+#define MAG_I_GATE_DEFAULT      300
 #define MAG_CAL_DEFAULT         3
 #define GLITCH_RADIUS_DEFAULT   25
 #define FLOW_MEAS_DELAY         10
-#define FLOW_NOISE_DEFAULT      0.25f
-#define FLOW_GATE_DEFAULT       300
-#define GSCALE_PNOISE_DEFAULT   3.0E-03f
+#define FLOW_M_NSE_DEFAULT      0.25f
+#define FLOW_I_GATE_DEFAULT     300
 #define CHECK_SCALER_DEFAULT    100
 
 #elif APM_BUILD_TYPE(APM_BUILD_APMrover2)
 // rover defaults
-#define VELNE_NOISE_DEFAULT     0.5f
-#define VELD_NOISE_DEFAULT      0.7f
-#define POSNE_NOISE_DEFAULT     1.0f
-#define ALT_NOISE_DEFAULT       2.0f
-#define MAG_NOISE_DEFAULT       0.05f
-#define GYRO_PNOISE_DEFAULT     0.001f
-#define ACC_PNOISE_DEFAULT      0.25f
-#define GBIAS_PNOISE_DEFAULT    7.0E-05f
-#define ABIAS_PNOISE_DEFAULT    1.0E-04f
-#define MAG_PNOISE_DEFAULT      2.5E-02f
-#define VEL_GATE_DEFAULT        200
-#define POS_GATE_DEFAULT        300
-#define HGT_GATE_DEFAULT        300
-#define MAG_GATE_DEFAULT        300
+#define VELNE_M_NSE_DEFAULT     0.5f
+#define VELD_M_NSE_DEFAULT      0.7f
+#define POSNE_M_NSE_DEFAULT     1.0f
+#define ALT_M_NSE_DEFAULT       3.0f
+#define MAG_M_NSE_DEFAULT       0.05f
+#define GYRO_P_NSE_DEFAULT      3.0E-02f
+#define ACC_P_NSE_DEFAULT       6.0E-01f
+#define GBIAS_P_NSE_DEFAULT     1.0E-04f
+#define GSCALE_P_NSE_DEFAULT    5.0E-04f
+#define ABIAS_P_NSE_DEFAULT     5.0E-03f
+#define MAGB_P_NSE_DEFAULT      1.0E-04f
+#define MAGE_P_NSE_DEFAULT      1.0E-03f
+#define VEL_I_GATE_DEFAULT      500
+#define POS_I_GATE_DEFAULT      500
+#define HGT_I_GATE_DEFAULT      500
+#define MAG_I_GATE_DEFAULT      300
 #define MAG_CAL_DEFAULT         2
 #define GLITCH_RADIUS_DEFAULT   25
 #define FLOW_MEAS_DELAY         10
-#define FLOW_NOISE_DEFAULT      0.25f
-#define FLOW_GATE_DEFAULT       300
-#define GSCALE_PNOISE_DEFAULT   3.0E-03f
+#define FLOW_M_NSE_DEFAULT      0.25f
+#define FLOW_I_GATE_DEFAULT     300
 #define CHECK_SCALER_DEFAULT    100
 
 #elif APM_BUILD_TYPE(APM_BUILD_ArduPlane)
 // plane defaults
-#define VELNE_NOISE_DEFAULT     0.5f
-#define VELD_NOISE_DEFAULT      0.7f
-#define POSNE_NOISE_DEFAULT     1.0f
-#define ALT_NOISE_DEFAULT       5.0f
-#define MAG_NOISE_DEFAULT       0.05f
-#define GYRO_PNOISE_DEFAULT     0.001f
-#define ACC_PNOISE_DEFAULT      0.25f
-#define GBIAS_PNOISE_DEFAULT    7.0E-05f
-#define ABIAS_PNOISE_DEFAULT    1.0E-04f
-#define MAG_PNOISE_DEFAULT      2.5E-02f
-#define VEL_GATE_DEFAULT        200
-#define POS_GATE_DEFAULT        300
-#define HGT_GATE_DEFAULT        400
-#define MAG_GATE_DEFAULT        200
+#define VELNE_M_NSE_DEFAULT     0.5f
+#define VELD_M_NSE_DEFAULT      0.7f
+#define POSNE_M_NSE_DEFAULT     1.0f
+#define ALT_M_NSE_DEFAULT       3.0f
+#define MAG_M_NSE_DEFAULT       0.05f
+#define GYRO_P_NSE_DEFAULT      3.0E-02f
+#define ACC_P_NSE_DEFAULT       6.0E-01f
+#define GBIAS_P_NSE_DEFAULT     1.0E-04f
+#define GSCALE_P_NSE_DEFAULT    5.0E-04f
+#define ABIAS_P_NSE_DEFAULT     5.0E-03f
+#define MAGB_P_NSE_DEFAULT      1.0E-04f
+#define MAGE_P_NSE_DEFAULT      1.0E-03f
+#define VEL_I_GATE_DEFAULT      500
+#define POS_I_GATE_DEFAULT      500
+#define HGT_I_GATE_DEFAULT      500
+#define MAG_I_GATE_DEFAULT      300
 #define MAG_CAL_DEFAULT         0
 #define GLITCH_RADIUS_DEFAULT   25
 #define FLOW_MEAS_DELAY         10
-#define FLOW_NOISE_DEFAULT      0.25f
-#define FLOW_GATE_DEFAULT       300
-#define GSCALE_PNOISE_DEFAULT   3.0E-03f
+#define FLOW_M_NSE_DEFAULT      0.25f
+#define FLOW_I_GATE_DEFAULT     300
 #define CHECK_SCALER_DEFAULT    150
 
 #else
 // build type not specified, use copter defaults
-#define VELNE_NOISE_DEFAULT     0.5f
-#define VELD_NOISE_DEFAULT      0.7f
-#define POSNE_NOISE_DEFAULT     1.0f
-#define ALT_NOISE_DEFAULT       5.0f
-#define MAG_NOISE_DEFAULT       0.05f
-#define GYRO_PNOISE_DEFAULT     0.001f
-#define ACC_PNOISE_DEFAULT      0.25f
-#define GBIAS_PNOISE_DEFAULT    3.5E-05f
-#define ABIAS_PNOISE_DEFAULT    1.0E-04f
-#define MAG_PNOISE_DEFAULT      2.5E-02f
-#define VEL_GATE_DEFAULT        200
-#define POS_GATE_DEFAULT        300
-#define HGT_GATE_DEFAULT        300
-#define MAG_GATE_DEFAULT        300
+#define VELNE_M_NSE_DEFAULT     0.5f
+#define VELD_M_NSE_DEFAULT      0.7f
+#define POSNE_M_NSE_DEFAULT     1.0f
+#define ALT_M_NSE_DEFAULT       3.0f
+#define MAG_M_NSE_DEFAULT       0.05f
+#define GYRO_P_NSE_DEFAULT      3.0E-02f
+#define ACC_P_NSE_DEFAULT       6.0E-01f
+#define GBIAS_P_NSE_DEFAULT     1.0E-04f
+#define GSCALE_P_NSE_DEFAULT    5.0E-04f
+#define ABIAS_P_NSE_DEFAULT     5.0E-03f
+#define MAGB_P_NSE_DEFAULT      1.0E-04f
+#define MAGE_P_NSE_DEFAULT      1.0E-03f
+#define VEL_I_GATE_DEFAULT      500
+#define POS_I_GATE_DEFAULT      500
+#define HGT_I_GATE_DEFAULT      500
+#define MAG_I_GATE_DEFAULT      300
 #define MAG_CAL_DEFAULT         3
 #define GLITCH_RADIUS_DEFAULT   25
 #define FLOW_MEAS_DELAY         10
-#define FLOW_NOISE_DEFAULT      0.25f
-#define FLOW_GATE_DEFAULT       300
-#define GSCALE_PNOISE_DEFAULT   3.0E-03f
+#define FLOW_M_NSE_DEFAULT      0.25f
+#define FLOW_I_GATE_DEFAULT     300
 #define CHECK_SCALER_DEFAULT    100
 
 #endif // APM_BUILD_DIRECTORY
@@ -126,53 +129,53 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
 
     // @Param: GPS_TYPE
     // @DisplayName: GPS mode control
-    // @Description: This controls use of GPS measurements : 0 = use 3D velocity & 2D position, 1 = use 2D velocity and 2D position, 2 = use 2D position, 3 = use no GPS (optical flow will be used if available)
-    // @Values: 0:GPS 3D Vel and 2D Pos, 1:GPS 2D vel and 2D pos, 2:GPS 2D pos, 3:No GPS use optical flow
+    // @Description: This controls use of GPS measurements : 0 = use 3D velocity & 2D position, 1 = use 2D velocity and 2D position, 2 = use 2D position, 3 = Inhibit GPS use - this can be useful when flying with an optical flow sensor in an environment where GPS quality is poor and subject to large multipath errors.
+    // @Values: 0:GPS 3D Vel and 2D Pos, 1:GPS 2D vel and 2D pos, 2:GPS 2D pos, 3:No GPS
     // @User: Advanced
     AP_GROUPINFO("GPS_TYPE", 1, NavEKF2, _fusionModeGPS, 0),
 
-    // @Param: VELNE_NOISE
+    // @Param: VELNE_M_NSE
     // @DisplayName: GPS horizontal velocity measurement noise (m/s)
     // @Description: This sets a lower limit on the speed accuracy reported by the GPS receiver that is used to set horizontal velocity observation noise. If the model of receiver used does not provide a speed accurcy estimate, then the parameter value will be used. Increasing it reduces the weighting of the GPS horizontal velocity measurements.
     // @Range: 0.05 5.0
     // @Increment: 0.05
     // @User: Advanced
     // @Units: m/s
-    AP_GROUPINFO("VELNE_NOISE", 2, NavEKF2, _gpsHorizVelNoise, VELNE_NOISE_DEFAULT),
+    AP_GROUPINFO("VELNE_M_NSE", 2, NavEKF2, _gpsHorizVelNoise, VELNE_M_NSE_DEFAULT),
 
-    // @Param: VELD_NOISE
+    // @Param: VELD_M_NSE
     // @DisplayName: GPS vertical velocity measurement noise (m/s)
     // @Description: This sets a lower limit on the speed accuracy reported by the GPS receiver that is used to set vertical velocity observation noise. If the model of receiver used does not provide a speed accurcy estimate, then the parameter value will be used. Increasing it reduces the weighting of the GPS vertical velocity measurements.
     // @Range: 0.05 5.0
     // @Increment: 0.05
     // @User: Advanced
     // @Units: m/s
-    AP_GROUPINFO("VELD_NOISE", 3, NavEKF2, _gpsVertVelNoise, VELD_NOISE_DEFAULT),
+    AP_GROUPINFO("VELD_M_NSE", 3, NavEKF2, _gpsVertVelNoise, VELD_M_NSE_DEFAULT),
 
-    // @Param: VEL_GATE
+    // @Param: VEL_I_GATE
     // @DisplayName: GPS velocity innovation gate size
     // @Description: This sets the percentage number of standard deviations applied to the GPS velocity measurement innovation consistency check. Decreasing it makes it more likely that good measurements willbe rejected. Increasing it makes it more likely that bad measurements will be accepted.
     // @Range: 100 1000
     // @Increment: 25
     // @User: Advanced
-    AP_GROUPINFO("VEL_GATE", 4, NavEKF2, _gpsVelInnovGate, VEL_GATE_DEFAULT),
+    AP_GROUPINFO("VEL_I_GATE", 4, NavEKF2, _gpsVelInnovGate, VEL_I_GATE_DEFAULT),
 
-    // @Param: POSNE_NOISE
+    // @Param: POSNE_M_NSE
     // @DisplayName: GPS horizontal position measurement noise (m)
     // @Description: This sets the GPS horizontal position observation noise. Increasing it reduces the weighting of GPS horizontal position measurements.
     // @Range: 0.1 10.0
     // @Increment: 0.1
     // @User: Advanced
     // @Units: m
-    AP_GROUPINFO("POSNE_NOISE", 5, NavEKF2, _gpsHorizPosNoise, POSNE_NOISE_DEFAULT),
+    AP_GROUPINFO("POSNE_M_NSE", 5, NavEKF2, _gpsHorizPosNoise, POSNE_M_NSE_DEFAULT),
 
-    // @Param: POS_GATE
+    // @Param: POS_I_GATE
     // @DisplayName: GPS position measurement gate size
     // @Description: This sets the percentage number of standard deviations applied to the GPS position measurement innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
     // @Range: 100 1000
     // @Increment: 25
     // @User: Advanced
-    AP_GROUPINFO("POS_GATE", 6, NavEKF2, _gpsPosInnovGate, POS_GATE_DEFAULT),
+    AP_GROUPINFO("POS_I_GATE", 6, NavEKF2, _gpsPosInnovGate, POS_I_GATE_DEFAULT),
 
     // @Param: GLITCH_RAD
     // @DisplayName: GPS glitch radius gate size (m)
@@ -196,27 +199,27 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
 
     // @Param: ALT_SOURCE
     // @DisplayName: Primary height source
-    // @Description: This parameter controls which height sensor is used by the EKF. If the selected optionn cannot be used, it will default to Baro as the primary height source. Setting 0 will use the baro altitude at all times. Setting 1 uses the range finder and is only available in combination with optical flow navigation (EK2_GPS_TYPE = 3). Setting 2 uses GPS.
-    // @Values: 0:Use Baro, 1:Use Range Finder, 2:Use GPS
+    // @Description: This parameter controls the primary height sensor used by the EKF. If the selected option cannot be used, it will default to Baro as the primary height source. Setting 0 will use the baro altitude at all times. Setting 1 uses the range finder and is only available in combination with optical flow navigation (EK2_GPS_TYPE = 3). Setting 2 uses GPS. Setting 3 uses the range beacon data. NOTE - the EK2_RNG_USE_HGT parameter can be used to switch to range-finder when close to the ground.
+    // @Values: 0:Use Baro, 1:Use Range Finder, 2:Use GPS, 3:Use Range Beacon
     // @User: Advanced
     AP_GROUPINFO("ALT_SOURCE", 9, NavEKF2, _altSource, 0),
 
-    // @Param: ALT_NOISE
+    // @Param: ALT_M_NSE
     // @DisplayName: Altitude measurement noise (m)
     // @Description: This is the RMS value of noise in the altitude measurement. Increasing it reduces the weighting of the baro measurement and will make the filter respond more slowly to baro measurement errors, but will make it more sensitive to GPS and accelerometer errors.
     // @Range: 0.1 10.0
     // @Increment: 0.1
     // @User: Advanced
     // @Units: m
-    AP_GROUPINFO("ALT_NOISE", 10, NavEKF2, _baroAltNoise, ALT_NOISE_DEFAULT),
+    AP_GROUPINFO("ALT_M_NSE", 10, NavEKF2, _baroAltNoise, ALT_M_NSE_DEFAULT),
 
-    // @Param: HGT_GATE
+    // @Param: HGT_I_GATE
     // @DisplayName: Height measurement gate size
     // @Description: This sets the percentage number of standard deviations applied to the height measurement innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
     // @Range: 100 1000
     // @Increment: 25
     // @User: Advanced
-    AP_GROUPINFO("HGT_GATE", 11, NavEKF2, _hgtInnovGate, HGT_GATE_DEFAULT),
+    AP_GROUPINFO("HGT_I_GATE", 11, NavEKF2, _hgtInnovGate, HGT_I_GATE_DEFAULT),
 
     // @Param: HGT_DELAY
     // @DisplayName: Height measurement delay (msec)
@@ -229,14 +232,14 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
 
     // Magnetometer measurement parameters
 
-    // @Param: MAG_NOISE
+    // @Param: MAG_M_NSE
     // @DisplayName: Magnetometer measurement noise (Gauss)
     // @Description: This is the RMS value of noise in magnetometer measurements. Increasing it reduces the weighting on these measurements.
     // @Range: 0.01 0.5
     // @Increment: 0.01
     // @User: Advanced
     // @Units: gauss
-    AP_GROUPINFO("MAG_NOISE", 13, NavEKF2, _magNoise, MAG_NOISE_DEFAULT),
+    AP_GROUPINFO("MAG_M_NSE", 13, NavEKF2, _magNoise, MAG_M_NSE_DEFAULT),
 
     // @Param: MAG_CAL
     // @DisplayName: Magnetometer calibration mode
@@ -245,51 +248,51 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("MAG_CAL", 14, NavEKF2, _magCal, MAG_CAL_DEFAULT),
 
-    // @Param: MAG_GATE
+    // @Param: MAG_I_GATE
     // @DisplayName: Magnetometer measurement gate size
     // @Description: This sets the percentage number of standard deviations applied to the magnetometer measurement innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
     // @Range: 100 1000
     // @Increment: 25
     // @User: Advanced
-    AP_GROUPINFO("MAG_GATE", 15, NavEKF2, _magInnovGate, MAG_GATE_DEFAULT),
+    AP_GROUPINFO("MAG_I_GATE", 15, NavEKF2, _magInnovGate, MAG_I_GATE_DEFAULT),
 
     // Airspeed measurement parameters
 
-    // @Param: EAS_NOISE
+    // @Param: EAS_M_NSE
     // @DisplayName: Equivalent airspeed measurement noise (m/s)
     // @Description: This is the RMS value of noise in equivalent airspeed measurements used by planes. Increasing it reduces the weighting of airspeed measurements and will make wind speed estimates less noisy and slower to converge. Increasing also increases navigation errors when dead-reckoning without GPS measurements.
     // @Range: 0.5 5.0
     // @Increment: 0.1
     // @User: Advanced
     // @Units: m/s
-    AP_GROUPINFO("EAS_NOISE", 16, NavEKF2, _easNoise, 1.4f),
+    AP_GROUPINFO("EAS_M_NSE", 16, NavEKF2, _easNoise, 1.4f),
 
-    // @Param: EAS_GATE
+    // @Param: EAS_I_GATE
     // @DisplayName: Airspeed measurement gate size
     // @Description: This sets the percentage number of standard deviations applied to the airspeed measurement innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
     // @Range: 100 1000
     // @Increment: 25
     // @User: Advanced
-    AP_GROUPINFO("EAS_GATE", 17, NavEKF2, _tasInnovGate, 400),
+    AP_GROUPINFO("EAS_I_GATE", 17, NavEKF2, _tasInnovGate, 400),
 
     // Rangefinder measurement parameters
 
-    // @Param: RNG_NOISE
+    // @Param: RNG_M_NSE
     // @DisplayName: Range finder measurement noise (m)
     // @Description: This is the RMS value of noise in the range finder measurement. Increasing it reduces the weighting on this measurement.
     // @Range: 0.1 10.0
     // @Increment: 0.1
     // @User: Advanced
     // @Units: m
-    AP_GROUPINFO("RNG_NOISE", 18, NavEKF2, _rngNoise, 0.5f),
+    AP_GROUPINFO("RNG_M_NSE", 18, NavEKF2, _rngNoise, 0.5f),
 
-    // @Param: RNG_GATE
+    // @Param: RNG_I_GATE
     // @DisplayName: Range finder measurement gate size
     // @Description: This sets the percentage number of standard deviations applied to the range finder innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
     // @Range: 100 1000
     // @Increment: 25
     // @User: Advanced
-    AP_GROUPINFO("RNG_GATE", 19, NavEKF2, _rngInnovGate, 500),
+    AP_GROUPINFO("RNG_I_GATE", 19, NavEKF2, _rngInnovGate, 500),
 
     // Optical flow measurement parameters
 
@@ -302,22 +305,22 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
     // @Units: rad/s
     AP_GROUPINFO("MAX_FLOW", 20, NavEKF2, _maxFlowRate, 2.5f),
 
-    // @Param: FLOW_NOISE
+    // @Param: FLOW_M_NSE
     // @DisplayName: Optical flow measurement noise (rad/s)
     // @Description: This is the RMS value of noise and errors in optical flow measurements. Increasing it reduces the weighting on these measurements.
     // @Range: 0.05 1.0
     // @Increment: 0.05
     // @User: Advanced
     // @Units: rad/s
-    AP_GROUPINFO("FLOW_NOISE", 21, NavEKF2, _flowNoise, FLOW_NOISE_DEFAULT),
+    AP_GROUPINFO("FLOW_M_NSE", 21, NavEKF2, _flowNoise, FLOW_M_NSE_DEFAULT),
 
-    // @Param: FLOW_GATE
+    // @Param: FLOW_I_GATE
     // @DisplayName: Optical Flow measurement gate size
     // @Description: This sets the percentage number of standard deviations applied to the optical flow innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
     // @Range: 100 1000
     // @Increment: 25
     // @User: Advanced
-    AP_GROUPINFO("FLOW_GATE", 22, NavEKF2, _flowInnovGate, FLOW_GATE_DEFAULT),
+    AP_GROUPINFO("FLOW_I_GATE", 22, NavEKF2, _flowInnovGate, FLOW_I_GATE_DEFAULT),
 
     // @Param: FLOW_DELAY
     // @DisplayName: Optical Flow measurement delay (msec)
@@ -330,64 +333,58 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
 
     // State and Covariance Predition Parameters
 
-    // @Param: GYRO_PNOISE
+    // @Param: GYRO_P_NSE
     // @DisplayName: Rate gyro noise (rad/s)
     // @Description: This control disturbance noise controls the growth of estimated error due to gyro measurement errors excluding bias. Increasing it makes the flter trust the gyro measurements less and other measurements more.
-    // @Range: 0.0001 0.01
+    // @Range: 0.0001 0.1
     // @Increment: 0.0001
     // @User: Advanced
     // @Units: rad/s
-    AP_GROUPINFO("GYRO_PNOISE", 24, NavEKF2, _gyrNoise, GYRO_PNOISE_DEFAULT),
+    AP_GROUPINFO("GYRO_P_NSE", 24, NavEKF2, _gyrNoise, GYRO_P_NSE_DEFAULT),
 
-    // @Param: ACC_PNOISE
+    // @Param: ACC_P_NSE
     // @DisplayName: Accelerometer noise (m/s^2)
     // @Description: This control disturbance noise controls the growth of estimated error due to accelerometer measurement errors excluding bias. Increasing it makes the flter trust the accelerometer measurements less and other measurements more.
     // @Range: 0.01 1.0
     // @Increment: 0.01
     // @User: Advanced
     // @Units: m/s/s
-    AP_GROUPINFO("ACC_PNOISE", 25, NavEKF2, _accNoise, ACC_PNOISE_DEFAULT),
+    AP_GROUPINFO("ACC_P_NSE", 25, NavEKF2, _accNoise, ACC_P_NSE_DEFAULT),
 
-    // @Param: GBIAS_PNOISE
-    // @DisplayName: Rate gyro bias process noise (rad/s)
+    // @Param: GBIAS_P_NSE
+    // @DisplayName: Rate gyro bias stability (rad/s/s)
     // @Description: This state  process noise controls growth of the gyro delta angle bias state error estimate. Increasing it makes rate gyro bias estimation faster and noisier.
-    // @Range: 0.0000001 0.00001
+    // @Range: 0.00001 0.001
     // @User: Advanced
-    // @Units: rad/s
-    AP_GROUPINFO("GBIAS_PNOISE", 26, NavEKF2, _gyroBiasProcessNoise, GBIAS_PNOISE_DEFAULT),
+    // @Units: rad/s/s
+    AP_GROUPINFO("GBIAS_P_NSE", 26, NavEKF2, _gyroBiasProcessNoise, GBIAS_P_NSE_DEFAULT),
 
-    // @Param: GSCL_PNOISE
-    // @DisplayName: Rate gyro scale factor process noise (1/s)
+    // @Param: GSCL_P_NSE
+    // @DisplayName: Rate gyro scale factor stability (1/s)
     // @Description: This noise controls the rate of gyro scale factor learning. Increasing it makes rate gyro scale factor estimation faster and noisier.
-    // @Range: 0.0000001 0.00001
+    // @Range: 0.000001 0.001
     // @User: Advanced
     // @Units: 1/s
-    AP_GROUPINFO("GSCL_PNOISE", 27, NavEKF2, _gyroScaleProcessNoise, GSCALE_PNOISE_DEFAULT),
+    AP_GROUPINFO("GSCL_P_NSE", 27, NavEKF2, _gyroScaleProcessNoise, GSCALE_P_NSE_DEFAULT),
 
-    // @Param: ABIAS_PNOISE
-    // @DisplayName: Accelerometer bias process noise (m/s^2)
+    // @Param: ABIAS_P_NSE
+    // @DisplayName: Accelerometer bias stability (m/s^3)
     // @Description: This noise controls the growth of the vertical accelerometer delta velocity bias state error estimate. Increasing it makes accelerometer bias estimation faster and noisier.
     // @Range: 0.00001 0.001
     // @User: Advanced
-    // @Units: m/s/s
-    AP_GROUPINFO("ABIAS_PNOISE", 28, NavEKF2, _accelBiasProcessNoise, ABIAS_PNOISE_DEFAULT),
+    // @Units: m/s/s/s
+    AP_GROUPINFO("ABIAS_P_NSE", 28, NavEKF2, _accelBiasProcessNoise, ABIAS_P_NSE_DEFAULT),
 
-    // @Param: MAG_PNOISE
-    // @DisplayName: Magnetic field process noise (gauss/s)
-    // @Description: This state process noise controls the growth of magnetic field state error estimates. Increasing it makes magnetic field bias estimation faster and noisier.
-    // @Range: 0.0001 0.01
-    // @User: Advanced
-    // @Units: gauss/s
-    AP_GROUPINFO("MAG_PNOISE", 29, NavEKF2, _magProcessNoise, MAG_PNOISE_DEFAULT),
+    // 29 previously used for EK2_MAG_P_NSE parameter that has been replaced with EK2_MAGE_P_NSE and EK2_MAGB_P_NSE
 
-    // @Param: WIND_PNOISE
+    // @Param: WIND_P_NSE
     // @DisplayName: Wind velocity process noise (m/s^2)
     // @Description: This state process noise controls the growth of wind state error estimates. Increasing it makes wind estimation faster and noisier.
     // @Range: 0.01 1.0
     // @Increment: 0.1
     // @User: Advanced
     // @Units: m/s/s
-    AP_GROUPINFO("WIND_PNOISE", 30, NavEKF2, _windVelProcessNoise, 0.1f),
+    AP_GROUPINFO("WIND_P_NSE", 30, NavEKF2, _windVelProcessNoise, 0.1f),
 
     // @Param: WIND_PSCALE
     // @DisplayName: Height rate to wind procss noise scaler
@@ -419,13 +416,116 @@ const AP_Param::GroupInfo NavEKF2::var_info[] = {
     // @Units: %
     AP_GROUPINFO("CHECK_SCALE", 34, NavEKF2, _gpsCheckScaler, CHECK_SCALER_DEFAULT),
 
-    // @Param: NOAID_NOISE
+    // @Param: NOAID_M_NSE
     // @DisplayName: Non-GPS operation position uncertainty (m)
     // @Description: This sets the amount of position variation that the EKF allows for when operating without external measurements (eg GPS or optical flow). Increasing this parameter makes the EKF attitude estimate less sensitive to vehicle manoeuvres but more sensitive to IMU errors.
     // @Range: 0.5 50.0
     // @User: Advanced
     // @Units: m/s
-    AP_GROUPINFO("NOAID_NOISE", 35, NavEKF2, _noaidHorizNoise, 10.0f),
+    AP_GROUPINFO("NOAID_M_NSE", 35, NavEKF2, _noaidHorizNoise, 10.0f),
+
+    // @Param: LOG_MASK
+    // @DisplayName: EKF sensor logging IMU mask
+    // @Description: This sets the IMU mask of sensors to do full logging for
+    // @Values: 0:Disabled,1:FirstIMU,3:FirstAndSecondIMU,7:AllIMUs
+    // @User: Advanced
+    AP_GROUPINFO("LOG_MASK", 36, NavEKF2, _logging_mask, 1),
+
+    // control of magentic yaw angle fusion
+
+    // @Param: YAW_M_NSE
+    // @DisplayName: Yaw measurement noise (rad)
+    // @Description: This is the RMS value of noise in yaw measurements from the magnetometer. Increasing it reduces the weighting on these measurements.
+    // @Range: 0.05 1.0
+    // @Increment: 0.05
+    // @User: Advanced
+    // @Units: rad
+    AP_GROUPINFO("YAW_M_NSE", 37, NavEKF2, _yawNoise, 0.5f),
+
+    // @Param: YAW_I_GATE
+    // @DisplayName: Yaw measurement gate size
+    // @Description: This sets the percentage number of standard deviations applied to the magnetometer yaw measurement innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
+    // @Range: 100 1000
+    // @Increment: 25
+    // @User: Advanced
+    AP_GROUPINFO("YAW_I_GATE", 38, NavEKF2, _yawInnovGate, 300),
+
+    // @Param: TAU_OUTPUT
+    // @DisplayName: Output complementary filter time constant (centi-sec)
+    // @Description: Sets the time constant of the output complementary filter/predictor in centi-seconds.
+    // @Range: 10 50
+    // @Increment: 5
+    // @User: Advanced
+    // @Units: cs
+    AP_GROUPINFO("TAU_OUTPUT", 39, NavEKF2, _tauVelPosOutput, 25),
+
+    // @Param: MAGE_P_NSE
+    // @DisplayName: Earth magnetic field process noise (gauss/s)
+    // @Description: This state process noise controls the growth of earth magnetic field state error estimates. Increasing it makes earth magnetic field estimation faster and noisier.
+    // @Range: 0.00001 0.01
+    // @User: Advanced
+    // @Units: gauss/s
+    AP_GROUPINFO("MAGE_P_NSE", 40, NavEKF2, _magEarthProcessNoise, MAGE_P_NSE_DEFAULT),
+
+    // @Param: MAGB_P_NSE
+    // @DisplayName: Body magnetic field process noise (gauss/s)
+    // @Description: This state process noise controls the growth of body magnetic field state error estimates. Increasing it makes magnetometer bias error estimation faster and noisier.
+    // @Range: 0.00001 0.01
+    // @User: Advanced
+    // @Units: gauss/s
+    AP_GROUPINFO("MAGB_P_NSE", 41, NavEKF2, _magBodyProcessNoise, MAGB_P_NSE_DEFAULT),
+
+    // @Param: RNG_USE_HGT
+    // @DisplayName: Range finder switch height percentage
+    // @Description: The range finder will be used as the primary height source when below a specified percentage of the sensor maximum as set by the RNGFND_MAX_CM parameter. Set to -1 to prevent range finder use.
+    // @Range: -1 70
+    // @Increment: 1
+    // @User: Advanced
+    // @Units: %
+    AP_GROUPINFO("RNG_USE_HGT", 42, NavEKF2, _useRngSwHgt, -1),
+
+    // @Param: TERR_GRAD
+    // @DisplayName: Maximum terrain gradient
+    // @Description: Specifies the maximum gradient of the terrain below the vehicle when it is using range finder as a height reference
+    // @Range: 0 0.2
+    // @Increment: 0.01
+    // @User: Advanced
+    AP_GROUPINFO("TERR_GRAD", 43, NavEKF2, _terrGradMax, 0.1f),
+
+    // @Param: BCN_M_NSE
+    // @DisplayName: Range beacon measurement noise (m)
+    // @Description: This is the RMS value of noise in the range beacon measurement. Increasing it reduces the weighting on this measurement.
+    // @Range: 0.1 10.0
+    // @Increment: 0.1
+    // @User: Advanced
+    // @Units: m
+    AP_GROUPINFO("BCN_M_NSE", 44, NavEKF2, _rngBcnNoise, 1.0f),
+
+    // @Param: BCN_I_GTE
+    // @DisplayName: Range beacon measurement gate size
+    // @Description: This sets the percentage number of standard deviations applied to the range beacon measurement innovation consistency check. Decreasing it makes it more likely that good measurements will be rejected. Increasing it makes it more likely that bad measurements will be accepted.
+    // @Range: 100 1000
+    // @Increment: 25
+    // @User: Advanced
+    AP_GROUPINFO("BCN_I_GTE", 45, NavEKF2, _rngBcnInnovGate, 500),
+
+    // @Param: BCN_DELAY
+    // @DisplayName: Range beacon measurement delay (msec)
+    // @Description: This is the number of msec that the range beacon measurements lag behind the inertial measurements. It is the time from the end of the optical flow averaging period and does not include the time delay due to the 100msec of averaging within the flow sensor.
+    // @Range: 0 250
+    // @Increment: 10
+    // @User: Advanced
+    // @Units: msec
+    AP_GROUPINFO("BCN_DELAY", 46, NavEKF2, _rngBcnDelay_ms, 50),
+
+    // @Param: RNG_USE_SPD
+    // @DisplayName: Range finder max ground speed
+    // @Description: The range finder will not be used as the primary height source when the horizontal ground speed is greater than this value.
+    // @Range: 2.0 6.0
+    // @Increment: 0.5
+    // @User: Advanced
+    // @Units: m
+    AP_GROUPINFO("RNG_USE_SPD", 47, NavEKF2, _useRngSwSpd, 2.0f),
 
     AP_GROUPEND
 };
@@ -439,9 +539,9 @@ NavEKF2::NavEKF2(const AP_AHRS *ahrs, AP_Baro &baro, const RangeFinder &rng) :
     gpsPosVarAccScale(0.05f),       // Scale factor applied to horizontal position measurement variance due to manoeuvre acceleration
     magDelay_ms(60),                // Magnetometer measurement delay (msec)
     tasDelay_ms(240),               // Airspeed measurement delay (msec)
-    gpsRetryTimeUseTAS_ms(10000),   // GPS retry time with airspeed measurements (msec)
-    gpsRetryTimeNoTAS_ms(7000),     // GPS retry time without airspeed measurements (msec)
-    gpsFailTimeWithFlow_ms(1000),   // If we have no GPS for longer than this and we have optical flow, then we will switch across to using optical flow (msec)
+    tiltDriftTimeMax_ms(15000),      // Maximum number of ms allowed without any form of tilt aiding (GPS, flow, TAS, etc)
+    posRetryTimeUseVel_ms(10000),   // Position aiding retry time with velocity measurements (msec)
+    posRetryTimeNoVel_ms(7000),     // Position aiding retry time without velocity measurements (msec)
     hgtRetryTimeMode0_ms(10000),    // Height retry time with vertical velocity measurement (msec)
     hgtRetryTimeMode12_ms(5000),    // Height retry time without vertical velocity measurement (msec)
     tasRetryTime_ms(5000),          // True airspeed timeout and retry interval (msec)
@@ -459,9 +559,40 @@ NavEKF2::NavEKF2(const AP_AHRS *ahrs, AP_Baro &baro, const RangeFinder &rng) :
     gndEffectTimeout_ms(1000),      // time in msec that baro ground effect compensation will timeout after initiation
     gndEffectBaroScaler(4.0f),      // scaler applied to the barometer observation variance when operating in ground effect
     gndGradientSigma(50),           // RMS terrain gradient percentage assumed by the terrain height estimation
-    fusionTimeStep_ms(10)           // The minimum number of msec between covariance prediction and fusion operations
+    fusionTimeStep_ms(10),          // The minimum number of msec between covariance prediction and fusion operations
+    runCoreSelection(false)         // true when the default primary core has stabilised after startup and core selection can run
 {
     AP_Param::setup_object_defaults(this, var_info);
+}
+
+/*
+  see if we should log some sensor data
+ */
+void NavEKF2::check_log_write(void)
+{
+    if (!have_ekf_logging()) {
+        return;
+    }
+    if (logging.log_compass) {
+        DataFlash_Class::instance()->Log_Write_Compass(*_ahrs->get_compass(), imuSampleTime_us);
+        logging.log_compass = false;
+    }
+    if (logging.log_gps) {
+        DataFlash_Class::instance()->Log_Write_GPS(_ahrs->get_gps(), 0, imuSampleTime_us);
+        logging.log_gps = false;
+    }
+    if (logging.log_baro) {
+        DataFlash_Class::instance()->Log_Write_Baro(_baro, imuSampleTime_us);
+        logging.log_baro = false;
+    }
+    if (logging.log_imu) {
+        const AP_InertialSensor &ins = _ahrs->get_ins();
+        DataFlash_Class::instance()->Log_Write_IMUDT(ins, imuSampleTime_us, _logging_mask.get());
+        logging.log_imu = false;
+    }
+
+    // this is an example of an ad-hoc log in EKF
+    // DataFlash_Class::instance()->Log_Write("NKA", "TimeUS,X", "Qf", AP_HAL::micros64(), (double)2.4f);
 }
 
 
@@ -471,6 +602,15 @@ bool NavEKF2::InitialiseFilter(void)
     if (_enable == 0) {
         return false;
     }
+
+    imuSampleTime_us = AP_HAL::micros64();
+
+    // see if we will be doing logging
+    DataFlash_Class *dataflash = DataFlash_Class::instance();
+    if (dataflash != nullptr) {
+        logging.enabled = dataflash->log_replay();
+    }
+    
     if (core == nullptr) {
 
         // don't run multiple filters for 1 IMU
@@ -520,6 +660,13 @@ bool NavEKF2::InitialiseFilter(void)
     for (uint8_t i=0; i<num_cores; i++) {
         ret &= core[i].InitialiseFilterBootstrap();
     }
+
+    // zero the structs used capture reset events
+    memset(&yaw_reset_data, 0, sizeof(yaw_reset_data));
+    memset(&pos_reset_data, 0, sizeof(pos_reset_data));
+    memset(&pos_down_reset_data, 0, sizeof(pos_down_reset_data));
+
+    check_log_write();
     return ret;
 }
 
@@ -530,34 +677,63 @@ void NavEKF2::UpdateFilter(void)
         return;
     }
 
+    imuSampleTime_us = AP_HAL::micros64();
+    
     const AP_InertialSensor &ins = _ahrs->get_ins();
 
+    bool statePredictEnabled[num_cores];
     for (uint8_t i=0; i<num_cores; i++) {
         // if the previous core has only recently finished a new state prediction cycle, then
-        // dont start a new cycle to allow time for fusion operations to complete if the update
+        // don't start a new cycle to allow time for fusion operations to complete if the update
         // rate is higher than 200Hz
-        bool statePredictEnabled;
         if ((i > 0) && (core[i-1].getFramesSincePredict() < 2) && (ins.get_sample_rate() > 200)) {
-            statePredictEnabled = false;
+            statePredictEnabled[i] = false;
         } else {
-            statePredictEnabled = true;
+            statePredictEnabled[i] = true;
         }
-        core[i].UpdateFilter(statePredictEnabled);
+        core[i].UpdateFilter(statePredictEnabled[i]);
     }
 
-    // If the current core selected has a bad fault score or is unhealthy, switch to a healthy core with the lowest fault score
-    if (core[primary].faultScore() > 0.0f || !core[primary].healthy()) {
-        float score = 1e9f;
-        for (uint8_t i=0; i<num_cores; i++) {
-            if (core[i].healthy()) {
-                float tempScore = core[i].faultScore();
-                if (tempScore < score) {
-                    primary = i;
-                    score = tempScore;
+    // If the current core selected has a bad error score or is unhealthy, switch to a healthy core with the lowest fault score
+    // Don't start running the check until the primary core has started returned healthy for at least 10 seconds to avoid switching
+    // due to initial alignment fluctuations and race conditions
+    if (!runCoreSelection) {
+        static uint64_t lastUnhealthyTime_us = 0;
+        if (!core[primary].healthy() || lastUnhealthyTime_us == 0) {
+            lastUnhealthyTime_us = imuSampleTime_us;
+        }
+        runCoreSelection = (imuSampleTime_us - lastUnhealthyTime_us) > 1E7;
+    }
+    float primaryErrorScore = core[primary].errorScore();
+    if ((primaryErrorScore > 1.0f || !core[primary].healthy()) && runCoreSelection) {
+        float lowestErrorScore = 0.67f * primaryErrorScore;
+        uint8_t newPrimaryIndex = primary; // index for new primary
+        for (uint8_t coreIndex=0; coreIndex<num_cores; coreIndex++) {
+
+            if (coreIndex != primary) {
+                // an alternative core is available for selection only if healthy and if states have been updated on this time step
+                bool altCoreAvailable = core[coreIndex].healthy() && statePredictEnabled[coreIndex];
+
+                // If the primary core is unhealthy and another core is available, then switch now
+                // If the primary core is still healthy,then switching is optional and will only be done if
+                // a core with a significantly lower error score can be found
+                float altErrorScore = core[coreIndex].errorScore();
+                if (altCoreAvailable && (!core[primary].healthy() || altErrorScore < lowestErrorScore)) {
+                    newPrimaryIndex = coreIndex;
+                    lowestErrorScore = altErrorScore;
                 }
             }
         }
+        // update the yaw and position reset data to capture changes due to the lane switch
+        if (newPrimaryIndex != primary) {
+            updateLaneSwitchYawResetData(newPrimaryIndex, primary);
+            updateLaneSwitchPosResetData(newPrimaryIndex, primary);
+            updateLaneSwitchPosDownResetData(newPrimaryIndex, primary);
+            primary = newPrimaryIndex;
+        }
     }
+
+    check_log_write();
 }
 
 // Check basic filter health metrics and return a consolidated health status
@@ -579,17 +755,38 @@ int8_t NavEKF2::getPrimaryCoreIndex(void) const
     return primary;
 }
 
+// returns the index of the IMU of the primary core
+// return -1 if no primary core selected
+int8_t NavEKF2::getPrimaryCoreIMUIndex(void) const
+{
+    if (!core) {
+        return -1;
+    }
+    return core[primary].getIMUIndex();
+}
 
-// Return the last calculated NED position relative to the reference point (m).
+// Write the last calculated NE position relative to the reference point (m).
 // If a calculated solution is not available, use the best available data and return false
 // If false returned, do not use for flight control
-bool NavEKF2::getPosNED(int8_t instance, Vector3f &pos)
+bool NavEKF2::getPosNE(int8_t instance, Vector2f &posNE)
 {
     if (instance < 0 || instance >= num_cores) instance = primary;
     if (!core) {
         return false;
     }
-    return core[instance].getPosNED(pos);
+    return core[instance].getPosNE(posNE);
+}
+
+// Write the last calculated D position relative to the reference point (m).
+// If a calculated solution is not available, use the best available data and return false
+// If false returned, do not use for flight control
+bool NavEKF2::getPosD(int8_t instance, float &posD)
+{
+    if (instance < 0 || instance >= num_cores) instance = primary;
+    if (!core) {
+        return false;
+    }
+    return core[instance].getPosD(posD);
 }
 
 // return NED velocity in m/s
@@ -601,7 +798,7 @@ void NavEKF2::getVelNED(int8_t instance, Vector3f &vel)
     }
 }
 
-// Return the rate of change of vertical position in the down diection (dPosD/dt) in m/s
+// Return the rate of change of vertical position in the down direction (dPosD/dt) in m/s
 float NavEKF2::getPosDownDerivative(int8_t instance)
 {
     if (instance < 0 || instance >= num_cores) instance = primary;
@@ -651,7 +848,9 @@ void NavEKF2::getTiltError(int8_t instance, float &ang)
 void NavEKF2::resetGyroBias(void)
 {
     if (core) {
-        core[primary].resetGyroBias();
+        for (uint8_t i=0; i<num_cores; i++) {
+            core[i].resetGyroBias();
+        }
     }
 }
 
@@ -662,10 +861,17 @@ void NavEKF2::resetGyroBias(void)
 // If using a range finder for height no reset is performed and it returns false
 bool NavEKF2::resetHeightDatum(void)
 {
-    if (!core) {
-        return false;
+    bool status = true;
+    if (core) {
+        for (uint8_t i=0; i<num_cores; i++) {
+            if (!core[i].resetHeightDatum()) {
+                status = false;
+            }
+        }
+    } else {
+        status = false;
     }
-    return core[primary].resetHeightDatum();
+    return status;
 }
 
 // Commands the EKF to not use GPS.
@@ -781,7 +987,7 @@ bool NavEKF2::getOriginLLH(struct Location &loc) const
 }
 
 // set the latitude and longitude and height used to set the NED origin
-// All NED positions calcualted by the filter will be relative to this location
+// All NED positions calculated by the filter will be relative to this location
 // The origin cannot be set if the filter is in a flight mode (eg vehicle armed)
 // Returns false if the filter has rejected the attempt to set the origin
 bool NavEKF2::setOriginLLH(struct Location &loc)
@@ -836,6 +1042,15 @@ void NavEKF2::getInnovations(int8_t instance, Vector3f &velInnov, Vector3f &posI
     }
 }
 
+// publish output observer angular, velocity and position tracking error
+void NavEKF2::getOutputTrackingError(int8_t instance, Vector3f &error) const
+{
+    if (instance < 0 || instance >= num_cores) instance = primary;
+    if (core) {
+        core[instance].getOutputTrackingError(error);
+    }
+}
+
 // return the innovation consistency test ratios for the velocity, position, magnetometer and true airspeed measurements
 void NavEKF2::getVariances(int8_t instance, float &velVar, float &posVar, float &hgtVar, Vector3f &magVar, float &tasVar, Vector2f &offset)
 {
@@ -861,11 +1076,12 @@ bool NavEKF2::use_compass(void) const
 // rawGyroRates are the sensor rotation rates in rad/sec measured by the sensors internal gyro
 // The sign convention is that a RH physical rotation of the sensor about an axis produces both a positive flow and gyro rate
 // msecFlowMeas is the scheduler time in msec when the optical flow data was received from the sensor.
-void NavEKF2::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, Vector2f &rawGyroRates, uint32_t &msecFlowMeas)
+// posOffset is the XYZ flow sensor position in the body frame in m
+void NavEKF2::writeOptFlowMeas(uint8_t &rawFlowQuality, Vector2f &rawFlowRates, Vector2f &rawGyroRates, uint32_t &msecFlowMeas, const Vector3f &posOffset)
 {
     if (core) {
         for (uint8_t i=0; i<num_cores; i++) {
-            core[i].writeOptFlowMeas(rawFlowQuality, rawFlowRates, rawGyroRates, msecFlowMeas);
+            core[i].writeOptFlowMeas(rawFlowQuality, rawFlowRates, rawGyroRates, msecFlowMeas, posOffset);
         }
     }
 }
@@ -880,12 +1096,25 @@ void NavEKF2::getFlowDebug(int8_t instance, float &varFlow, float &gndOffset, fl
     }
 }
 
+// return data for debugging range beacon fusion
+bool NavEKF2::getRangeBeaconDebug(int8_t instance, uint8_t &ID, float &rng, float &innov, float &innovVar, float &testRatio, Vector3f &beaconPosNED, float &offsetHigh, float &offsetLow)
+{
+    if (instance < 0 || instance >= num_cores) instance = primary;
+    if (core) {
+        return core[instance].getRangeBeaconDebug(ID, rng, innov, innovVar, testRatio, beaconPosNED, offsetHigh, offsetLow);
+    } else {
+        return false;
+    }
+}
+
 // called by vehicle code to specify that a takeoff is happening
 // causes the EKF to compensate for expected barometer errors due to ground effect
 void NavEKF2::setTakeoffExpected(bool val)
 {
     if (core) {
-        core[primary].setTakeoffExpected(val);
+        for (uint8_t i=0; i<num_cores; i++) {
+            core[i].setTakeoffExpected(val);
+        }
     }
 }
 
@@ -894,8 +1123,23 @@ void NavEKF2::setTakeoffExpected(bool val)
 void NavEKF2::setTouchdownExpected(bool val)
 {
     if (core) {
-        core[primary].setTouchdownExpected(val);
+        for (uint8_t i=0; i<num_cores; i++) {
+            core[i].setTouchdownExpected(val);
+        }
     }
+}
+
+// Set to true if the terrain underneath is stable enough to be used as a height reference
+// in combination with a range finder. Set to false if the terrain underneath the vehicle
+// cannot be used as a height reference
+void NavEKF2::setTerrainHgtStable(bool val)
+{
+    if (core) {
+        for (uint8_t i=0; i<num_cores; i++) {
+            core[i].setTerrainHgtStable(val);
+        }
+    }
+
 }
 
 /*
@@ -909,7 +1153,7 @@ void NavEKF2::setTouchdownExpected(bool val)
   7 = badly conditioned synthetic sideslip fusion
   7 = filter is not initialised
 */
-void NavEKF2::getFilterFaults(int8_t instance, uint8_t &faults)
+void NavEKF2::getFilterFaults(int8_t instance, uint16_t &faults)
 {
     if (instance < 0 || instance >= num_cores) instance = primary;
     if (core) {
@@ -985,24 +1229,80 @@ bool NavEKF2::getHeightControlLimit(float &height) const
     return core[primary].getHeightControlLimit(height);
 }
 
-// return the amount of yaw angle change due to the last yaw angle reset in radians
-// returns the time of the last yaw angle reset or 0 if no reset has ever occurred
-uint32_t NavEKF2::getLastYawResetAngle(float &yawAng) const
+// Returns the amount of yaw angle change (in radians) due to the last yaw angle reset or core selection switch
+// Returns the time of the last yaw angle reset or 0 if no reset or core switch has ever occurred
+// Where there are multiple consumers, they must access this function on the same frame as each other
+uint32_t NavEKF2::getLastYawResetAngle(float &yawAngDelta)
 {
     if (!core) {
         return 0;
     }
-    return core[primary].getLastYawResetAngle(yawAng);
+
+    yawAngDelta = 0.0f;
+
+    // Do the conversion to msec in one place
+    uint32_t now_time_ms = imuSampleTime_us / 1000;
+
+    // The last time we switched to the current primary core is the first reset event
+    uint32_t lastYawReset_ms = yaw_reset_data.last_primary_change;
+
+    // There has been a change notification in the primary core that the controller has not consumed
+    // or this is a repeated acce
+    if (yaw_reset_data.core_changed || yaw_reset_data.last_function_call == now_time_ms) {
+        yawAngDelta = yaw_reset_data.core_delta;
+        yaw_reset_data.core_changed = false;
+    }
+
+    // Record last time controller got the yaw reset
+    yaw_reset_data.last_function_call = now_time_ms;
+
+    // There has been a reset inside the core since we switched so update the time and delta
+    float temp_yawAng;
+    uint32_t lastCoreYawReset_ms = core[primary].getLastYawResetAngle(temp_yawAng);
+    if (lastCoreYawReset_ms > lastYawReset_ms) {
+        yawAngDelta = wrap_PI(yawAngDelta + temp_yawAng);
+        lastYawReset_ms = lastCoreYawReset_ms;
+    }
+
+    return lastYawReset_ms;
 }
 
-// return the amount of NE position change due to the last position reset in metres
-// returns the time of the last reset or 0 if no reset has ever occurred
-uint32_t NavEKF2::getLastPosNorthEastReset(Vector2f &pos) const
+// Returns the amount of NE position change due to the last position reset or core switch in metres
+// Returns the time of the last reset or 0 if no reset or core switch has ever occurred
+// Where there are multiple consumers, they must access this function on the same frame as each other
+uint32_t NavEKF2::getLastPosNorthEastReset(Vector2f &posDelta)
 {
     if (!core) {
         return 0;
     }
-    return core[primary].getLastPosNorthEastReset(pos);
+
+    posDelta.zero();
+
+    // Do the conversion to msec in one place
+    uint32_t now_time_ms = imuSampleTime_us / 1000;
+
+    // The last time we switched to the current primary core is the first reset event
+    uint32_t lastPosReset_ms = pos_reset_data.last_primary_change;
+
+    // There has been a change in the primary core that the controller has not consumed
+    // allow for multiple consumers on the same frame
+    if (pos_reset_data.core_changed || pos_reset_data.last_function_call == now_time_ms) {
+        posDelta = pos_reset_data.core_delta;
+        pos_reset_data.core_changed = false;
+    }
+
+    // Record last time controller got the position reset
+    pos_reset_data.last_function_call = now_time_ms;
+
+    // There has been a reset inside the core since we switched so update the time and delta
+    Vector2f tempPosDelta;
+    uint32_t lastCorePosReset_ms = core[primary].getLastPosNorthEastReset(tempPosDelta);
+    if (lastCorePosReset_ms > lastPosReset_ms) {
+        posDelta = posDelta + tempPosDelta;
+        lastPosReset_ms = lastCorePosReset_ms;
+    }
+
+    return lastPosReset_ms;
 }
 
 // return the amount of NE velocity change due to the last velocity reset in metres/sec
@@ -1022,6 +1322,122 @@ const char *NavEKF2::prearm_failure_reason(void) const
         return nullptr;
     }
     return core[primary].prearm_failure_reason();
+}
+
+// Returns the amount of vertical position change due to the last reset or core switch in metres
+// Returns the time of the last reset or 0 if no reset or core switch has ever occurred
+// Where there are multiple consumers, they must access this function on the same frame as each other
+uint32_t NavEKF2::getLastPosDownReset(float &posDelta)
+{
+    if (!core) {
+        return 0;
+    }
+
+    posDelta = 0.0f;
+
+    // Do the conversion to msec in one place
+    uint32_t now_time_ms = imuSampleTime_us / 1000;
+
+    // The last time we switched to the current primary core is the first reset event
+    uint32_t lastPosReset_ms = pos_down_reset_data.last_primary_change;
+
+    // There has been a change in the primary core that the controller has not consumed
+    // allow for multiple consumers on the same frame
+    if (pos_down_reset_data.core_changed || pos_down_reset_data.last_function_call == now_time_ms) {
+        posDelta = pos_down_reset_data.core_delta;
+        pos_down_reset_data.core_changed = false;
+    }
+
+    // Record last time controller got the position reset
+    pos_down_reset_data.last_function_call = now_time_ms;
+
+    // There has been a reset inside the core since we switched so update the time and delta
+    float tempPosDelta;
+    uint32_t lastCorePosReset_ms = core[primary].getLastPosDownReset(tempPosDelta);
+    if (lastCorePosReset_ms > lastPosReset_ms) {
+        posDelta += tempPosDelta;
+        lastPosReset_ms = lastCorePosReset_ms;
+    }
+
+    return lastPosReset_ms;
+}
+
+// update the yaw reset data to capture changes due to a lane switch
+void NavEKF2::updateLaneSwitchYawResetData(uint8_t new_primary, uint8_t old_primary)
+{
+    Vector3f eulers_old_primary, eulers_new_primary;
+    float old_yaw_delta;
+
+    // If core yaw reset data has been consumed reset delta to zero
+    if (!yaw_reset_data.core_changed) {
+        yaw_reset_data.core_delta = 0;
+    }
+
+    // If current primary has reset yaw after controller got it, add it to the delta
+    if (core[old_primary].getLastYawResetAngle(old_yaw_delta) > yaw_reset_data.last_function_call) {
+        yaw_reset_data.core_delta += old_yaw_delta;
+    }
+
+    // Record the yaw delta between current core and new primary core and the timestamp of the core change
+    // Add current delta in case it hasn't been consumed yet
+    core[old_primary].getEulerAngles(eulers_old_primary);
+    core[new_primary].getEulerAngles(eulers_new_primary);
+    yaw_reset_data.core_delta = wrap_PI(eulers_new_primary.z - eulers_old_primary.z + yaw_reset_data.core_delta);
+    yaw_reset_data.last_primary_change = imuSampleTime_us / 1000;
+    yaw_reset_data.core_changed = true;
+
+}
+
+// update the position reset data to capture changes due to a lane switch
+void NavEKF2::updateLaneSwitchPosResetData(uint8_t new_primary, uint8_t old_primary)
+{
+    Vector2f pos_old_primary, pos_new_primary, old_pos_delta;
+
+    // If core position reset data has been consumed reset delta to zero
+    if (!pos_reset_data.core_changed) {
+        pos_reset_data.core_delta.zero();
+    }
+
+    // If current primary has reset position after controller got it, add it to the delta
+    if (core[old_primary].getLastPosNorthEastReset(old_pos_delta) > pos_reset_data.last_function_call) {
+        pos_reset_data.core_delta += old_pos_delta;
+    }
+
+    // Record the position delta between current core and new primary core and the timestamp of the core change
+    // Add current delta in case it hasn't been consumed yet
+    core[old_primary].getPosNE(pos_old_primary);
+    core[new_primary].getPosNE(pos_new_primary);
+    pos_reset_data.core_delta = pos_new_primary - pos_old_primary + pos_reset_data.core_delta;
+    pos_reset_data.last_primary_change = imuSampleTime_us / 1000;
+    pos_reset_data.core_changed = true;
+
+}
+
+// Update the vertical position reset data to capture changes due to a core switch
+// This should be called after the decision to switch cores has been made, but before the
+// new primary EKF update has been run
+void NavEKF2::updateLaneSwitchPosDownResetData(uint8_t new_primary, uint8_t old_primary)
+{
+    float posDownOldPrimary, posDownNewPrimary, oldPosDownDelta;
+
+    // If core position reset data has been consumed reset delta to zero
+    if (!pos_down_reset_data.core_changed) {
+        pos_down_reset_data.core_delta = 0.0f;
+    }
+
+    // If current primary has reset position after controller got it, add it to the delta
+    if (core[old_primary].getLastPosDownReset(oldPosDownDelta) > pos_down_reset_data.last_function_call) {
+        pos_down_reset_data.core_delta += oldPosDownDelta;
+    }
+
+    // Record the position delta between current core and new primary core and the timestamp of the core change
+    // Add current delta in case it hasn't been consumed yet
+    core[old_primary].getPosD(posDownOldPrimary);
+    core[new_primary].getPosD(posDownNewPrimary);
+    pos_down_reset_data.core_delta = posDownNewPrimary - posDownOldPrimary + pos_down_reset_data.core_delta;
+    pos_down_reset_data.last_primary_change = imuSampleTime_us / 1000;
+    pos_down_reset_data.core_changed = true;
+
 }
 
 #endif //HAL_CPU_CLASS

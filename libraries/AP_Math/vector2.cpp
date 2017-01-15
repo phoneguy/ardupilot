@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
  * vector3.cpp
  * Copyright (C) Andrew Tridgell 2012
@@ -24,7 +23,7 @@
 template <typename T>
 float Vector2<T>::length(void) const
 {
-	return pythagorous2(x, y);
+	return norm(x, y);
 }
 
 
@@ -156,3 +155,6 @@ template bool Vector2<float>::operator !=(const Vector2<float> &v) const;
 template bool Vector2<float>::is_nan(void) const;
 template bool Vector2<float>::is_inf(void) const;
 template float Vector2<float>::angle(const Vector2<float> &v) const;
+
+// define for int
+template bool Vector2<int>::operator ==(const Vector2<int> &v) const;

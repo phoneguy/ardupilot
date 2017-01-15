@@ -1,4 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -110,7 +109,7 @@ AP_GPS_ERB::read(void)
         case 5:
             _ck_b += (_ck_a += data);                   // checksum byte
             if (_payload_counter < sizeof(_buffer)) {
-                _buffer.bytes[_payload_counter] = data;
+                _buffer[_payload_counter] = data;
             }
             if (++_payload_counter == _payload_length)
                 _step++;
@@ -201,7 +200,7 @@ AP_GPS_ERB::_parse_gps(void)
         _last_vel_time         = _buffer.vel.time;
         state.ground_speed     = _buffer.vel.speed_2d * 0.01f;        // m/s
         // Heading 2D deg * 100000 rescaled to deg * 100
-        state.ground_course_cd = wrap_360_cd(_buffer.vel.heading_2d / 1000);
+        state.ground_course = wrap_360(_buffer.vel.heading_2d * 1.0e-5f);
         state.have_vertical_velocity = true;
         state.velocity.x = _buffer.vel.vel_north * 0.01f;
         state.velocity.y = _buffer.vel.vel_east * 0.01f;
@@ -225,7 +224,7 @@ AP_GPS_ERB::_parse_gps(void)
 }
 
 void
-AP_GPS_ERB::inject_data(uint8_t *data, uint8_t len)
+AP_GPS_ERB::inject_data(const uint8_t *data, uint16_t len)
 {
 
     if (port->txspace() > len) {

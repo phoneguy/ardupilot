@@ -26,7 +26,6 @@
 #include <AP_Mission/AP_Mission.h>
 #include <StorageManager/StorageManager.h>
 #include <AP_Terrain/AP_Terrain.h>
-#include <AP_NavEKF/AP_NavEKF.h>
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <AP_RangeFinder/AP_RangeFinder.h>
 #include <AP_Scheduler/AP_Scheduler.h>
@@ -48,11 +47,7 @@ RC_Channel rc7(6), rsc(8), h1(0), h2(1), h3(2), h4(3);
 
 // uncomment the row below depending upon what frame you are using
 //AP_MotorsTri	motors(400);
-AP_MotorsQuad   motors(400);
-//AP_MotorsHexa	motors(400);
-//AP_MotorsY6	motors(400);
-//AP_MotorsOcta	motors(400);
-//AP_MotorsOctaQuad	motors(400);
+AP_MotorsMatrix   motors(400);
 //AP_MotorsHeli_Single motors(rc7, rsc, h1, h2, h3, h4, 400);
 //AP_MotorsSingle motors(400);
 //AP_MotorsCoax motors(400);
@@ -64,23 +59,22 @@ void setup()
 
     // motor initialisation
     motors.set_update_rate(490);
-    motors.set_frame_orientation(AP_MOTORS_X_FRAME);
-    motors.Init();
+    motors.init(AP_Motors::MOTOR_FRAME_QUAD, AP_Motors::MOTOR_FRAME_TYPE_X);
 #if HELI_TEST == 0
-    motors.set_throttle_range(130,1000,2000);
-    motors.set_hover_throttle(500);
+    motors.set_throttle_range(1000,2000);
+    motors.set_throttle_avg_max(0.5f);
 #endif
     motors.enable();
     motors.output_min();
 
     // setup radio
-	rc3.radio_min = 1000;
-    rc3.radio_max = 2000;
+	rc3.set_radio_min(1000);
+    rc3.set_radio_max(2000);
 
     // set rc channel ranges
     rc1.set_angle(4500);
     rc2.set_angle(4500);
-    rc3.set_range(130, 1000);
+    rc3.set_range(1000);
     rc4.set_angle(4500);
 
     hal.scheduler->delay(1000);
@@ -139,7 +133,7 @@ void stability_test()
     int16_t rpy_tests[] = {0, 1000, 2000, 3000, 4500, -1000, -2000, -3000, -4500};
     uint8_t rpy_tests_num = sizeof(rpy_tests) / sizeof(int16_t);
 
-    hal.console->printf("\nTesting stability patch\nThrottle Min:%d Max:%d\n",(int)rc3.radio_min,(int)rc3.radio_max);
+    hal.console->printf("\nTesting stability patch\nThrottle Min:%d Max:%d\n",(int)rc3.get_radio_min(),(int)rc3.get_radio_max());
 
     // arm motors
     motors.armed(true);
@@ -167,9 +161,6 @@ void stability_test()
                     motors.set_yaw(yaw_in/4500.0f);
                     motors.set_throttle(throttle_in);
                     motors.set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
-#if HELI_TEST == 0
-                    motors.set_throttle_mix_mid();
-#endif
                     update_motors();
                     avg_out = ((hal.rcout->read(0) + hal.rcout->read(1) + hal.rcout->read(2) + hal.rcout->read(3))/4);
                     // display input and output

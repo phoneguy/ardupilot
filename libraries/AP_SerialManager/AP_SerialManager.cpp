@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    Please contribute your ideas! See http://dev.ardupilot.org for details
 
@@ -43,10 +42,17 @@ const AP_Param::GroupInfo AP_SerialManager::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("0_BAUD",  0, AP_SerialManager, state[0].baud, AP_SERIALMANAGER_CONSOLE_BAUD/1000),
 
+    // @Param: 0_PROTOCOL
+    // @DisplayName: Console protocol selection
+    // @Description: Control what protocol to use on the console. 
+    // @Values: 1:MAVlink1, 2:MAVLink2
+    // @User: Standard
+    AP_GROUPINFO("0_PROTOCOL",  11, AP_SerialManager, state[0].protocol, SerialProtocol_MAVLink),
+    
     // @Param: 1_PROTOCOL
     // @DisplayName: Telem1 protocol selection
     // @Description: Control what protocol to use on the Telem1 port. Note that the Frsky options require external converter hardware. See the wiki for details.
-    // @Values: -1:None, 1:GCS Mavlink, 3:Frsky D-PORT, 4:Frsky S-PORT, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar
+    // @Values: -1:None, 1:MAVLink1, 2:MAVLink2, 3:Frsky D, 4:Frsky SPort, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar, 10:FrSky SPort Passthrough (OpenTX), 11:Lidar360, 12:Aerotenna uLanding, 13:Pozyx Beacon
     // @User: Standard
     AP_GROUPINFO("1_PROTOCOL",  1, AP_SerialManager, state[1].protocol, SerialProtocol_MAVLink),
 
@@ -60,7 +66,7 @@ const AP_Param::GroupInfo AP_SerialManager::var_info[] = {
     // @Param: 2_PROTOCOL
     // @DisplayName: Telemetry 2 protocol selection
     // @Description: Control what protocol to use on the Telem2 port. Note that the Frsky options require external converter hardware. See the wiki for details.
-    // @Values: -1:None, 1:GCS Mavlink, 3:Frsky D-PORT, 4:Frsky S-PORT, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar
+    // @Values: -1:None, 1:MAVLink1, 2:MAVLink2, 3:Frsky D, 4:Frsky SPort, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar, 10:FrSky SPort Passthrough (OpenTX), 11:Lidar360, 12:Aerotenna uLanding, 13:Pozyx Beacon
     // @User: Standard
     AP_GROUPINFO("2_PROTOCOL",  3, AP_SerialManager, state[2].protocol, SerialProtocol_MAVLink),
 
@@ -74,7 +80,7 @@ const AP_Param::GroupInfo AP_SerialManager::var_info[] = {
     // @Param: 3_PROTOCOL
     // @DisplayName: Serial 3 (GPS) protocol selection
     // @Description: Control what protocol Serial 3 (GPS) should be used for. Note that the Frsky options require external converter hardware. See the wiki for details.
-    // @Values: -1:None, 1:GCS Mavlink, 3:Frsky D-PORT, 4:Frsky S-PORT, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar
+    // @Values: -1:None, 1:MAVLink1, 2:MAVLink2, 3:Frsky D, 4:Frsky SPort, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar, 10:FrSky SPort Passthrough (OpenTX), 11:Lidar360, 12:Aerotenna uLanding, 13:Pozyx Beacon
     // @User: Standard
     AP_GROUPINFO("3_PROTOCOL",  5, AP_SerialManager, state[3].protocol, SerialProtocol_GPS),
 
@@ -88,9 +94,9 @@ const AP_Param::GroupInfo AP_SerialManager::var_info[] = {
     // @Param: 4_PROTOCOL
     // @DisplayName: Serial4 protocol selection
     // @Description: Control what protocol Serial4 port should be used for. Note that the Frsky options require external converter hardware. See the wiki for details.
-    // @Values: -1:None, 1:GCS Mavlink, 3:Frsky D-PORT, 4:Frsky S-PORT, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar
+    // @Values: -1:None, 1:MAVLink1, 2:MAVLink2, 3:Frsky D, 4:Frsky SPort, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar, 10:FrSky SPort Passthrough (OpenTX), 11:Lidar360, 12:Aerotenna uLanding, 13:Pozyx Beacon
     // @User: Standard
-    AP_GROUPINFO("4_PROTOCOL",  7, AP_SerialManager, state[4].protocol, SerialProtocol_GPS2),
+    AP_GROUPINFO("4_PROTOCOL",  7, AP_SerialManager, state[4].protocol, SerialProtocol_GPS),
 
     // @Param: 4_BAUD
     // @DisplayName: Serial 4 Baud Rate
@@ -102,7 +108,7 @@ const AP_Param::GroupInfo AP_SerialManager::var_info[] = {
     // @Param: 5_PROTOCOL
     // @DisplayName: Serial5 protocol selection
     // @Description: Control what protocol Serial5 port should be used for. Note that the Frsky options require external converter hardware. See the wiki for details.
-    // @Values: -1:None, 1:GCS Mavlink, 3:Frsky D-PORT, 4:Frsky S-PORT, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar
+    // @Values: -1:None, 1:MAVLink1, 2:MAVLink2, 3:Frsky D, 4:Frsky SPort, 5:GPS, 7:Alexmos Gimbal Serial, 8:SToRM32 Gimbal Serial, 9:Lidar, 10:FrSky SPort Passthrough (OpenTX), 11:Lidar360, 12:Aerotenna uLanding, 13:Pozyx Beacon
     // @User: Standard
     AP_GROUPINFO("5_PROTOCOL",  9, AP_SerialManager, state[5].protocol, SERIAL5_PROTOCOL),
 
@@ -113,6 +119,8 @@ const AP_Param::GroupInfo AP_SerialManager::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("5_BAUD", 10, AP_SerialManager, state[5].baud, SERIAL5_BAUD),
 
+    // index 11 used by 0_PROTOCOL
+    
     AP_GROUPEND
 };
 
@@ -127,7 +135,6 @@ AP_SerialManager::AP_SerialManager()
 void AP_SerialManager::init_console()
 {
     // initialise console immediately at default size and baud
-    state[0].protocol = SerialProtocol_Console; // protocol is unused for console
     state[0].uart = hal.uartA;  // serial0, uartA, always console
     state[0].uart->begin(AP_SERIALMANAGER_CONSOLE_BAUD,
                          AP_SERIALMANAGER_CONSOLE_BUFSIZE_RX,
@@ -144,31 +151,30 @@ void AP_SerialManager::init()
     state[4].uart = hal.uartE;  // serial4, uartE, normally 2nd GPS
     state[5].uart = hal.uartF;  // serial5
 
+    if (state[0].uart == nullptr) {
+        init_console();
+    }
+    
     // initialise serial ports
     for (uint8_t i=1; i<SERIALMANAGER_NUM_PORTS; i++) {
-        if (state[i].uart != NULL) {
+        if (state[i].uart != nullptr) {
             switch (state[i].protocol) {
                 case SerialProtocol_None:
                     break;
                 case SerialProtocol_Console:
-                    state[i].uart->begin(map_baudrate(state[i].baud), 
-                                         AP_SERIALMANAGER_CONSOLE_BUFSIZE_RX, 
-                                         AP_SERIALMANAGER_CONSOLE_BUFSIZE_TX);
-                    break;
                 case SerialProtocol_MAVLink:
                 case SerialProtocol_MAVLink2:
                     state[i].uart->begin(map_baudrate(state[i].baud), 
                                          AP_SERIALMANAGER_MAVLINK_BUFSIZE_RX,
                                          AP_SERIALMANAGER_MAVLINK_BUFSIZE_TX);
                     break;
-                case SerialProtocol_FRSky_DPort:
+                case SerialProtocol_FrSky_D:
                     // Note baudrate is hardcoded to 9600
-                    state[i].baud = AP_SERIALMANAGER_FRSKY_DPORT_BAUD/1000; // update baud param in case user looks at it
-                    state[i].uart->begin(AP_SERIALMANAGER_FRSKY_DPORT_BAUD, 
-                                         AP_SERIALMANAGER_FRSKY_BUFSIZE_RX, 
-                                         AP_SERIALMANAGER_FRSKY_BUFSIZE_TX);
+                    state[i].baud = AP_SERIALMANAGER_FRSKY_D_BAUD/1000; // update baud param in case user looks at it
+                    // begin is handled by AP_Frsky_telem library
                     break;
-                case SerialProtocol_FRSky_SPort:
+                case SerialProtocol_FrSky_SPort:
+                case SerialProtocol_FrSky_SPort_Passthrough:
                     // Note baudrate is hardcoded to 57600
                     state[i].baud = AP_SERIALMANAGER_FRSKY_SPORT_BAUD/1000; // update baud param in case user looks at it
                     // begin is handled by AP_Frsky_telem library
@@ -193,6 +199,13 @@ void AP_SerialManager::init()
                                          AP_SERIALMANAGER_SToRM32_BUFSIZE_RX,
                                          AP_SERIALMANAGER_SToRM32_BUFSIZE_TX);
                     break;
+                case SerialProtocol_Aerotenna_uLanding:
+                    // Note baudrate is hardcoded to 115200
+                    state[i].baud = AP_SERIALMANAGER_ULANDING_BAUD / 1000;   // update baud param in case user looks at it
+                    state[i].uart->begin(map_baudrate(state[i].baud),
+                                         AP_SERIALMANAGER_ULANDING_BUFSIZE_RX,
+                                         AP_SERIALMANAGER_ULANDING_BUFSIZE_TX);
+                    break;
             }
         }
     }
@@ -200,7 +213,7 @@ void AP_SerialManager::init()
 
 // find_serial - searches available serial ports for the first instance that allows the given protocol
 //  instance should be zero if searching for the first instance, 1 for the second, etc
-//  returns uart on success, NULL if a serial port cannot be found
+//  returns uart on success, nullptr if a serial port cannot be found
 AP_HAL::UARTDriver *AP_SerialManager::find_serial(enum SerialProtocol protocol, uint8_t instance) const
 {
     uint8_t found_instance = 0;
@@ -216,7 +229,7 @@ AP_HAL::UARTDriver *AP_SerialManager::find_serial(enum SerialProtocol protocol, 
     }
 
     // if we got this far we did not find the uart
-    return NULL;
+    return nullptr;
 }
 
 // find_baudrate - searches available serial ports for the first instance that allows the given protocol
@@ -245,30 +258,34 @@ uint32_t AP_SerialManager::find_baudrate(enum SerialProtocol protocol, uint8_t i
 //  returns true if a channel is found, false if not
 bool AP_SerialManager::get_mavlink_channel(enum SerialProtocol protocol, uint8_t instance, mavlink_channel_t &mav_chan) const
 {
-    // check for console
-    if (protocol == SerialProtocol_Console) {
-        mav_chan = MAVLINK_COMM_0;
-        return true;
-    }
-
     // check for MAVLink
     if (protocol_match(protocol, SerialProtocol_MAVLink)) {
-        if (instance == 0) {
-            mav_chan = MAVLINK_COMM_1;
-            return true;
-        }
-        if (instance == 1) {
-            mav_chan = MAVLINK_COMM_2;
-            return true;
-        }
-        if (instance == 2) {
-            mav_chan = MAVLINK_COMM_3;
+        if (instance < MAVLINK_COMM_NUM_BUFFERS) {
+            mav_chan = (mavlink_channel_t)(MAVLINK_COMM_0 + instance);
             return true;
         }
     }
-
     // report failure
     return false;
+}
+
+
+// get_mavlink_protocol - provides the specific MAVLink protocol for a
+// given channel, or SerialProtocol_None if not found
+AP_SerialManager::SerialProtocol AP_SerialManager::get_mavlink_protocol(mavlink_channel_t mav_chan) const
+{
+    uint8_t instance = 0;
+    uint8_t chan_idx = (uint8_t)(mav_chan - MAVLINK_COMM_0);
+    for (uint8_t i=0; i<SERIALMANAGER_NUM_PORTS; i++) {
+        if (state[i].protocol == SerialProtocol_MAVLink ||
+            state[i].protocol == SerialProtocol_MAVLink2) {
+            if (instance == chan_idx) {
+                return (SerialProtocol)state[i].protocol.get();
+            }
+            instance++;
+        }
+    }
+    return SerialProtocol_None;
 }
 
 // set_blocking_writes_all - sets block_writes on or off for all serial channels
@@ -276,7 +293,7 @@ void AP_SerialManager::set_blocking_writes_all(bool blocking)
 {
     // set block_writes for all initialised serial ports
     for (uint8_t i=0; i<SERIALMANAGER_NUM_PORTS; i++) {
-        if (state[i].uart != NULL) {
+        if (state[i].uart != nullptr) {
             state[i].uart->set_blocking_writes(blocking);
         }
     }

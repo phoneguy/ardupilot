@@ -73,7 +73,7 @@ bool ToneAlarm_Raspilot::init()
 
     // mmap GPIO
     void *pwm_map = mmap(
-        NULL,                 // Any adddress in our space will do
+        nullptr,              // Any adddress in our space will do
         BLOCK_SIZE,           // Map length
         PROT_READ|PROT_WRITE, // Enable reading & writting to mapped memory
         MAP_SHARED,           // Shared with other processes
@@ -82,7 +82,7 @@ bool ToneAlarm_Raspilot::init()
     );
 
     void *clk_map = mmap(
-        NULL,                 // Any adddress in our space will do
+        nullptr,              // Any adddress in our space will do
         BLOCK_SIZE,           // Map length
         PROT_READ|PROT_WRITE, // Enable reading & writting to mapped memory
         MAP_SHARED,           // Shared with other processes
@@ -183,6 +183,7 @@ void ToneAlarm_Raspilot::_set_pwm0_duty(uint8_t percent)
     int bit_count = constrain_int32(320 * percent / 100, 320, 0);
     unsigned int bits = 0;
 
+    // FIXME: bits overflows for any bit_count > 32
     while (bit_count) {
       bits <<= 1;
       bits |= 1;

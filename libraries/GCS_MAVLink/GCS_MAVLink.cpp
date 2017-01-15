@@ -1,4 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,7 +28,7 @@ This provides some support code and variables for MAVLink enabled sketches
 
 
 #ifdef MAVLINK_SEPARATE_HELPERS
-#include "include/mavlink/v1.0/mavlink_helpers.h"
+#include "include/mavlink/v2.0/mavlink_helpers.h"
 #endif
 
 AP_HAL::UARTDriver	*mavlink_comm_port[MAVLINK_COMM_NUM_BUFFERS];
@@ -45,9 +44,15 @@ MAVLink_routing GCS_MAVLINK::routing;
 // static dataflash pointer to support logging text messages
 DataFlash_Class *GCS_MAVLINK::dataflash_p;
 
+// static frsky_telem pointer to support queueing text messages
+AP_Frsky_Telem *GCS_MAVLINK::frsky_telemetry_p;
+ 
+// static AP_SerialManager pointer
+const AP_SerialManager *GCS_MAVLINK::serialmanager_p;
+
 // snoop function for vehicle types that want to see messages for
 // other targets
-void (*GCS_MAVLINK::msg_snoop)(const mavlink_message_t* msg) = NULL;
+void (*GCS_MAVLINK::msg_snoop)(const mavlink_message_t* msg) = nullptr;
 
 /*
   lock a channel, preventing use by MAVLink
@@ -144,14 +149,6 @@ void comm_send_buffer(mavlink_channel_t chan, const uint8_t *buf, uint8_t len)
     mavlink_comm_port[chan]->write(buf, len);
 }
 
-static const uint8_t mavlink_message_crc_table[256] = MAVLINK_MESSAGE_CRCS;
-
-// return CRC byte for a mavlink message ID
-uint8_t mavlink_get_message_crc(uint8_t msgid)
-{
-	return mavlink_message_crc_table[msgid];
-}
-
 extern const AP_HAL::HAL& hal;
 
 /*
@@ -161,5 +158,5 @@ extern const AP_HAL::HAL& hal;
 bool comm_is_idle(mavlink_channel_t chan)
 {
 	mavlink_status_t *status = mavlink_get_channel_status(chan);
-	return status == NULL || status->parse_state <= MAVLINK_PARSE_STATE_IDLE;
+	return status == nullptr || status->parse_state <= MAVLINK_PARSE_STATE_IDLE;
 }

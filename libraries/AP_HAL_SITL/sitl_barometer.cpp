@@ -33,7 +33,7 @@ void SITL_State::_update_barometer(float altitude)
 
     float sim_alt = altitude;
 
-    if (_barometer == NULL) {
+    if (_barometer == nullptr) {
         // this sketch doesn't use a barometer
         return;
     }
@@ -76,7 +76,9 @@ void SITL_State::_update_barometer(float altitude)
 
     // find data corresponding to delayed time in buffer
     for (uint8_t i=0; i<=baro_buffer_length-1; i++) {
-        time_delta_baro = abs(delayed_time_baro - buffer_baro[i].time); // find difference between delayed time and time stamp in buffer
+        // find difference between delayed time and time stamp in buffer
+        time_delta_baro = abs(
+                (int32_t)(delayed_time_baro - buffer_baro[i].time));
         // if this difference is smaller than last delta, store this time
         if (time_delta_baro < best_time_delta_baro) {
             best_index_baro = i;

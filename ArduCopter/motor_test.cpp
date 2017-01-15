@@ -1,5 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
 #include "Copter.h"
 
 /*
@@ -38,9 +36,13 @@ void Copter::motor_test_output()
 
             case MOTOR_TEST_THROTTLE_PERCENT:
                 // sanity check motor_test_throttle value
+#if FRAME_CONFIG != HELI_FRAME
                 if (motor_test_throttle_value <= 100) {
-                    pwm = channel_throttle->radio_min + (channel_throttle->radio_max - channel_throttle->radio_min) * (float)motor_test_throttle_value/100.0f;
+                    int16_t pwm_min = motors->get_pwm_output_min();
+                    int16_t pwm_max = motors->get_pwm_output_max();
+                    pwm = pwm_min + (pwm_max - pwm_min) * (float)motor_test_throttle_value/100.0f;
                 }
+#endif
                 break;
 
             case MOTOR_TEST_THROTTLE_PWM:
@@ -48,19 +50,18 @@ void Copter::motor_test_output()
                 break;
 
             case MOTOR_TEST_THROTTLE_PILOT:
-                pwm = channel_throttle->radio_in;
+                pwm = channel_throttle->get_radio_in();
                 break;
 
             default:
                 motor_test_stop();
                 return;
-                break;
         }
 
         // sanity check throttle values
         if (pwm >= MOTOR_TEST_PWM_MIN && pwm <= MOTOR_TEST_PWM_MAX ) {
             // turn on motor to specified pwm vlaue
-            motors.output_test(motor_test_seq, pwm);
+            motors->output_test(motor_test_seq, pwm);
         } else {
             motor_test_stop();
         }
@@ -111,10 +112,10 @@ uint8_t Copter::mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_s
             ap.motor_test = true;
 
             // enable and arm motors
-            if (!motors.armed()) {
+            if (!motors->armed()) {
                 init_rc_out();
                 enable_motor_output();
-                motors.armed(true);
+                motors->armed(true);
             }
 
             // disable throttle, battery and gps failsafe
@@ -152,7 +153,7 @@ void Copter::motor_test_stop()
     ap.motor_test = false;
 
     // disarm motors
-    motors.armed(false);
+    motors->armed(false);
 
     // reset timeout
     motor_test_start_ms = 0;

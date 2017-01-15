@@ -1,4 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
   additional arming checks for plane
  */
@@ -19,8 +18,21 @@ const AP_Param::GroupInfo AP_Arming_Plane::var_info[] = {
 };
 
 
+bool AP_Arming_Plane::arm(uint8_t method)
+{
+    // start logging here so we can check success or failure in
+    // arm_checks
+    if (plane.g.log_bitmask != NONE &&
+        !plane.DataFlash.logging_started()) {
+        plane.start_logging();
+    }
+
+    return AP_Arming::arm(method);
+}
+
 /*
   additional arming checks for plane
+
  */
 bool AP_Arming_Plane::pre_arm_checks(bool report)
 {
@@ -30,9 +42,9 @@ bool AP_Arming_Plane::pre_arm_checks(bool report)
     // Check airspeed sensor
     ret &= AP_Arming::airspeed_checks(report);
 
-    if (plane.g.roll_limit_cd < 300) {
+    if (plane.aparm.roll_limit_cd < 300) {
         if (report) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: LIM_ROLL_CD too small (%u)", plane.g.roll_limit_cd);
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: LIM_ROLL_CD too small (%u)", plane.aparm.roll_limit_cd);
         }
         ret = false;        
     }
@@ -54,7 +66,7 @@ bool AP_Arming_Plane::pre_arm_checks(bool report)
     if (plane.channel_throttle->get_reverse() && 
         plane.g.throttle_fs_enabled &&
         plane.g.throttle_fs_value < 
-        plane.channel_throttle->radio_max) {
+        plane.channel_throttle->get_radio_max()) {
         if (report) {
             GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Invalid THR_FS_VALUE for rev throttle");
         }
@@ -74,6 +86,24 @@ bool AP_Arming_Plane::pre_arm_checks(bool report)
         }
         ret = false;
     }
+
+    // check adsb avoidance failsafe
+    if (plane.failsafe.adsb) {
+        if (report) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL,"PreArm: ADSB threat detected");
+        }
+        ret = false;
+    }
+
+#if HAVE_PX4_MIXER
+    if (plane.last_mixer_crc == -1) {
+        if (report) {
+            // if you ever get this error, a reboot is recommended.
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL,"PreArm: Mixer error");
+        }
+        ret = false;
+    }
+#endif // CONFIG_HAL_BOARD
 
     return ret;
 }

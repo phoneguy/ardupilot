@@ -1,5 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
 /// @file    AP_Navigation.h
 /// @brief   generic navigation controller interface
 
@@ -112,6 +110,8 @@ public:
     // from previous waypoint navigation handling. This gets cleared on
     // every update_XXXXXX() call.
     virtual bool data_is_stale(void) const = 0;
+
+    virtual void set_reverse(bool reverse) = 0;
 
 	// add new navigation controllers to this enum. Users can then
 	// select which navigation controller to use by setting the

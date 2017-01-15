@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
  *       APM_AHRS_DCM.cpp
  *
@@ -165,11 +164,11 @@ AP_AHRS_DCM::reset(bool recover_eulers)
         // normalise the acceleration vector
         if (initAccVec.length() > 5.0f) {
             // calculate initial pitch angle
-            pitch = atan2f(initAccVec.x, pythagorous2(initAccVec.y, initAccVec.z));
+            pitch = atan2f(initAccVec.x, norm(initAccVec.y, initAccVec.z));
             // calculate initial roll angle
             roll = atan2f(-initAccVec.y, -initAccVec.z);
         } else {
-            // If we cant use the accel vector, then align flat
+            // If we can't use the accel vector, then align flat
             roll = 0.0f;
             pitch = 0.0f;
         }
@@ -354,7 +353,7 @@ AP_AHRS_DCM::_P_gain(float spin_rate)
 float
 AP_AHRS_DCM::_yaw_gain(void) const
 {
-    float VdotEFmag = pythagorous2(_accel_ef[_active_accel_instance].x,
+    float VdotEFmag = norm(_accel_ef[_active_accel_instance].x,
                                    _accel_ef[_active_accel_instance].y);
     if (VdotEFmag <= 4.0f) {
         return 0.2f*(4.5f - VdotEFmag);
@@ -774,7 +773,7 @@ AP_AHRS_DCM::drift_correction(float deltat)
     float earth_error_Z = error.z;
 
     // equation 10
-    float tilt = pythagorous2(GA_e.x, GA_e.y);
+    float tilt = norm(GA_e.x, GA_e.y);
 
     // equation 11
     float theta = atan2f(GA_b[besti].y, GA_b[besti].x);
@@ -792,7 +791,7 @@ AP_AHRS_DCM::drift_correction(float deltat)
     // flat, but still allow for yaw correction using the
     // accelerometers at high roll angles as long as we have a GPS
     if (AP_AHRS_DCM::use_compass()) {
-        if (have_gps() && is_equal(gps_gain,1.0f)) {
+        if (have_gps() && is_equal(gps_gain.get(), 1.0f)) {
             error[besti].z *= sinf(fabsf(roll));
         } else {
             error[besti].z = 0;
@@ -907,11 +906,11 @@ void AP_AHRS_DCM::estimate_wind(void)
         // estimate airspeed it using equation 6
         V = velocityDiff.length() / diff_length;
 
-        _last_fuse = fuselageDirection;
-        _last_vel = velocity;
-
         Vector3f fuselageDirectionSum = fuselageDirection + _last_fuse;
         Vector3f velocitySum = velocity + _last_vel;
+
+        _last_fuse = fuselageDirection;
+        _last_vel = velocity;
 
         float theta = atan2f(velocityDiff.y, velocityDiff.x) - atan2f(fuselageDirectionDiff.y, fuselageDirectionDiff.x);
         float sintheta = sinf(theta);
@@ -944,8 +943,7 @@ void AP_AHRS_DCM::estimate_wind(void)
 void
 AP_AHRS_DCM::euler_angles(void)
 {
-    _body_dcm_matrix = _dcm_matrix;
-    _body_dcm_matrix.rotateXYinv(_trim);
+    _body_dcm_matrix = _dcm_matrix * get_rotation_vehicle_body_to_autopilot_body();
     _body_dcm_matrix.to_euler(&roll, &pitch, &yaw);
 
     update_cd_values();

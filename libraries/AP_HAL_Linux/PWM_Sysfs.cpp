@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
  * Copyright (C) 2015  Intel Corporation. All rights reserved.
  *
@@ -15,11 +14,6 @@
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <AP_HAL/AP_HAL.h>
-
-#if CONFIG_HAL_BOARD == HAL_BOARD_LINUX
-
 #include "PWM_Sysfs.h"
 
 #include <errno.h>
@@ -29,6 +23,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 
 static const AP_HAL::HAL &hal = AP_HAL::get_HAL();
@@ -43,9 +38,25 @@ PWM_Sysfs_Base::PWM_Sysfs_Base(char* export_path, char* polarity_path,
     , _enable_path(enable_path)
     , _duty_path(duty_path)
     , _period_path(period_path)
+    , _channel(channel)
 {
-    if (_export_path == NULL || _enable_path == NULL ||
-        _period_path == NULL || _duty_path == NULL) {
+}
+
+PWM_Sysfs_Base::~PWM_Sysfs_Base()
+{
+    ::close(_duty_cycle_fd);
+
+    free(_export_path);
+    free(_polarity_path);
+    free(_enable_path);
+    free(_duty_path);
+    free(_period_path);
+}
+
+void PWM_Sysfs_Base::init()
+{
+    if (_export_path == nullptr || _enable_path == nullptr ||
+        _period_path == nullptr || _duty_path == nullptr) {
         AP_HAL::panic("PWM_Sysfs: export=%p enable=%p period=%p duty=%p"
                       " required path is NULL", _export_path, _enable_path,
                       _period_path, _duty_path);
@@ -53,7 +64,7 @@ PWM_Sysfs_Base::PWM_Sysfs_Base(char* export_path, char* polarity_path,
     /* Not checking the return of write_file since it will fail if
      * the pwm has already been exported
      */
-    Util::from(hal.util)->write_file(_export_path, "%u", channel);
+    Util::from(hal.util)->write_file(_export_path, "%u", _channel);
     free(_export_path);
 
     _duty_cycle_fd = ::open(_duty_path, O_RDWR | O_CLOEXEC);
@@ -62,15 +73,6 @@ PWM_Sysfs_Base::PWM_Sysfs_Base(char* export_path, char* polarity_path,
                       _duty_path, strerror(errno));
     }
     free(_duty_path);
-}
-
-PWM_Sysfs_Base::~PWM_Sysfs_Base()
-{
-    ::close(_duty_cycle_fd);
-
-    free(_polarity_path);
-    free(_enable_path);
-    free(_period_path);
 }
 
 void PWM_Sysfs_Base::enable(bool value)
@@ -274,7 +276,7 @@ char *PWM_Sysfs_Bebop::_generate_period_path(uint8_t channel)
 
 PWM_Sysfs_Bebop::PWM_Sysfs_Bebop(uint8_t channel) :
     PWM_Sysfs_Base(_generate_export_path(),
-                   NULL,
+                   nullptr,
                    _generate_enable_path(channel),
                    _generate_duty_path(channel),
                    _generate_period_path(channel),
@@ -283,4 +285,3 @@ PWM_Sysfs_Bebop::PWM_Sysfs_Bebop(uint8_t channel) :
 }
 
 }
-#endif

@@ -1,4 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -85,7 +84,7 @@ AP_GPS_SBP::read(void)
 }
 
 void 
-AP_GPS_SBP::inject_data(uint8_t *data, uint8_t len)
+AP_GPS_SBP::inject_data(const uint8_t *data, uint16_t len)
 {
 
     if (port->txspace() > len) {
@@ -214,7 +213,7 @@ AP_GPS_SBP::_sbp_process_message() {
 
         case SBP_TRACKING_STATE_MSGTYPE:
             //INTENTIONALLY BLANK
-            //Currenly unhandled, but logged after switch statement.
+            //Currently unhandled, but logged after switch statement.
             break;
 
         case SBP_IAR_STATE_MSGTYPE: {
@@ -272,7 +271,7 @@ AP_GPS_SBP::_attempt_state_update()
         float ground_vector_sq = state.velocity[0]*state.velocity[0] + state.velocity[1]*state.velocity[1];
         state.ground_speed = safe_sqrt(ground_vector_sq);
 
-        state.ground_course_cd = wrap_360_cd((int32_t) 100*ToDeg(atan2f(state.velocity[1], state.velocity[0])));
+        state.ground_course = wrap_360(degrees(atan2f(state.velocity[1], state.velocity[0])));
 
         // Update position state
 
@@ -388,7 +387,7 @@ void
 AP_GPS_SBP::logging_log_full_update()
 {
 
-    if (gps._DataFlash == NULL || !gps._DataFlash->logging_started()) {
+    if (gps._DataFlash == nullptr || !gps._DataFlash->logging_started()) {
       return;
     }
 
@@ -409,7 +408,7 @@ AP_GPS_SBP::logging_log_raw_sbp(uint16_t msg_type,
         uint8_t msg_len, 
         uint8_t *msg_buff) {
 
-    if (gps._DataFlash == NULL || !gps._DataFlash->logging_started()) {
+    if (gps._DataFlash == nullptr || !gps._DataFlash->logging_started()) {
       return;
     }
 

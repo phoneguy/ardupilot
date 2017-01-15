@@ -1,4 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 #pragma once
 
 #include <AP_AHRS/AP_AHRS.h>
@@ -36,6 +35,11 @@ public:
     void kI(float v) { gains.I.set(v); }
     void kD(float v) { gains.D.set(v); }
     void kFF(float v) { gains.FF.set(v); }
+
+    AP_Float &kP(void) { return gains.P; }
+    AP_Float &kI(void) { return gains.I; }
+    AP_Float &kD(void) { return gains.D; }
+    AP_Float &kFF(void) { return gains.FF; }
     
 private:
 	const AP_Vehicle::FixedWing &aparm;

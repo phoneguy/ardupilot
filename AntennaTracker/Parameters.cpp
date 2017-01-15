@@ -1,5 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
 #include "Tracker.h"
 
 /*
@@ -119,12 +117,19 @@ const AP_Param::Info Tracker::var_info[] = {
     // @User: Standard
     GSCALAR(startup_delay,          "STARTUP_DELAY",   0),
 
-    // @Param: SERVO_TYPE
-    // @DisplayName: Type of servo system being used
-    // @Description: This allows selection of position servos or on/off servos
+    // @Param: SERVO_PITCH_TYPE
+    // @DisplayName: Type of servo system being used for pitch
+    // @Description: This allows selection of position servos or on/off servos for pitch
     // @Values: 0:Position,1:OnOff,2:ContinuousRotation
     // @User: Standard
-    GSCALAR(servo_type,          "SERVO_TYPE",   SERVO_TYPE_POSITION),
+    GSCALAR(servo_pitch_type,          "SERVO_PITCH_TYPE",   SERVO_TYPE_POSITION),
+
+    // @Param: SERVO_YAW_TYPE
+    // @DisplayName: Type of servo system being used for yaw
+    // @Description: This allows selection of position servos or on/off servos for yaw
+    // @Values: 0:Position,1:OnOff,2:ContinuousRotation
+    // @User: Standard
+    GSCALAR(servo_yaw_type,          "SERVO_YAW_TYPE",   SERVO_TYPE_POSITION),
 
     // @Param: ONOFF_YAW_RATE
     // @DisplayName: Yaw rate for on/off servos
@@ -189,15 +194,6 @@ const AP_Param::Info Tracker::var_info[] = {
     // @User: Standard
     GSCALAR(yaw_range,              "YAW_RANGE", YAW_RANGE_DEFAULT),
 
-    // @Param: PITCH_RANGE
-    // @DisplayName: Pitch Range
-    // @Description: Pitch axis total range of motion in degrees
-    // @Units: degrees
-    // @Increment: 0.1
-    // @Range: 0 180
-    // @User: Standard
-    GSCALAR(pitch_range,            "PITCH_RANGE", PITCH_RANGE_DEFAULT),
-
     // @Param: DISTANCE_MIN
     // @DisplayName: Distance minimum to target
     // @Description: Tracker will track targets at least this distance away
@@ -206,6 +202,40 @@ const AP_Param::Info Tracker::var_info[] = {
     // @Range: 0 100
     // @User: Standard
     GSCALAR(distance_min,           "DISTANCE_MIN", DISTANCE_MIN_DEFAULT),
+
+    // @Param: ALT_SOURCE
+    // @DisplayName: Altitude Source
+    // @Description: What provides altitude information for vehicle. Vehicle only assumes tracker has same altitude as vehicle's home
+    // @Values: 0:Barometer,1:GPS,2:GPS vehicle only
+    // @User: Standard
+    GSCALAR(alt_source,				"ALT_SOURCE",	0),
+
+    // @Param: MAV_UPDATE_RATE
+    // @DisplayName: Mavlink Update Rate
+    // @Description: The rate at which Mavlink updates position and baro data
+    // @Units: Hz
+    // @Increment: 1
+    // @Range: 1 10
+    // @User: Standard
+    GSCALAR(mavlink_update_rate,	"MAV_UPDATE_RATE",	1),
+
+    // @Param: PITCH_MIN
+    // @DisplayName: Minimum Pitch Angle
+    // @Description: The lowest angle the pitch can reach
+    // @Units: Degrees
+    // @Increment: 1
+    // @Range: -90 0
+    // @User: Standard
+    GSCALAR(pitch_min,               "PITCH_MIN",	PITCH_MIN_DEFAULT),
+
+    // @Param: PITCH_MAX
+    // @DisplayName: Maximum Pitch Angle
+    // @Description: The highest angle the pitch can reach
+    // @Units: Degrees
+    // @Increment: 1
+    // @Range: 0 90
+    // @User: Standard
+    GSCALAR(pitch_max,               "PITCH_MAX",	PITCH_MAX_DEFAULT),
 
     // barometer ground calibration. The GND_ prefix is chosen for
     // compatibility with previous releases of ArduPlane
@@ -272,16 +302,12 @@ const AP_Param::Info Tracker::var_info[] = {
     // @Path: ../libraries/AP_Notify/AP_Notify.cpp
     GOBJECT(notify, "NTF_",  AP_Notify),
 
-    // RC channel
-    //-----------
-    // @Group: RC1_
     // @Path: ../libraries/RC_Channel/RC_Channel.cpp
-    GOBJECT(channel_yaw,       "RC1_", RC_Channel),
+    GOBJECT(rc_channels,     "RC", RC_Channels),
 
-    // @Group: RC2_
-    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
-    GOBJECT(channel_pitch,     "RC2_", RC_Channel),
-
+    // @Path: ../libraries/SRV_Channel/SRV_Channel.cpp
+    GOBJECT(servo_channels,     "SERVO", SRV_Channels),
+    
     // @Group: SERIAL
     // @Path: ../libraries/AP_SerialManager/AP_SerialManager.cpp
     GOBJECT(serial_manager,    "SERIAL",   AP_SerialManager),
@@ -314,7 +340,7 @@ const AP_Param::Info Tracker::var_info[] = {
     // @Range: 0.001 0.1
     // @Increment: 0.001
     // @User: Standard
-	GGROUP(pidPitch2Srv,       "PITCH2SRV_", PID),
+	GGROUP(pidPitch2Srv,       "PITCH2SRV_", AC_PID),
 
     // @Param: YAW2SRV_P
     // @DisplayName: Yaw axis controller P gain
@@ -344,7 +370,7 @@ const AP_Param::Info Tracker::var_info[] = {
     // @Range: 0.001 0.1
     // @Increment: 0.001
     // @User: Standard
-	GGROUP(pidYaw2Srv,         "YAW2SRV_", PID),
+	GGROUP(pidYaw2Srv,         "YAW2SRV_", AC_PID),
 
     // @Param: CMD_TOTAL
     // @DisplayName: Number of loaded mission items
@@ -364,7 +390,7 @@ void Tracker::load_parameters(void)
         g.format_version != Parameters::k_format_version) {
 
         // erase all parameters
-        hal.console->printf("Firmware change: erasing EEPROM...\n");
+        hal.console->println("Firmware change: erasing EEPROM...");
         AP_Param::erase_all();
 
         // save the current format version

@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,7 +17,10 @@
 #include <AP_Notify/AP_Notify.h>
 #include <GCS_MAVLink/GCS.h>
 
+#ifndef AP_ARMING_COMPASS_OFFSETS_MAX
+// this can also be overridden for specific boards in the HAL
 #define AP_ARMING_COMPASS_OFFSETS_MAX   600
+#endif
 #define AP_ARMING_COMPASS_MAGFIELD_MIN  185     // 0.35 * 530 milligauss
 #define AP_ARMING_COMPASS_MAGFIELD_MAX  875     // 1.65 * 530 milligauss
 #define AP_ARMING_BOARD_VOLTAGE_MIN     4.3f
@@ -80,7 +82,6 @@ AP_Arming::AP_Arming(const AP_AHRS &ahrs_ref, const AP_Baro &baro, Compass &comp
     _battery(battery),
     home_is_set(home_set),
     armed(false),
-    logging_available(false),
     arming_method(NONE)
 {
     AP_Param::setup_object_defaults(this, var_info);
@@ -123,7 +124,7 @@ bool AP_Arming::airspeed_checks(bool report)
     if ((checks_to_perform & ARMING_CHECK_ALL) ||
         (checks_to_perform & ARMING_CHECK_AIRSPEED)) {
         const AP_Airspeed *airspeed = ahrs.get_airspeed();
-        if (airspeed == NULL) {
+        if (airspeed == nullptr) {
             // not an airspeed capable vehicle
             return true;
         }
@@ -142,9 +143,15 @@ bool AP_Arming::logging_checks(bool report)
 {
     if ((checks_to_perform & ARMING_CHECK_ALL) ||
         (checks_to_perform & ARMING_CHECK_LOGGING)) {
-        if (!logging_available) {
+        if (DataFlash_Class::instance()->logging_failed()) {
             if (report) {
-                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Logging not available");
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Logging failed");
+            }
+            return false;
+        }
+        if (!DataFlash_Class::instance()->CardInserted()) {
+            if (report) {
+                GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: No SD card");
             }
             return false;
         }
@@ -210,6 +217,10 @@ bool AP_Arming::ins_checks(bool report)
                      */
                     threshold *= 3;
                 }
+
+                // EKF is less sensitive to Z-axis error
+                vec_diff.z *= 0.5f;
+
                 if (vec_diff.length() <= threshold) {
                     last_accel_pass_ms[i] = AP_HAL::millis();
                 }
@@ -232,7 +243,7 @@ bool AP_Arming::ins_checks(bool report)
                 // get next gyro vector
                 const Vector3f &gyro_vec = ins.get_gyro(i);
                 Vector3f vec_diff = gyro_vec - prime_gyro_vec;
-                // allow for up to 5 degrees/s difference. Pass if its
+                // allow for up to 5 degrees/s difference. Pass if it has
                 // been OK in last 10 seconds
                 if (vec_diff.length() <= radians(5)) {
                     last_gyro_pass_ms[i] = AP_HAL::millis();
@@ -335,6 +346,7 @@ bool AP_Arming::gps_checks(bool report)
         }
     }
 
+#if CONFIG_HAL_BOARD != HAL_BOARD_SITL
     if ((checks_to_perform & ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_GPS_CONFIG)) {
         uint8_t first_unconfigured = gps.first_unconfigured_gps();
         if (first_unconfigured != AP_GPS::GPS_ALL_CONFIGURED) {
@@ -344,11 +356,10 @@ bool AP_Arming::gps_checks(bool report)
                                                   first_unconfigured + 1);
                 gps.broadcast_first_configuration_failure_reason();
             }
-#if CONFIG_HAL_BOARD != HAL_BOARD_SITL
             return false;
-#endif
         }
     }
+#endif
     return true;
 }
 
@@ -364,7 +375,7 @@ bool AP_Arming::battery_checks(bool report)
             return false;
         }
 
-        for (int i = 0; i < AP_BATT_MONITOR_MAX_INSTANCES; i++) {
+        for (int i = 0; i < _battery.num_instances(); i++) {
             if ((_min_voltage[i] > 0.0f) && (_battery.voltage(i) < _min_voltage[i])) {
                 if (report) {
                     GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "PreArm: Battery %d voltage %.1f below minimum %.1f",
@@ -434,27 +445,36 @@ bool AP_Arming::board_voltage_checks(bool report)
 
 bool AP_Arming::pre_arm_checks(bool report)
 {
-    bool ret = true;
     if (armed || require == NONE) {
         // if we are already armed or don't need any arming checks
         // then skip the checks
         return true;
     }
 
-    ret &= hardware_safety_check(report);
-    ret &= barometer_checks(report);
-    ret &= ins_checks(report);
-    ret &= compass_checks(report);
-    ret &= gps_checks(report);
-    ret &= battery_checks(report);
-    ret &= logging_checks(report);
-    ret &= manual_transmitter_checks(report);
-    ret &= board_voltage_checks(report);
-
-    return ret;
+    return hardware_safety_check(report)
+        &  barometer_checks(report)
+        &  ins_checks(report)
+        &  compass_checks(report)
+        &  gps_checks(report)
+        &  battery_checks(report)
+        &  logging_checks(report)
+        &  manual_transmitter_checks(report)
+        &  board_voltage_checks(report);
 }
 
-//returns true if arming occured successfully
+bool AP_Arming::arm_checks(uint8_t method)
+{
+    if ((checks_to_perform & ARMING_CHECK_ALL) ||
+        (checks_to_perform & ARMING_CHECK_LOGGING)) {
+        if (!DataFlash_Class::instance()->logging_started()) {
+            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_CRITICAL, "Arm: Logging not started");
+            return false;
+        }
+    }
+    return true;
+}
+
+//returns true if arming occurred successfully
 bool AP_Arming::arm(uint8_t method)
 {
     if (armed) { //already armed
@@ -469,7 +489,7 @@ bool AP_Arming::arm(uint8_t method)
         return true;
     }
 
-    if (pre_arm_checks(true)) {
+    if (pre_arm_checks(true) && arm_checks(method)) {
         armed = true;
         arming_method = method;
 

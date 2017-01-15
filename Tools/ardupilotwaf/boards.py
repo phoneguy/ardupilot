@@ -5,6 +5,7 @@ from collections import OrderedDict
 import sys
 
 import waflib
+from waflib.Configure import conf
 
 _board_classes = {}
 
@@ -31,6 +32,7 @@ class Board:
     def configure(self, cfg):
         cfg.env.TOOLCHAIN = self.toolchain
         cfg.load('toolchain')
+        cfg.load('cxx_checks')
 
         env = waflib.ConfigSet.ConfigSet()
         self.configure_env(cfg, env)
@@ -52,16 +54,17 @@ class Board:
             else:
                 cfg.env[k] = val
 
-        cfg.load('cxx_checks')
+        cfg.ap_common_checks()
+
+        cfg.env.prepend_value('INCLUDES', [
+            cfg.srcnode.find_dir('libraries/AP_Common/missing').abspath()
+        ])
+
 
     def configure_env(self, cfg, env):
         # Use a dictionary instead of the convetional list for definitions to
         # make easy to override them. Convert back to list before consumption.
         env.DEFINES = {}
-
-        env.prepend_value('INCLUDES', [
-            cfg.srcnode.find_dir('libraries/AP_Common/missing').abspath()
-        ])
 
         env.CFLAGS += [
             '-ffunction-sections',
@@ -90,6 +93,12 @@ class Board:
                 '-Wno-mismatched-tags',
                 '-Wno-gnu-variable-sized-type-not-at-end',
                 '-Wno-c++11-narrowing'
+            ]
+
+        if cfg.env.DEBUG:
+            env.CFLAGS += [
+                '-g',
+                '-O0',
             ]
 
         env.CXXFLAGS += [
@@ -130,16 +139,31 @@ class Board:
                 '-Wno-c++11-narrowing'
             ]
         else:
-            env.CXXFLAFS += [
+            env.CXXFLAGS += [
                 '-Werror=unused-but-set-variable'
             ]
 
-        env.LINKFLAGS += [
-            '-Wl,--gc-sections',
-        ]
+        if cfg.env.DEBUG:
+            env.CXXFLAGS += [
+                '-g',
+                '-O0',
+            ]
+
+        if cfg.env.DEST_OS == 'darwin':
+            env.LINKFLAGS += [
+                '-Wl,-dead_strip',
+            ]
+        else:
+            env.LINKFLAGS += [
+                '-Wl,--gc-sections',
+            ]
+
+        # We always want to use PRI format macros
+        cfg.define('__STDC_FORMAT_MACROS', 1)
+
 
     def build(self, bld):
-        pass
+        bld.ap_version_append_str('GIT_VERSION', bld.git_head_hash(short=True))
 
 Board = BoardMeta('Board', Board.__bases__, dict(Board.__dict__))
 
@@ -147,10 +171,13 @@ def get_boards_names():
     return sorted(list(_board_classes.keys()))
 
 _board = None
-def get_board(name):
+@conf
+def get_board(ctx):
     global _board
     if not _board:
-        _board = _board_classes[name]()
+        if not ctx.env.BOARD:
+            ctx.fatal('BOARD environment variable must be set before first call to get_board()')
+        _board = _board_classes[ctx.env.BOARD]()
     return _board
 
 # NOTE: Keeping all the board definitions together so we can easily
@@ -165,12 +192,18 @@ class sitl(Board):
             CONFIG_HAL_BOARD = 'HAL_BOARD_SITL',
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_NONE',
         )
-        env.CXXFLAGS += [
-            '-O3',
-        ]
+
+        if not cfg.env.DEBUG:
+            env.CXXFLAGS += [
+                '-O3',
+            ]
+
         env.LIB += [
             'm',
         ]
+
+        cfg.check_librt(env)
+
         env.LINKFLAGS += ['-pthread',]
         env.AP_LIBRARIES += [
             'AP_HAL_SITL',
@@ -186,21 +219,32 @@ class linux(Board):
     def configure_env(self, cfg, env):
         super(linux, self).configure_env(cfg, env)
 
+        cfg.find_toolchain_program('pkg-config', var='PKGCONFIG')
+
         env.DEFINES.update(
             CONFIG_HAL_BOARD = 'HAL_BOARD_LINUX',
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_NONE',
         )
-        env.CXXFLAGS += [
-            '-O3',
-        ]
+
+        if not cfg.env.DEBUG:
+            env.CXXFLAGS += [
+                '-O3',
+            ]
+
         env.LIB += [
             'm',
-            'rt',
         ]
+
+        cfg.check_librt(env)
+        cfg.check_lttng(env)
+        cfg.check_libdl(env)
+        cfg.check_libiio(env)
+
         env.LINKFLAGS += ['-pthread',]
         env.AP_LIBRARIES = [
             'AP_HAL_Linux',
         ]
+
 
 class minlure(linux):
     def configure_env(self, cfg, env):
@@ -280,7 +324,16 @@ class bebop(linux):
         env.DEFINES.update(
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BEBOP',
         )
-        env.STATIC_LINKING = True
+
+class disco(linux):
+    toolchain = 'arm-linux-gnueabihf'
+
+    def configure_env(self, cfg, env):
+        super(disco, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_DISCO',
+        )
 
 class raspilot(linux):
     toolchain = 'arm-linux-gnueabihf'
@@ -312,6 +365,26 @@ class bhat(linux):
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_BH',
         )
 
+class dark(linux):
+    toolchain = 'arm-linux-gnueabihf'
+
+    def configure_env(self, cfg, env):
+        super(dark, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_DARK',
+        )
+
+class urus(linux):
+    toolchain = 'arm-linux-gnueabihf'
+
+    def configure_env(self, cfg, env):
+        super(urus, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_URUS',
+        )
+
 class pxfmini(linux):
     toolchain = 'arm-linux-gnueabihf'
 
@@ -322,6 +395,14 @@ class pxfmini(linux):
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_PXFMINI',
         )
 
+class aero(linux):
+    def configure_env(self, cfg, env):
+        super(aero, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_AERO',
+        )
+
 class px4(Board):
     abstract = True
     toolchain = 'arm-none-eabi'
@@ -329,6 +410,7 @@ class px4(Board):
     def __init__(self):
         self.version = None
         self.use_px4io = True
+        self.ROMFS_EXCLUDE = []
 
     def configure(self, cfg):
         if not self.version:
@@ -342,6 +424,7 @@ class px4(Board):
 
         env.DEFINES.update(
             CONFIG_HAL_BOARD = 'HAL_BOARD_PX4',
+            HAVE_OCLOEXEC = 0,
             HAVE_STD_NULLPTR_T = 0,
         )
         env.CXXFLAGS += [
@@ -362,6 +445,7 @@ class px4(Board):
             'PX4NuttX',
             'uavcan',
         ]
+        env.ROMFS_EXCLUDE = self.ROMFS_EXCLUDE
 
         env.PX4_VERSION = self.version
         env.PX4_USE_PX4IO = True if self.use_px4io else False
@@ -370,19 +454,32 @@ class px4(Board):
 
     def build(self, bld):
         super(px4, self).build(bld)
+        bld.ap_version_append_str('NUTTX_GIT_VERSION', bld.git_submodule_head_hash('PX4NuttX', short=True))
+        bld.ap_version_append_str('PX4_GIT_VERSION', bld.git_submodule_head_hash('PX4Firmware', short=True))
         bld.load('px4')
+
+    def romfs_exclude(self, exclude):
+        self.ROMFS_EXCLUDE += exclude
 
 class px4_v1(px4):
     name = 'px4-v1'
     def __init__(self):
         super(px4_v1, self).__init__()
         self.version = '1'
+        self.romfs_exclude(['oreoled.bin'])
 
 class px4_v2(px4):
     name = 'px4-v2'
     def __init__(self):
         super(px4_v2, self).__init__()
         self.version = '2'
+        self.romfs_exclude(['oreoled.bin'])
+
+class px4_v3(px4):
+    name = 'px4-v3'
+    def __init__(self):
+        super(px4_v3, self).__init__()
+        self.version = '3'
 
 class px4_v4(px4):
     name = 'px4-v4'
@@ -390,3 +487,4 @@ class px4_v4(px4):
         super(px4_v4, self).__init__()
         self.version = '4'
         self.use_px4io = False
+        self.romfs_exclude(['oreoled.bin', 'px4io.bin'])

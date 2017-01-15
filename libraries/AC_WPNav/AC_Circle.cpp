@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 #include <AP_HAL/AP_HAL.h>
 #include "AC_Circle.h"
 #include <AP_Math/AP_Math.h>
@@ -35,7 +34,6 @@ AC_Circle::AC_Circle(const AP_InertialNav& inav, const AP_AHRS& ahrs, AC_PosCont
     _inav(inav),
     _ahrs(ahrs),
     _pos_control(pos_control),
-    _last_update(0),
     _yaw(0.0f),
     _angle(0.0f),
     _angle_total(0.0f),
@@ -98,7 +96,7 @@ void AC_Circle::init()
 /// set_circle_rate - set circle rate in degrees per second
 void AC_Circle::set_rate(float deg_per_sec)
 {
-    if (!is_equal(deg_per_sec,_rate)) {
+    if (!is_equal(deg_per_sec, _rate.get())) {
         _rate = deg_per_sec;
         calc_velocities(false);
     }
@@ -186,7 +184,7 @@ void AC_Circle::get_closest_point_on_circle(Vector3f &result)
     Vector2f vec;   // vector from circle center to current location
     vec.x = (curr_pos.x - _center.x);
     vec.y = (curr_pos.y - _center.y);
-    float dist = pythagorous2(vec.x, vec.y);
+    float dist = norm(vec.x, vec.y);
 
     // if current location is exactly at the center of the circle return edge directly behind vehicle
     if (is_zero(dist)) {

@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
  * location.cpp
  * Copyright (C) Andrew Tridgell 2011
@@ -24,12 +23,6 @@
 #include <stdlib.h>
 #include "AP_Math.h"
 #include "location.h"
-
-// scaling factor from 1e-7 degrees to meters at equater
-// == 1.0e-7 * DEG_TO_RAD * RADIUS_OF_EARTH
-#define LOCATION_SCALING_FACTOR 0.011131884502145034f
-// inverse of LOCATION_SCALING_FACTOR
-#define LOCATION_SCALING_FACTOR_INV 89.83204953368922f
 
 float longitude_scale(const struct Location &loc)
 {
@@ -60,7 +53,7 @@ float get_distance(const struct Location &loc1, const struct Location &loc2)
 {
     float dlat              = (float)(loc2.lat - loc1.lat);
     float dlong             = ((float)(loc2.lng - loc1.lng)) * longitude_scale(loc2);
-    return pythagorous2(dlat, dlong) * LOCATION_SCALING_FACTOR;
+    return norm(dlat, dlong) * LOCATION_SCALING_FACTOR;
 }
 
 // return distance in centimeters to between two locations
@@ -150,90 +143,6 @@ Vector2f location_diff(const struct Location &loc1, const struct Location &loc2)
 }
 
 /*
-  wrap an angle in centi-degrees to 0..35999
- */
-int32_t wrap_360_cd(int32_t error)
-{
-    if (error > 360000 || error < -360000) {
-        // for very large numbers use modulus
-        error = error % 36000;
-    }
-    while (error >= 36000) error -= 36000;
-    while (error < 0) error += 36000;
-    return error;
-}
-
-/*
-  wrap an angle in centi-degrees to -18000..18000
- */
-int32_t wrap_180_cd(int32_t error)
-{
-    if (error > 360000 || error < -360000) {
-        // for very large numbers use modulus
-        error = error % 36000;
-    }
-    while (error > 18000) { error -= 36000; }
-    while (error < -18000) { error += 36000; }
-    return error;
-}
-
-/*
-  wrap an angle in centi-degrees to 0..35999
- */
-float wrap_360_cd_float(float angle)
-{
-    if (angle >= 72000.0f || angle < -36000.0f) {
-        // for larger number use fmodulus
-        angle = fmod(angle, 36000.0f);
-    }
-    if (angle >= 36000.0f) angle -= 36000.0f;
-    if (angle < 0.0f) angle += 36000.0f;
-    return angle;
-}
-
-/*
-  wrap an angle in centi-degrees to -18000..18000
- */
-float wrap_180_cd_float(float angle)
-{
-    if (angle > 54000.0f || angle < -54000.0f) {
-        // for large numbers use modulus
-        angle = fmod(angle,36000.0f);
-    }
-    if (angle > 18000.0f) { angle -= 36000.0f; }
-    if (angle < -18000.0f) { angle += 36000.0f; }
-    return angle;
-}
-
-/*
-  wrap an angle defined in radians to -PI ~ PI (equivalent to +- 180 degrees)
- */
-float wrap_PI(float angle_in_radians)
-{
-    if (angle_in_radians > 10*M_PI || angle_in_radians < -10*M_PI) {
-        // for very large numbers use modulus
-        angle_in_radians = fmodf(angle_in_radians, 2*M_PI);
-    }
-    while (angle_in_radians > M_PI) angle_in_radians -= 2*M_PI;
-    while (angle_in_radians < -M_PI) angle_in_radians += 2*M_PI;
-    return angle_in_radians;
-}
-
-/*
- * wrap an angle in radians to 0..2PI
- */
-float wrap_2PI(float angle)
-{
-    if (angle > 10*M_PI || angle < -10*M_PI) {
-        // for very large numbers use modulus
-        angle = fmodf(angle, 2*M_PI);
-    }
-    while (angle > 2*M_PI) angle -= 2*M_PI;
-    while (angle < 0) angle += 2*M_PI;
-    return angle;
-}
-
-/*
   return true if lat and lng match. Ignores altitude and options
  */
 bool locations_are_same(const struct Location &loc1, const struct Location &loc2) {
@@ -261,7 +170,7 @@ bool location_sanitize(const struct Location &defaultLoc, struct Location &loc)
     }
 
     // limit lat/lng to appropriate ranges
-    if (abs(loc.lat) > 90 * 1e7 || abs(loc.lng) > 180 * 1e7) {
+    if (!check_latlng(loc)) {
         loc.lat = defaultLoc.lat;
         loc.lng = defaultLoc.lng;
         has_changed = true;
@@ -319,7 +228,7 @@ void wgsecef2llh(const Vector3d &ecef, Vector3d &llh) {
     return;
   }
 
-  /* Caluclate some other constants as defined in the Fukushima paper. */
+  /* Calculate some other constants as defined in the Fukushima paper. */
   const double P = p / WGS84_A;
   const double e_c = sqrt(1. - WGS84_E*WGS84_E);
   const double Z = fabs(ecef[2]) * e_c / WGS84_A;
@@ -391,4 +300,34 @@ void wgsecef2llh(const Vector3d &ecef, Vector3d &llh) {
   A_n = sqrt(S*S + C*C);
   llh[0] = copysign(1.0, ecef[2]) * atan(S / (e_c*C));
   llh[2] = (p*e_c*C + fabs(ecef[2])*S - WGS84_A*e_c*A_n) / sqrt(e_c*e_c*C*C + S*S);
+}
+
+// return true when lat and lng are within range
+bool check_lat(float lat)
+{
+    return fabsf(lat) <= 90;
+}
+bool check_lng(float lng)
+{
+    return fabsf(lng) <= 180;
+}
+bool check_lat(int32_t lat)
+{
+    return labs(lat) <= 90*1e7;
+}
+bool check_lng(int32_t lng)
+{
+    return labs(lng) <= 180*1e7;
+}
+bool check_latlng(float lat, float lng)
+{
+    return check_lat(lat) && check_lng(lng);
+}
+bool check_latlng(int32_t lat, int32_t lng)
+{
+    return check_lat(lat) && check_lng(lng);
+}
+bool check_latlng(Location loc)
+{
+    return check_lat(loc.lat) && check_lng(loc.lng);
 }

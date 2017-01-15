@@ -1,4 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -105,7 +104,7 @@ restart:
         // Receive message data
         //
         case 3:
-            _buffer.bytes[_payload_counter++] = data;
+            _buffer[_payload_counter++] = data;
             _ck_b += (_ck_a += data);
             if (_payload_counter == sizeof(_buffer)) {
                 _step++;
@@ -145,7 +144,7 @@ restart:
 			}
             state.location.alt      = _buffer.msg.altitude;
             state.ground_speed      = _buffer.msg.ground_speed*0.01f;
-            state.ground_course_cd  = wrap_360_cd(_buffer.msg.ground_course);
+            state.ground_course     = wrap_360(_buffer.msg.ground_course*0.01f);
             state.num_sats          = _buffer.msg.satellites;
             state.hdop              = _buffer.msg.hdop;
             

@@ -47,29 +47,9 @@ for b in sitl; do
 done
 popd
 
-echo "Testing build of examples"
-
-examples="Tools/CPUInfo"
-for d in $examples; do
-    pushd $d
-    make clean
-    make sitl -j4
-    popd
-done
-
-test -d ../libmaple && {
-echo "Testing flymaple build"
-for d in APMrover2; do
-    pushd $d
-    make clean
-    make flymaple -j4
-    popd
-done
-}
-
 pushd Tools/Replay
 make clean
-make linux -j4
+make
 popd
 
 test -n "$PX4_ROOT" && test -d "$PX4_ROOT" && {

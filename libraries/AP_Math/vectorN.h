@@ -1,4 +1,3 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -63,7 +62,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = - _v[i];
-        }   
+        }
         return v2;
     }
 
@@ -72,7 +71,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] + v[i];
-        }   
+        }
         return v2;
     }
 
@@ -81,7 +80,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] - v[i];
-        }   
+        }
         return v2;
     }
 
@@ -90,7 +89,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] * num;
-        }   
+        }
         return v2;
     }
 
@@ -99,7 +98,7 @@ public:
         VectorN<T,N> v2;
         for (uint8_t i=0; i<N; i++) {
             v2[i] = _v[i] / num;
-        }   
+        }
         return v2;
     }
 
@@ -107,7 +106,7 @@ public:
     VectorN<T,N> &operator +=(const VectorN<T,N> &v) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] += v[i];
-        }   
+        }
         return *this;
     }
 
@@ -115,7 +114,7 @@ public:
     VectorN<T,N> &operator -=(const VectorN<T,N> &v) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] -= v[i];
-        }   
+        }
         return *this;
     }
 
@@ -123,7 +122,7 @@ public:
     VectorN<T,N> &operator *=(const T num) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] *= num;
-        }   
+        }
         return *this;
     }
 
@@ -131,7 +130,7 @@ public:
     VectorN<T,N> &operator /=(const T num) {
         for (uint8_t i=0; i<N; i++) {
             _v[i] /= num;
-        }   
+        }
         return *this;
     }
 

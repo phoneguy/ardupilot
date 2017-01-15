@@ -3,13 +3,16 @@
 
 set -ex
 
+# Disable ccache for the configure phase, it's not worth it
+export CCACHE_DISABLE="true"
+
 ARM_ROOT="gcc-arm-none-eabi-4_9-2015q3"
 ARM_TARBALL="$ARM_ROOT-20150921-linux.tar.bz2"
 
 RPI_ROOT="master"
 RPI_TARBALL="$RPI_ROOT.tar.gz"
 
-CCACHE_ROOT="ccache-3.2.4"
+CCACHE_ROOT="ccache-3.2.5"
 CCACHE_TARBALL="$CCACHE_ROOT.tar.bz2"
 
 mkdir -p $HOME/opt
@@ -66,8 +69,10 @@ ln -s ~/opt/$CCACHE_ROOT/ccache ~/ccache/clang
 
 exportline="export PATH=$HOME/ccache"
 exportline="${exportline}:$HOME/bin"
+exportline="${exportline}:$HOME/.local/bin"
 exportline="${exportline}:$HOME/opt/gcc-arm-none-eabi-4_9-2015q3/bin"
 exportline="${exportline}:$HOME/opt/tools-master/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin"
+exportline="${exportline}:$HOME/opt/$CCACHE_ROOT"
 exportline="${exportline}:\$PATH"
 
 if grep -Fxq "$exportline" ~/.profile; then
@@ -78,4 +83,5 @@ fi
 
 . ~/.profile
 
-pip install --user argparse empy pyserial pexpect mavproxy
+pip install --user -U argparse empy pyserial pexpect future lxml
+pip install --user -U mavproxy

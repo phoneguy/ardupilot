@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 //
 // Unit tests for the AP_Math polygon code
 //
@@ -37,7 +36,7 @@ static const struct {
 
 static struct Location location_from_point(Vector2f pt)
 {
-    struct Location loc = {0};
+    struct Location loc = {};
     loc.lat = pt.x * 1.0e7f;
     loc.lng = pt.y * 1.0e7f;
     return loc;
@@ -97,7 +96,7 @@ static const struct {
 
 static void test_offset(void)
 {
-    struct Location loc;
+    struct Location loc {};
 
     loc.lat = -35*1.0e7f;
     loc.lng = 149*1.0e7f;
@@ -117,7 +116,7 @@ static void test_offset(void)
  */
 static void test_accuracy(void)
 {
-    struct Location loc;
+    struct Location loc {};
 
     loc.lat = 0.0e7f;
     loc.lng = -120.0e7f;

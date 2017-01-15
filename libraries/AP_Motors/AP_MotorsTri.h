@@ -1,12 +1,10 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
-
 /// @file	AP_MotorsTri.h
 /// @brief	Motor control class for Tricopters
 #pragma once
 
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>        // ArduPilot Mega Vector/Matrix math Library
-#include <RC_Channel/RC_Channel.h>     // RC Channel Library
+#include <SRV_Channel/SRV_Channel.h>
 #include "AP_MotorsMulticopter.h"
 
 // tail servo uses channel 7
@@ -27,7 +25,10 @@ public:
     };
 
     // init
-    virtual void        Init();
+    void                init(motor_frame_class frame_class, motor_frame_type frame_type);
+
+    // set frame class (i.e. quad, hexa, heli) and type (i.e. x, plus)
+    void set_frame_class_and_type(motor_frame_class frame_class, motor_frame_type frame_type);
 
     // set update rate to motors - a value in hertz
     void                set_update_rate( uint16_t speed_hz );
@@ -54,15 +55,15 @@ protected:
     // output - sends commands to the motors
     void                output_armed_stabilizing();
 
+    // call vehicle supplied thrust compensation if set
+    void                thrust_compensation(void) override;
+    
     // calc_yaw_radio_output - calculate final radio output for yaw channel
     int16_t             calc_yaw_radio_output(float yaw_input, float yaw_input_max);        // calculate radio output for yaw servo, typically in range of 1100-1900
 
     // parameters
-    AP_Int8         _yaw_reverse;                       // Reverse yaw output
-    AP_Int16        _yaw_servo_trim;                    // Trim or center position of yaw servo
-    AP_Int16        _yaw_servo_min;                     // Minimum pwm of yaw servo
-    AP_Int16        _yaw_servo_max;                     // Maximum pwm of yaw servo
-    AP_Float        _yaw_servo_angle_max_deg;           // Maximum lean angle of yaw servo in degrees
+
+    SRV_Channel     *_yaw_servo; // yaw output channel
     float           _pivot_angle;                       // Angle of yaw pivot
     float           _thrust_right;
     float           _thrust_rear;

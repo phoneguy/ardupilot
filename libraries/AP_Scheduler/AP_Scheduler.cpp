@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,10 +27,8 @@
 
 #if APM_BUILD_TYPE(APM_BUILD_ArduCopter)
 #define SCHEDULER_DEFAULT_LOOP_RATE 400
-#define SCHEDULER_EXPOSE_LOOP_RATE_PARAMETER 0
 #else
 #define SCHEDULER_DEFAULT_LOOP_RATE  50
-#define SCHEDULER_EXPOSE_LOOP_RATE_PARAMETER 1
 #endif
 
 extern const AP_HAL::HAL& hal;
@@ -46,7 +43,6 @@ const AP_Param::GroupInfo AP_Scheduler::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("DEBUG",    0, AP_Scheduler, _debug, 0),
 
-#if SCHEDULER_EXPOSE_LOOP_RATE_PARAMETER
     // @Param: LOOP_RATE
     // @DisplayName: Scheduling main loop rate
     // @Description: This controls the rate of the main control loop in Hz. This should only be changed by developers. This only takes effect on restart
@@ -54,7 +50,6 @@ const AP_Param::GroupInfo AP_Scheduler::var_info[] = {
     // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("LOOP_RATE",  1, AP_Scheduler, _loop_rate_hz, SCHEDULER_DEFAULT_LOOP_RATE),
-#endif
 
     AP_GROUPEND
 };
@@ -62,9 +57,7 @@ const AP_Param::GroupInfo AP_Scheduler::var_info[] = {
 // constructor
 AP_Scheduler::AP_Scheduler(void)
 {
-#if !SCHEDULER_EXPOSE_LOOP_RATE_PARAMETER
     _loop_rate_hz.set(SCHEDULER_DEFAULT_LOOP_RATE);
-#endif
     AP_Param::setup_object_defaults(this, var_info);
 
     // only allow 50 to 400 Hz
@@ -95,7 +88,7 @@ void AP_Scheduler::tick(void)
   run one tick
   this will run as many scheduler tasks as we can in the specified time
  */
-void AP_Scheduler::run(uint16_t time_available)
+void AP_Scheduler::run(uint32_t time_available)
 {
     uint32_t run_started_usec = AP_HAL::micros();
     uint32_t now = run_started_usec;

@@ -62,7 +62,9 @@ uint16_t SITL_State::_airspeed_sensor(float airspeed)
     delayed_time_wind = now - _sitl->wind_delay; // get time corresponding to delay
     // find data corresponding to delayed time in buffer
     for (uint8_t i=0; i<=wind_buffer_length-1; i++) {
-        time_delta_wind = abs(delayed_time_wind - buffer_wind[i].time); // find difference between delayed time and time stamp in buffer
+        // find difference between delayed time and time stamp in buffer
+        time_delta_wind = abs(
+                (int32_t)(delayed_time_wind - buffer_wind[i].time));
         // if this difference is smaller than last delta, store this time
         if (time_delta_wind < best_time_delta_wind) {
             best_index_wind = i;
@@ -82,7 +84,23 @@ uint16_t SITL_State::_airspeed_sensor(float airspeed)
  */
 uint16_t SITL_State::_ground_sonar(void)
 {
-    float altitude = height_agl();
+    float altitude = _sitl->height_agl;
+
+    // sensor position offset in body frame
+    Vector3f relPosSensorBF = _sitl->rngfnd_pos_offset;
+
+    // adjust altitude for position of the sensor on the vehicle if position offset is non-zero
+    if (!relPosSensorBF.is_zero()) {
+        // get a rotation matrix following DCM conventions (body to earth)
+        Matrix3f rotmat;
+        rotmat.from_euler(radians(_sitl->state.rollDeg),
+                          radians(_sitl->state.pitchDeg),
+                          radians(_sitl->state.yawDeg));
+        // rotate the offset into earth frame
+        Vector3f relPosSensorEF = rotmat * relPosSensorBF;
+        // correct the altitude at the sensor
+        altitude -= relPosSensorEF.z;
+    }
 
     float voltage = 5.0f;
     if (fabsf(_sitl->state.rollDeg) < 90 &&
@@ -136,14 +154,14 @@ void SITL_State::_update_ins(float roll, 	float pitch, 	float yaw,		// Relative 
                              double xAccel, 	double yAccel, 	double zAccel,		// Local to plane
                              float airspeed,	float altitude)
 {
-    if (_ins == NULL) {
+    if (_ins == nullptr) {
         // no inertial sensor in this sketch
         return;
     }
 
     sonar_pin_value    = _ground_sonar();
-    float airspeed_simulated = (fabsf(_sitl->aspd_fail) > 1.0e-6f) ? _sitl->aspd_fail : airspeed;
-    airspeed_pin_value = _airspeed_sensor(airspeed_simulated + (_sitl->aspd_noise * _rand_float()));
+    float airspeed_simulated = (fabsf(_sitl->arspd_fail) > 1.0e-6f) ? _sitl->arspd_fail : airspeed;
+    airspeed_pin_value = _airspeed_sensor(airspeed_simulated + (_sitl->arspd_noise * _rand_float()));
 }
 
 #endif

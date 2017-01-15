@@ -1,4 +1,3 @@
-/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -41,14 +40,22 @@ QuadPlane::QuadPlane(const char *home_str, const char *frame_str) :
         frame_type = "hexa";
     } else if (strstr(frame_str, "-plus")) {
         frame_type = "+";
-    } else if (strstr(frame_str, "-plus")) {
-        frame_type = "+";
     } else if (strstr(frame_str, "-y6")) {
         frame_type = "y6";
+    } else if (strstr(frame_str, "-tri")) {
+        frame_type = "tri";
+    } else if (strstr(frame_str, "-tilttri")) {
+        frame_type = "tilttri";
+        // fwd motor gives zero thrust
+        thrust_scale = 0;
     } else if (strstr(frame_str, "firefly")) {
         frame_type = "firefly";
         // elevon style surfaces
         elevons = true;
+        // fwd motor gives zero thrust
+        thrust_scale = 0;
+    } else if (strstr(frame_str, "cl84")) {
+        frame_type = "tilttri";
         // fwd motor gives zero thrust
         thrust_scale = 0;
     }
@@ -58,12 +65,21 @@ QuadPlane::QuadPlane(const char *home_str, const char *frame_str) :
         exit(1);
     }
 
+    if (strstr(frame_str, "cl84")) {
+        // setup retract servos at front
+        frame->motors[0].servo_type = Motor::SERVO_RETRACT;
+        frame->motors[0].servo_rate = 4*60.0/90; // 4 seconds to change
+        frame->motors[1].servo_type = Motor::SERVO_RETRACT;
+        frame->motors[1].servo_rate = 4*60.0/90; // 4 seconds to change
+    }
+    
     // leave first 4 servos free for plane
     frame->motor_offset = 4;
 
     // we use zero terminal velocity to let the plane model handle the drag
     frame->init(mass, 0.51, 0, 0);
 
+    ground_behavior = GROUND_BEHAVIOR_NO_MOVEMENT;
 }
 
 /*
@@ -91,4 +107,7 @@ void QuadPlane::update(const struct sitl_input &input)
 
     // update lat/lon/altitude
     update_position();
+
+    // update magnetic field
+    update_mag_field_bf();
 }
