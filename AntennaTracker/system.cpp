@@ -42,6 +42,12 @@ void Tracker::init_tracker()
     
     BoardConfig.init();
 
+    // initialise notify
+    notify.init(false);
+    AP_Notify::flags.pre_arm_check = true;
+    AP_Notify::flags.pre_arm_gps_check = true;
+    AP_Notify::flags.failsafe_battery = false;
+
     // init baro before we start the GCS, so that the CLI baro test works
     barometer.init();
 
@@ -62,7 +68,7 @@ void Tracker::init_tracker()
 
     if (g.compass_enabled==true) {
         if (!compass.init() || !compass.read()) {
-            hal.console->println("Compass initialisation failed!");
+            hal.console->printf("Compass initialisation failed!\n");
             g.compass_enabled = false;
         } else {
             ahrs.set_compass(&compass);

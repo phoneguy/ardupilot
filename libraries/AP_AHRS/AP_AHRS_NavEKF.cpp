@@ -33,6 +33,9 @@ AP_AHRS_NavEKF::AP_AHRS_NavEKF(AP_InertialSensor &ins, AP_Baro &baro, AP_GPS &gp
     AP_AHRS_DCM(ins, baro, gps),
     EKF2(_EKF2),
     EKF3(_EKF3),
+    _ekf2_started(false),
+    _ekf3_started(false),
+    _force_ekf(false),
     _ekf_flags(flags)
 {
     _dcm_matrix.identity();
@@ -90,6 +93,12 @@ void AP_AHRS_NavEKF::update(void)
 
     // call AHRS_update hook if any
     AP_Module::call_hook_AHRS_update(*this);
+
+    // push gyros if optical flow present
+    if (hal.opticalflow) {
+        const Vector3f &exported_gyro_bias = get_gyro_drift();
+        hal.opticalflow->push_gyro_bias(exported_gyro_bias.x, exported_gyro_bias.y);
+    }
 }
 
 void AP_AHRS_NavEKF::update_DCM(void)
@@ -110,19 +119,19 @@ void AP_AHRS_NavEKF::update_DCM(void)
 
 void AP_AHRS_NavEKF::update_EKF2(void)
 {
-    if (!ekf2_started) {
+    if (!_ekf2_started) {
         // wait 1 second for DCM to output a valid tilt error estimate
         if (start_time_ms == 0) {
             start_time_ms = AP_HAL::millis();
         }
-        if (AP_HAL::millis() - start_time_ms > startup_delay_ms || force_ekf) {
-            ekf2_started = EKF2.InitialiseFilter();
-            if (force_ekf) {
+        if (AP_HAL::millis() - start_time_ms > startup_delay_ms || _force_ekf) {
+            _ekf2_started = EKF2.InitialiseFilter();
+            if (_force_ekf) {
                 return;
             }
         }
     }
-    if (ekf2_started) {
+    if (_ekf2_started) {
         EKF2.UpdateFilter();
         if (active_EKF_type() == EKF_TYPE2) {
             Vector3f eulers;
@@ -175,19 +184,19 @@ void AP_AHRS_NavEKF::update_EKF2(void)
 
 void AP_AHRS_NavEKF::update_EKF3(void)
 {
-    if (!ekf3_started) {
+    if (!_ekf3_started) {
         // wait 1 second for DCM to output a valid tilt error estimate
         if (start_time_ms == 0) {
             start_time_ms = AP_HAL::millis();
         }
-        if (AP_HAL::millis() - start_time_ms > startup_delay_ms || force_ekf) {
-            ekf3_started = EKF3.InitialiseFilter();
-            if (force_ekf) {
+        if (AP_HAL::millis() - start_time_ms > startup_delay_ms || _force_ekf) {
+            _ekf3_started = EKF3.InitialiseFilter();
+            if (_force_ekf) {
                 return;
             }
         }
     }
-    if (ekf3_started) {
+    if (_ekf3_started) {
         EKF3.UpdateFilter();
         if (active_EKF_type() == EKF_TYPE3) {
             Vector3f eulers;
@@ -295,11 +304,11 @@ void AP_AHRS_NavEKF::reset(bool recover_eulers)
 {
     AP_AHRS_DCM::reset(recover_eulers);
     _dcm_attitude(roll, pitch, yaw);
-    if (ekf2_started) {
-        ekf2_started = EKF2.InitialiseFilter();
+    if (_ekf2_started) {
+        _ekf2_started = EKF2.InitialiseFilter();
     }
-    if (ekf3_started) {
-        ekf3_started = EKF3.InitialiseFilter();
+    if (_ekf3_started) {
+        _ekf3_started = EKF3.InitialiseFilter();
     }
 }
 
@@ -308,11 +317,11 @@ void AP_AHRS_NavEKF::reset_attitude(const float &_roll, const float &_pitch, con
 {
     AP_AHRS_DCM::reset_attitude(_roll, _pitch, _yaw);
     _dcm_attitude(roll, pitch, yaw);
-    if (ekf2_started) {
-        ekf2_started = EKF2.InitialiseFilter();
+    if (_ekf2_started) {
+        _ekf2_started = EKF2.InitialiseFilter();
     }
-    if (ekf3_started) {
-        ekf3_started = EKF3.InitialiseFilter();
+    if (_ekf3_started) {
+        _ekf3_started = EKF3.InitialiseFilter();
     }
 }
 
@@ -323,7 +332,7 @@ bool AP_AHRS_NavEKF::get_position(struct Location &loc) const
     Location origin;
     switch (active_EKF_type()) {
     case EKF_TYPE_NONE:
-        return false;
+        return AP_AHRS_DCM::get_position(loc);
 
     case EKF_TYPE2:
         if (EKF2.getLLH(loc) && EKF2.getPosD(-1,ned_pos.z) && EKF2.getOriginLLH(origin)) {
@@ -431,7 +440,7 @@ bool AP_AHRS_NavEKF::get_secondary_attitude(Vector3f &eulers)
     case EKF_TYPE_NONE:
         // EKF is secondary
         EKF2.getEulerAngles(-1, eulers);
-        return ekf2_started;
+        return _ekf2_started;
 
     case EKF_TYPE2:
 
@@ -451,7 +460,7 @@ bool AP_AHRS_NavEKF::get_secondary_position(struct Location &loc)
     case EKF_TYPE_NONE:
         // EKF is secondary
         EKF2.getLLH(loc);
-        return ekf2_started;
+        return _ekf2_started;
 
     case EKF_TYPE2:
 
@@ -761,7 +770,7 @@ AP_AHRS_NavEKF::EKF_TYPE AP_AHRS_NavEKF::active_EKF_type(void) const
 
     case 2: {
         // do we have an EKF2 yet?
-        if (!ekf2_started) {
+        if (!_ekf2_started) {
             return EKF_TYPE_NONE;
         }
         if (always_use_EKF()) {
@@ -778,7 +787,7 @@ AP_AHRS_NavEKF::EKF_TYPE AP_AHRS_NavEKF::active_EKF_type(void) const
 
     case 3: {
         // do we have an EKF3 yet?
-        if (!ekf3_started) {
+        if (!_ekf3_started) {
             return EKF_TYPE_NONE;
         }
         if (always_use_EKF()) {
@@ -872,7 +881,7 @@ bool AP_AHRS_NavEKF::healthy(void) const
         return AP_AHRS_DCM::healthy();
 
     case 2: {
-        bool ret = ekf2_started && EKF2.healthy();
+        bool ret = _ekf2_started && EKF2.healthy();
         if (!ret) {
             return false;
         }
@@ -887,7 +896,7 @@ bool AP_AHRS_NavEKF::healthy(void) const
     }
 
     case 3: {
-        bool ret = ekf3_started && EKF3.healthy();
+        bool ret = _ekf3_started && EKF3.healthy();
         if (!ret) {
             return false;
         }
@@ -925,11 +934,11 @@ bool AP_AHRS_NavEKF::initialised(void) const
     case 2:
     default:
         // initialisation complete 10sec after ekf has started
-        return (ekf2_started && (AP_HAL::millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
+        return (_ekf2_started && (AP_HAL::millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
 
     case 3:
         // initialisation complete 10sec after ekf has started
-        return (ekf3_started && (AP_HAL::millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
+        return (_ekf3_started && (AP_HAL::millis() - start_time_ms > AP_AHRS_NAVEKF_SETTLE_TIME_MS));
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     case EKF_TYPE_SITL:

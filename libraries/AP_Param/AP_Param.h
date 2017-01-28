@@ -350,13 +350,13 @@ public:
     static bool             check_var_info(void);
 
     // return true if the parameter is configured in the defaults file
-    bool configured_in_defaults_file(void);
+    bool configured_in_defaults_file(void) const;
 
     // return true if the parameter is configured in EEPROM/FRAM
-    bool configured_in_storage(void);
+    bool configured_in_storage(void) const;
 
     // return true if the parameter is configured
-    bool configured(void) { return configured_in_defaults_file() || configured_in_storage(); }
+    bool configured(void) const { return configured_in_defaults_file() || configured_in_storage(); }
 
     // count of parameters in tree
     static uint16_t count_parameters(void);
@@ -473,12 +473,7 @@ private:
                                     enum ap_var_type *ptype);
 
     // find a default value given a pointer to a default value in flash
-    static float get_default_value(const float *def_value_ptr);
-
-    /*
-      find the def_value for a variable by name
-    */
-    static const float *find_def_value_ptr(const char *name);
+    static float get_default_value(const AP_Param *object_ptr, const float *def_value_ptr);
 
 #if HAL_OS_POSIX_IO == 1
     /*
@@ -500,7 +495,7 @@ private:
       list of overridden values from load_defaults_file()
     */
     struct param_override {
-        const float *def_value_ptr;
+        const AP_Param *object_ptr;
         float value;
     };
     static struct param_override *param_overrides;

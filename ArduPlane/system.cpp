@@ -131,6 +131,10 @@ void Plane::init_ardupilot()
     // setup any board specific drivers
     BoardConfig.init();
 
+    // initialise notify system
+    notify.init(false);
+    notify_flight_mode(control_mode);
+
     init_rc_out_main();
     
     // allow servo set on all channels except first 4
@@ -184,7 +188,7 @@ void Plane::init_ardupilot()
     }
 #endif
         if (!compass_ok) {
-            cliSerial->println("Compass initialisation failed!");
+            cliSerial->printf("Compass initialisation failed!\n");
             g.compass_enabled = false;
         } else {
             ahrs.set_compass(&compass);
@@ -227,12 +231,12 @@ void Plane::init_ardupilot()
 #if CLI_ENABLED == ENABLED
     if (g.cli_enabled == 1) {
         const char *msg = "\nPress ENTER 3 times to start interactive setup\n";
-        cliSerial->println(msg);
+        cliSerial->printf("%s\n", msg);
         if (gcs[1].initialised && (gcs[1].get_uart() != nullptr)) {
-            gcs[1].get_uart()->println(msg);
+            gcs[1].get_uart()->printf("%s\n", msg);
         }
         if (num_gcs > 2 && gcs[2].initialised && (gcs[2].get_uart() != nullptr)) {
-            gcs[2].get_uart()->println(msg);
+            gcs[2].get_uart()->printf("%s\n", msg);
         }
     }
 #endif // CLI_ENABLED
@@ -324,6 +328,7 @@ void Plane::set_mode(enum FlightMode mode, mode_reason_t reason)
         // don't switch modes if we are already in the correct mode.
         return;
     }
+
     if(g.auto_trim > 0 && control_mode == MANUAL)
         trim_control_surfaces();
 
@@ -338,9 +343,6 @@ void Plane::set_mode(enum FlightMode mode, mode_reason_t reason)
 
     // reset landing check
     auto_state.checked_for_autoland = false;
-
-    // reset landing
-    landing.reset();
     
     // zero locked course
     steer_state.locked_course_err = 0;
@@ -496,6 +498,9 @@ void Plane::set_mode(enum FlightMode mode, mode_reason_t reason)
     if (should_log(MASK_LOG_MODE))
         DataFlash.Log_Write_Mode(control_mode);
 
+    // update notify with flight mode change
+    notify_flight_mode(control_mode);
+
     // reset steering integrator on mode change
     steerController.reset_I();    
 }
@@ -553,7 +558,7 @@ void Plane::check_long_failsafe()
     uint32_t tnow = millis();
     // only act on changes
     // -------------------
-    if(failsafe.state != FAILSAFE_LONG && failsafe.state != FAILSAFE_GCS && !landing.in_progress) {
+    if (failsafe.state != FAILSAFE_LONG && failsafe.state != FAILSAFE_GCS && flight_stage != AP_Vehicle::FixedWing::FLIGHT_LAND) {
         if (failsafe.state == FAILSAFE_SHORT &&
                    (tnow - failsafe.ch3_timer_ms) > g.long_fs_timeout*1000) {
             failsafe_long_on_event(FAILSAFE_LONG, MODE_REASON_RADIO_FAILSAFE);
@@ -586,7 +591,7 @@ void Plane::check_short_failsafe()
 {
     // only act on changes
     // -------------------
-    if(failsafe.state == FAILSAFE_NONE && !landing.in_progress) {
+    if(failsafe.state == FAILSAFE_NONE && flight_stage != AP_Vehicle::FixedWing::FLIGHT_LAND) {
         // The condition is checked and the flag ch3_failsafe is set in radio.cpp
         if(failsafe.ch3_failsafe) {
             failsafe_short_on_event(FAILSAFE_SHORT, MODE_REASON_RADIO_FAILSAFE);
@@ -674,61 +679,61 @@ void Plane::print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode)
 {
     switch (mode) {
     case MANUAL:
-        port->print("Manual");
+        port->printf("Manual");
         break;
     case CIRCLE:
-        port->print("Circle");
+        port->printf("Circle");
         break;
     case STABILIZE:
-        port->print("Stabilize");
+        port->printf("Stabilize");
         break;
     case TRAINING:
-        port->print("Training");
+        port->printf("Training");
         break;
     case ACRO:
-        port->print("ACRO");
+        port->printf("ACRO");
         break;
     case FLY_BY_WIRE_A:
-        port->print("FBW_A");
+        port->printf("FBW_A");
         break;
     case AUTOTUNE:
-        port->print("AUTOTUNE");
+        port->printf("AUTOTUNE");
         break;
     case FLY_BY_WIRE_B:
-        port->print("FBW_B");
+        port->printf("FBW_B");
         break;
     case CRUISE:
-        port->print("CRUISE");
+        port->printf("CRUISE");
         break;
     case AUTO:
-        port->print("AUTO");
+        port->printf("AUTO");
         break;
     case RTL:
-        port->print("RTL");
+        port->printf("RTL");
         break;
     case LOITER:
-        port->print("Loiter");
+        port->printf("Loiter");
         break;
     case AVOID_ADSB:
-        port->print("AVOID_ADSB");
+        port->printf("AVOID_ADSB");
         break;
     case GUIDED:
-        port->print("Guided");
+        port->printf("Guided");
         break;
     case QSTABILIZE:
-        port->print("QStabilize");
+        port->printf("QStabilize");
         break;
     case QHOVER:
-        port->print("QHover");
+        port->printf("QHover");
         break;
     case QLOITER:
-        port->print("QLoiter");
+        port->printf("QLoiter");
         break;
     case QLAND:
-        port->print("QLand");
+        port->printf("QLand");
         break;
     case QRTL:
-        port->print("QRTL");
+        port->printf("QRTL");
         break;
     default:
         port->printf("Mode(%u)", (unsigned)mode);
@@ -736,10 +741,83 @@ void Plane::print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode)
     }
 }
 
+// sets notify object flight mode information
+void Plane::notify_flight_mode(enum FlightMode mode)
+{
+    AP_Notify::flags.flight_mode = mode;
+
+    // set flight mode string
+    switch (mode) {
+    case MANUAL:
+        notify.set_flight_mode_str("MANU");
+        break;
+    case CIRCLE:
+        notify.set_flight_mode_str("CIRC");
+        break;
+    case STABILIZE:
+        notify.set_flight_mode_str("STAB");
+        break;
+    case TRAINING:
+        notify.set_flight_mode_str("TRAN");
+        break;
+    case ACRO:
+        notify.set_flight_mode_str("ACRO");
+        break;
+    case FLY_BY_WIRE_A:
+        notify.set_flight_mode_str("FBWA");
+        break;
+    case FLY_BY_WIRE_B:
+        notify.set_flight_mode_str("FBWB");
+        break;
+    case CRUISE:
+        notify.set_flight_mode_str("CRUS");
+        break;
+    case AUTOTUNE:
+        notify.set_flight_mode_str("ATUN");
+        break;
+    case AUTO:
+        notify.set_flight_mode_str("AUTO");
+        break;
+    case RTL:
+        notify.set_flight_mode_str("RTL ");
+        break;
+    case LOITER:
+        notify.set_flight_mode_str("LOITER");
+        break;
+    case AVOID_ADSB:
+        notify.set_flight_mode_str("AVOI");
+        break;
+    case GUIDED:
+        notify.set_flight_mode_str("GUID");
+        break;
+    case INITIALISING:
+        notify.set_flight_mode_str("INIT");
+        break;
+    case QSTABILIZE:
+        notify.set_flight_mode_str("QSTB");
+        break;
+    case QHOVER:
+        notify.set_flight_mode_str("QHOV");
+        break;
+    case QLOITER:
+        notify.set_flight_mode_str("QLOT");
+        break;
+    case QLAND:
+        notify.set_flight_mode_str("QLND");
+        break;
+    case QRTL:
+        notify.set_flight_mode_str("QRTL");
+        break;
+    default:
+        notify.set_flight_mode_str("----");
+        break;
+    }
+}
+
 #if CLI_ENABLED == ENABLED
 void Plane::print_comma(void)
 {
-    cliSerial->print(",");
+    cliSerial->printf(",");
 }
 #endif
 

@@ -20,7 +20,7 @@ void Copter::esc_calibration_startup_check()
 {
 #if FRAME_CONFIG != HELI_FRAME
     // exit immediately if pre-arm rc checks fail
-    pre_arm_rc_checks();
+    arming.pre_arm_rc_checks(true);
     if (!ap.pre_arm_rc_check) {
         // clear esc flag for next time
         if ((g.esc_calibrate != ESCCAL_NONE) && (g.esc_calibrate != ESCCAL_DISABLED)) {
@@ -93,10 +93,16 @@ void Copter::esc_calibration_passthrough()
     // arm motors
     motors->armed(true);
     motors->enable();
-    
+
+    uint32_t last_notify_update_ms = 0;
     while(1) {
         // flash LEDS
         AP_Notify::flags.esc_calibration = true;
+        uint32_t now = AP_HAL::millis();
+        if (now - last_notify_update_ms > 20) {
+            last_notify_update_ms = now;
+            update_notify();
+        }
 
         // read pilot input
         read_radio();
