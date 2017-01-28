@@ -1,7 +1,4 @@
 /*
-  ToshibaLED PX4 driver
-*/
-/*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
@@ -17,30 +14,17 @@
  */
 #pragma once
 
-#include <AP_Math/AP_Math.h>
-#include <AP_Math/vectorN.h>
+#include <AP_Common/AP_Common.h>
+#include <AP_HAL/AP_HAL.h>
 
-#include "ToshibaLED.h"
+#include "RGBLed.h"
 
-class ToshibaLED_PX4 : public ToshibaLED
+class PixRacerLED: public RGBLed
 {
 public:
-    bool hw_init(void);
-    bool hw_set_rgb(uint8_t r, uint8_t g, uint8_t b);
-private:
-    int _rgbled_fd;
-    void update_timer(void);
+    PixRacerLED();
 
-    // use a union so that updates can be of a single 32 bit value,
-    // making it atomic on PX4
-    union rgb_value {
-        struct {
-            uint8_t r;
-            uint8_t g;
-            uint8_t b;
-        };
-        volatile uint32_t v;
-    };
-    
-    union rgb_value last, next;
+protected:
+    bool hw_init(void) override;
+    bool hw_set_rgb(uint8_t r, uint8_t g, uint8_t b) override;
 };

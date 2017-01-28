@@ -108,6 +108,11 @@ void Rover::init_ardupilot()
 
     BoardConfig.init();
 
+    // initialise notify system
+    notify.init(false);
+    AP_Notify::flags.failsafe_battery = false;
+    notify_mode(control_mode);
+
     ServoRelayEvents.set_channel_mask(0xFFF0);
 
     set_control_channels();
@@ -142,7 +147,7 @@ void Rover::init_ardupilot()
 
     if (g.compass_enabled == true) {
         if (!compass.init()|| !compass.read()) {
-            cliSerial->println("Compass initialisation failed!");
+            cliSerial->printf("Compass initialisation failed!\n");
             g.compass_enabled = false;
         } else {
             ahrs.set_compass(&compass);
@@ -187,12 +192,12 @@ void Rover::init_ardupilot()
     //
     if (g.cli_enabled == 1) {
         const char *msg = "\nPress ENTER 3 times to start interactive setup\n";
-        cliSerial->println(msg);
+        cliSerial->printf("%s\n", msg);
         if (gcs[1].initialised && (gcs[1].get_uart() != nullptr)) {
-            gcs[1].get_uart()->println(msg);
+            gcs[1].get_uart()->printf("%s\n", msg);
         }
         if (num_gcs > 2 && gcs[2].initialised && (gcs[2].get_uart() != nullptr)) {
-            gcs[2].get_uart()->println(msg);
+            gcs[2].get_uart()->printf("%s\n", msg);
         }
     }
 #endif
@@ -325,6 +330,8 @@ void Rover::set_mode(enum mode mode)
     if (should_log(MASK_LOG_MODE)) {
         DataFlash.Log_Write_Mode(control_mode);
     }
+
+    notify_mode(control_mode);
 }
 
 /*
@@ -436,25 +443,61 @@ void Rover::print_mode(AP_HAL::BetterStream *port, uint8_t mode)
 {
     switch (mode) {
     case MANUAL:
-        port->print("Manual");
+        port->printf("Manual");
         break;
     case HOLD:
-        port->print("HOLD");
+        port->printf("HOLD");
         break;
     case LEARNING:
-        port->print("Learning");
+        port->printf("Learning");
         break;
     case STEERING:
-        port->print("Steering");
+        port->printf("Steering");
         break;
     case AUTO:
-        port->print("AUTO");
+        port->printf("AUTO");
         break;
     case RTL:
-        port->print("RTL");
+        port->printf("RTL");
         break;
     default:
         port->printf("Mode(%u)", (unsigned)mode);
+        break;
+    }
+}
+
+// update notify with mode change
+void Rover::notify_mode(enum mode new_mode)
+{
+    notify.flags.flight_mode = new_mode;
+
+    switch (new_mode) {
+    case MANUAL:
+        notify.set_flight_mode_str("MANU");
+        break;
+    case LEARNING:
+        notify.set_flight_mode_str("LERN");
+        break;
+    case STEERING:
+        notify.set_flight_mode_str("STER");
+        break;
+    case HOLD:
+        notify.set_flight_mode_str("HOLD");
+        break;
+    case AUTO:
+        notify.set_flight_mode_str("AUTO");
+        break;
+    case RTL:
+        notify.set_flight_mode_str("RTL");
+        break;
+    case GUIDED:
+        notify.set_flight_mode_str("GUID");
+        break;
+    case INITIALISING:
+        notify.set_flight_mode_str("INIT");
+        break;
+    default:
+        notify.set_flight_mode_str("----");
         break;
     }
 }

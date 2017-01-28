@@ -1344,9 +1344,7 @@ void GCS_MAVLINK_Plane::handleMessage(mavlink_message_t* msg)
         case MAV_CMD_DO_GO_AROUND:
             result = MAV_RESULT_FAILED;
 
-            //Not allowing go around at FLIGHT_LAND_FINAL stage on purpose --
-            //if plane is close to the ground a go around could be dangerous.
-            if (plane.landing.in_progress) {
+            if (plane.flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND) {
                 // Initiate an aborted landing. This will trigger a pitch-up and
                 // climb-out to a safe altitude holding heading then one of the
                 // following actions will occur, check for in this order:
@@ -2181,6 +2179,7 @@ void Plane::gcs_update(void)
 void Plane::gcs_send_text(MAV_SEVERITY severity, const char *str)
 {
     GCS_MAVLINK::send_statustext(severity, 0xFF, str);
+    notify.send_text(str);
 }
 
 /*
@@ -2196,6 +2195,7 @@ void Plane::gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...)
     hal.util->vsnprintf((char *)str, sizeof(str), fmt, arg_list);
     va_end(arg_list);
     GCS_MAVLINK::send_statustext(severity, 0xFF, str);
+    notify.send_text(str);
 }
 
 /*
