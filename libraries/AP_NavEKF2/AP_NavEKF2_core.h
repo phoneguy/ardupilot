@@ -1,5 +1,7 @@
 /*
-  24 state EKF based on https://github.com/priseborough/InertialNav
+  24 state EKF based on the derivation in https://github.com/priseborough/
+  InertialNav/blob/master/derivations/RotationVectorAttitudeParameterisation/
+  GenerateNavFilterEquations.m
 
   Converted from Matlab to C++ by Paul Riseborough
 
@@ -34,7 +36,7 @@
 #define MASK_GPS_HDOP       (1<<1)
 #define MASK_GPS_SPD_ERR    (1<<2)
 #define MASK_GPS_POS_ERR    (1<<3)
-#define MASK_GPS_YAW_ERR 	(1<<4)
+#define MASK_GPS_YAW_ERR    (1<<4)
 #define MASK_GPS_POS_DRIFT  (1<<5)
 #define MASK_GPS_VERT_SPD   (1<<6)
 #define MASK_GPS_HORIZ_SPD  (1<<7)
@@ -157,7 +159,7 @@ public:
     // All NED positions calcualted by the filter will be relative to this location
     // The origin cannot be set if the filter is in a flight mode (eg vehicle armed)
     // Returns false if the filter has rejected the attempt to set the origin
-    bool setOriginLLH(struct Location &loc);
+    bool setOriginLLH(const Location &loc);
 
     // return estimated height above ground level
     // return false if ground height is not being estimated.
@@ -294,6 +296,9 @@ public:
 
     // get the IMU index
     uint8_t getIMUIndex(void) const { return imu_index; }
+
+    // get timing statistics structure
+    void getTimingStatistics(struct ekf_timing &timing);
     
 private:
     // Reference to the global EKF frontend for parameters
@@ -700,6 +705,9 @@ private:
 
     // effective value of MAG_CAL
     uint8_t effective_magCal(void) const;
+
+    // update timing statistics structure
+    void updateTimingStatistics(void);
     
     // Length of FIFO buffers used for non-IMU sensor data.
     // Must be larger than the time period defined by IMU_BUFFER_LENGTH
@@ -795,6 +803,7 @@ private:
     bool inhibitWindStates;         // true when wind states and covariances are to remain constant
     bool inhibitMagStates;          // true when magnetic field states and covariances are to remain constant
     bool gpsNotAvailable;           // bool true when valid GPS data is not available
+    uint8_t last_gps_idx;           // sensor ID of the GPS receiver used for the last fusion or reset
     struct Location EKF_origin;     // LLH origin of the NED axis system - do not change unless filter is reset
     bool validOrigin;               // true when the EKF origin is valid
     float gpsSpdAccuracy;           // estimated speed accuracy in m/s returned by the GPS receiver
@@ -1064,6 +1073,7 @@ private:
     struct {
         bool bad_sAcc:1;
         bool bad_hAcc:1;
+        bool bad_vAcc:1;
         bool bad_yaw:1;
         bool bad_sats:1;
         bool bad_VZ:1;
@@ -1109,6 +1119,9 @@ private:
     AP_HAL::Util::perf_counter_t  _perf_FuseOptFlow;
     AP_HAL::Util::perf_counter_t  _perf_test[10];
 
+    // timing statistics
+    struct ekf_timing timing;
+    
     // should we assume zero sideslip?
     bool assume_zero_sideslip(void) const;
 

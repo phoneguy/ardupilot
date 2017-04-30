@@ -124,7 +124,7 @@ struct AP_Notify::notify_events_type AP_Notify::events;
         AP_BoardLED boardled;
         Buzzer buzzer;
         Display display;
-        NotifyDevice *AP_Notify::_devices[] = {&display, &buzzer, &boardled};
+        NotifyDevice *AP_Notify::_devices[] = {&boardled, &display, &buzzer};
     #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BLUE
         AP_BoardLED boardled;
         NotifyDevice *AP_Notify::_devices[] = {&boardled};
@@ -171,6 +171,7 @@ void AP_Notify::init(bool enable_external_leds)
     // clear flight mode string and text buffer
     memset(_flight_mode_str, 0, sizeof(_flight_mode_str));
     memset(_send_text, 0, sizeof(_send_text));
+    _send_text_updated_millis = 0;
 
     AP_Notify::flags.external_leds = enable_external_leds;
 
@@ -218,4 +219,5 @@ void AP_Notify::send_text(const char *str)
 {
     strncpy(_send_text, str, sizeof(_send_text));
     _send_text[sizeof(_send_text)-1] = 0;
+    _send_text_updated_millis = AP_HAL::millis();
 }

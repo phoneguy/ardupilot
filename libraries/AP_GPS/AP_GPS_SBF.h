@@ -34,7 +34,7 @@ public:
     // Methods
     bool read();
 
-    void inject_data(const uint8_t *data, uint16_t len) override;
+    const char *name() const override { return "SBF"; }
 
 private:
 
