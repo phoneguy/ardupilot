@@ -23,8 +23,10 @@ void NavEKF2_core::readRangeFinder(void)
     uint8_t midIndex;
     uint8_t maxIndex;
     uint8_t minIndex;
+
     // get theoretical correct range when the vehicle is on the ground
-    rngOnGnd = frontend->_rng.ground_clearance_cm() * 0.01f;
+    // don't allow range to go below 5cm because this can cause problems with optical flow processing
+    rngOnGnd = MAX(frontend->_rng.ground_clearance_cm_orient(ROTATION_PITCH_270) * 0.01f, 0.05f);
 
     // read range finder at 20Hz
     // TODO better way of knowing if it has new data
@@ -37,7 +39,7 @@ void NavEKF2_core::readRangeFinder(void)
         // use data from two range finders if available
 
         for (uint8_t sensorIndex = 0; sensorIndex <= 1; sensorIndex++) {
-            if (frontend->_rng.status(sensorIndex) == RangeFinder::RangeFinder_Good) {
+            if ((frontend->_rng.get_orientation(sensorIndex) == ROTATION_PITCH_270) && (frontend->_rng.status(sensorIndex) == RangeFinder::RangeFinder_Good)) {
                 rngMeasIndex[sensorIndex] ++;
                 if (rngMeasIndex[sensorIndex] > 2) {
                     rngMeasIndex[sensorIndex] = 0;
@@ -363,6 +365,8 @@ void NavEKF2_core::readIMUData()
         imuDataDelayed.delAngDT = MAX(imuDataDelayed.delAngDT,minDT);
         imuDataDelayed.delVelDT = MAX(imuDataDelayed.delVelDT,minDT);
 
+        updateTimingStatistics();
+            
         // correct the extracted IMU data for sensor errors
         delAngCorrected = imuDataDelayed.delAng;
         delVelCorrected = imuDataDelayed.delVel;
@@ -756,4 +760,39 @@ void NavEKF2_core::readRngBcnData()
     rngBcnDataToFuse = storedRangeBeacon.recall(rngBcnDataDelayed,imuDataDelayed.time_ms);
 
 }
+
+/*
+  update timing statistics structure
+ */
+void NavEKF2_core::updateTimingStatistics(void)
+{
+    if (timing.count == 0) {
+        timing.dtIMUavg_max = dtIMUavg;
+        timing.dtIMUavg_min = dtIMUavg;
+        timing.dtEKFavg_max = dtEkfAvg;
+        timing.dtEKFavg_min = dtEkfAvg;
+        timing.delAngDT_max = imuDataDelayed.delAngDT;
+        timing.delAngDT_min = imuDataDelayed.delAngDT;
+        timing.delVelDT_max = imuDataDelayed.delVelDT;
+        timing.delVelDT_min = imuDataDelayed.delVelDT;
+    } else {
+        timing.dtIMUavg_max = MAX(timing.dtIMUavg_max, dtIMUavg);
+        timing.dtIMUavg_min = MIN(timing.dtIMUavg_min, dtIMUavg);
+        timing.dtEKFavg_max = MAX(timing.dtEKFavg_max, dtEkfAvg);
+        timing.dtEKFavg_min = MIN(timing.dtEKFavg_min, dtEkfAvg);
+        timing.delAngDT_max = MAX(timing.delAngDT_max, imuDataDelayed.delAngDT);
+        timing.delAngDT_min = MIN(timing.delAngDT_min, imuDataDelayed.delAngDT);
+        timing.delVelDT_max = MAX(timing.delVelDT_max, imuDataDelayed.delVelDT);
+        timing.delVelDT_min = MIN(timing.delVelDT_min, imuDataDelayed.delVelDT);
+    }
+    timing.count++;
+}
+
+// get timing statistics structure
+void NavEKF2_core::getTimingStatistics(struct ekf_timing &_timing)
+{
+    _timing = timing;
+    memset(&timing, 0, sizeof(timing));
+}
+
 #endif // HAL_CPU_CLASS

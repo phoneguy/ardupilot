@@ -96,6 +96,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(read_rangefinder,      20,    100),
     SCHED_TASK(update_proximity,     100,     50),
     SCHED_TASK(update_beacon,        400,     50),
+    SCHED_TASK(update_visual_odom,   400,     50),
     SCHED_TASK(update_altitude,       10,    100),
     SCHED_TASK(run_nav_updates,       50,    100),
     SCHED_TASK(update_throttle_hover,100,     90),
@@ -255,20 +256,22 @@ void Copter::loop()
 // Main loop - 400hz
 void Copter::fast_loop()
 {
+    // update INS immediately to get current gyro data populated
+    ins.update();
+    
+    // run low level rate controllers that only require IMU data
+    attitude_control->rate_controller_run();
 
-    // IMU DCM Algorithm
+    // send outputs to the motors library immediately
+    motors_output();
+
+    // run EKF state estimator (expensive)
     // --------------------
     read_AHRS();
 
-    // run low level rate controllers that only require IMU data
-    attitude_control->rate_controller_run();
-    
 #if FRAME_CONFIG == HELI_FRAME
     update_heli_control_dynamics();
 #endif //HELI_FRAME
-
-    // send outputs to the motors library
-    motors_output();
 
     // Inertial Nav
     // --------------------
@@ -419,7 +422,7 @@ void Copter::twentyfive_hz_logging()
 {
 #if HIL_MODE != HIL_MODE_DISABLED
     // HIL for a copter needs very fast update of the servo values
-    gcs_send_message(MSG_RADIO_OUT);
+    gcs_send_message(MSG_SERVO_OUTPUT_RAW);
 #endif
 
 #if HIL_MODE == HIL_MODE_DISABLED
@@ -627,7 +630,8 @@ void Copter::read_AHRS(void)
     gcs_check_input();
 #endif
 
-    ahrs.update();
+    // we tell AHRS to skip INS update as we have already done it in fast_loop()
+    ahrs.update(true);
 }
 
 // read baro and rangefinder altitude at 10hz
