@@ -29,7 +29,7 @@ const AP_Param::GroupInfo OpticalFlow::var_info[] = {
     // @Range: -200 +200
     // @Increment: 1
     // @User: Standard
-    AP_GROUPINFO("_FYSCALER", 2,  OpticalFlow,    _flowScalerY,   0),
+    AP_GROUPINFO("_FYSCALER", 2,  OpticalFlow,    _flowScalerY,  0),
 
     // @Param: _ORIENT_YAW
     // @DisplayName: Flow sensor yaw alignment
@@ -95,6 +95,7 @@ void OpticalFlow::init(void)
 #elif CONFIG_HAL_BOARD == HAL_BOARD_SITL
         backend = new AP_OpticalFlow_SITL(*this);
 #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BEBOP ||\
+    CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI ||\
     CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
         backend = new AP_OpticalFlow_Onboard(*this);
 #elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
