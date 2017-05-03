@@ -288,6 +288,10 @@ void Copter::init_ardupilot()
     // initialise mission library
     mission.init();
 
+    // initialise DataFlash library
+    DataFlash.set_mission(&mission);
+    DataFlash.setVehicle_Startup_Log_Writer(FUNCTOR_BIND(&copter, &Copter::Log_Write_Vehicle_Startup_Messages, void));
+
     // initialise the flight mode and aux switch
     // ---------------------------
     reset_control_switch();
@@ -315,6 +319,9 @@ void Copter::init_ardupilot()
     if (ap.pre_arm_rc_check) {
         enable_motor_output();
     }
+
+    // disable safety if requested
+    BoardConfig.init_safety();    
 
     cliSerial->printf("\nReady to FLY ");
 

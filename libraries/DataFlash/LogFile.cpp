@@ -584,14 +584,13 @@ void DataFlash_Block::ListAvailableLogs(AP_HAL::BetterStream *port)
 
 // This function starts a new log file in the DataFlash, and writes
 // the format of supported messages in the log
+// This function is ONLY called from the vehicle code.
+// DataFlash_MAVLink, for example, will NOT call this function if the
+// remote end disconnects and reconnects!
 void DataFlash_Class::StartNewLog(void)
 {
     for (uint8_t i=0; i<_next_backend; i++) {
         backends[i]->start_new_log();
-    }
-    // reset sent masks
-    for (struct log_write_fmt *f = log_write_fmts; f; f=f->next) {
-        f->sent_mask = 0;
     }
 }
 
@@ -838,7 +837,9 @@ void DataFlash_Class::Log_Write_IMU(const AP_InertialSensor &ins)
         accel_error : ins.get_accel_error_count(0),
         temperature : ins.get_temperature(0),
         gyro_health : (uint8_t)ins.get_gyro_health(0),
-        accel_health : (uint8_t)ins.get_accel_health(0)
+        accel_health : (uint8_t)ins.get_accel_health(0),
+        gyro_rate : ins.get_gyro_rate_hz(0),
+        accel_rate : ins.get_accel_rate_hz(0),
     };
     WriteBlock(&pkt, sizeof(pkt));
     if (ins.get_gyro_count() < 2 && ins.get_accel_count() < 2) {
@@ -860,7 +861,9 @@ void DataFlash_Class::Log_Write_IMU(const AP_InertialSensor &ins)
         accel_error : ins.get_accel_error_count(1),
         temperature : ins.get_temperature(1),
         gyro_health : (uint8_t)ins.get_gyro_health(1),
-        accel_health : (uint8_t)ins.get_accel_health(1)
+        accel_health : (uint8_t)ins.get_accel_health(1),
+        gyro_rate : ins.get_gyro_rate_hz(1),
+        accel_rate : ins.get_accel_rate_hz(1),
     };
     WriteBlock(&pkt2, sizeof(pkt2));
     if (ins.get_gyro_count() < 3 && ins.get_accel_count() < 3) {
@@ -881,7 +884,9 @@ void DataFlash_Class::Log_Write_IMU(const AP_InertialSensor &ins)
         accel_error : ins.get_accel_error_count(2),
         temperature : ins.get_temperature(2),
         gyro_health : (uint8_t)ins.get_gyro_health(2),
-        accel_health : (uint8_t)ins.get_accel_health(2)
+        accel_health : (uint8_t)ins.get_accel_health(2),
+        gyro_rate : ins.get_gyro_rate_hz(2),
+        accel_rate : ins.get_accel_rate_hz(2),
     };
     WriteBlock(&pkt3, sizeof(pkt3));
 }

@@ -963,7 +963,7 @@ void AP_GPS::handle_gps_rtcm_data(const mavlink_message_t *msg)
 
     if ((packet.flags & 1) == 0) {
         // it is not fragmented, pass direct
-        inject_data_all(packet.data, packet.len);
+        inject_data(packet.data, packet.len);
         return;
     }
 
@@ -1013,21 +1013,8 @@ void AP_GPS::handle_gps_rtcm_data(const mavlink_message_t *msg)
     if (rtcm_buffer->fragment_count != 0 &&
         rtcm_buffer->fragments_received == (1U << rtcm_buffer->fragment_count) - 1) {
         // we have them all, inject
-        inject_data_all(rtcm_buffer->buffer, rtcm_buffer->total_length);
+        inject_data(rtcm_buffer->buffer, rtcm_buffer->total_length);
         memset(rtcm_buffer, 0, sizeof(*rtcm_buffer));
-    }
-}
-
-/*
-  inject data into all backends
-*/
-void AP_GPS::inject_data_all(const uint8_t *data, uint16_t len)
-{
-    uint8_t i;
-    for (i=0; i<num_instances; i++) {
-        if ((drivers[i] != nullptr) && (_type[i] != GPS_TYPE_NONE)) {
-            drivers[i]->inject_data(data, len);
-        }
     }
 }
 

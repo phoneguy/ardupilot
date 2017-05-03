@@ -217,6 +217,9 @@ void Rover::init_ardupilot()
     // set the correct flight mode
     // ---------------------------
     reset_control_switch();
+
+    // disable safety if requested
+    BoardConfig.init_safety();
 }
 
 //*********************************************************************************
@@ -245,6 +248,12 @@ void Rover::startup_ground(void)
 
     // initialise mission library
     mission.init();
+
+    // initialise DataFlash library
+    DataFlash.set_mission(&mission);
+    DataFlash.setVehicle_Startup_Log_Writer(
+        FUNCTOR_BIND(&rover, &Rover::Log_Write_Vehicle_Startup_Messages, void)
+        );
 
     // we don't want writes to the serial port to cause us to pause
     // so set serial ports non-blocking once we are ready to drive
